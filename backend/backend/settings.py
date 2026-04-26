@@ -10,10 +10,48 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_env_file(env_path: Path) -> None:
+    if not env_path.exists():
+        return
+
+    with env_path.open() as env_file:
+        for raw_line in env_file:
+            line = raw_line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.startswith('export '):
+                line = line[7:].strip()
+            if '=' not in line:
+                continue
+
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+            if (
+                (value.startswith('"') and value.endswith('"'))
+                or (value.startswith("'") and value.endswith("'"))
+            ):
+                value = value[1:-1]
+
+            os.environ.setdefault(key, value)
+
+
+_load_env_file(BASE_DIR.parent / '.env')
+
+
+def _env(name: str, default: str, *, aliases: tuple[str, ...] = ()) -> str:
+    for candidate in (name, *aliases):
+        value = os.getenv(candidate)
+        if value not in (None, ''):
+            return value
+    return default
 
 
 # Quick-start development settings - unsuitable for production
@@ -79,8 +117,12 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': _env('POSTGRES_DB', 'web_to_pdf', aliases=('DB_NAME',)),
+        'USER': _env('POSTGRES_USER', 'postgres', aliases=('DB_USER',)),
+        'PASSWORD': _env('POSTGRES_PASSWORD', 'postgres', aliases=('DB_PASSWORD',)),
+        'HOST': _env('POSTGRES_HOST', 'localhost', aliases=('DB_HOST',)),
+        'PORT': _env('POSTGRES_PORT', '5432', aliases=('DB_PORT',)),
     }
 }
 

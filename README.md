@@ -61,6 +61,24 @@ And keeps:
 
 - Django + Django REST Framework
 - Celery (optional for async processing)
+- PostgreSQL
+
+#### PostgreSQL Configuration
+
+Set these environment variables before running the backend:
+
+- `POSTGRES_DB` (default: `web_to_pdf`)
+- `POSTGRES_USER` (default: `postgres`)
+- `POSTGRES_PASSWORD` (default: `postgres`)
+- `POSTGRES_HOST` (default: `localhost`)
+- `POSTGRES_PORT` (default: `5432`)
+
+Then run migrations:
+
+```bash
+cd backend
+python manage.py migrate
+```
 
 ### PDF Generation Options
 

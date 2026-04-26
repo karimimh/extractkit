@@ -46,12 +46,12 @@ class PdfGenerationError(Exception):
 
 
 def generate_pdf(title: str, article_html: str) -> str:
-  try:
-    from weasyprint import CSS, HTML
-  except Exception as exc:
-    raise PdfGenerationError(
-      "PDF engine is unavailable. Install WeasyPrint system dependencies."
-    ) from exc
+    try:
+      from weasyprint import CSS, HTML
+    except Exception as exc:
+      raise PdfGenerationError(
+        "PDF engine is unavailable. Install WeasyPrint system dependencies."
+      ) from exc
 
     exports_dir = Path(settings.MEDIA_ROOT) / "exports"
     exports_dir.mkdir(parents=True, exist_ok=True)

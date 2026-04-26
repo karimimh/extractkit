@@ -8,3 +8,4 @@ chardet==5.2.0
 lxml_html_clean==0.4.3
 beautifulsoup4==4.13.3
 weasyprint==64.1
+psycopg[binary]==3.2.9
