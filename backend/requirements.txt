@@ -1,0 +1,10 @@
+Django==5.2.3
+djangorestframework==3.16.0
+drf-spectacular==0.28.0
+django-cors-headers==4.7.0
+requests==2.32.3
+readability-lxml==0.8.1
+chardet==5.2.0
+lxml_html_clean==0.4.3
+beautifulsoup4==4.13.3
+weasyprint==64.1
