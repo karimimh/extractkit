@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import requests
-from readability import Document
+from bs4 import BeautifulSoup
 
 
 DEFAULT_HEADERS = {
@@ -31,11 +31,11 @@ def extract_main_content(url: str, timeout: int = 20) -> ExtractedContent:
     except requests.RequestException as exc:
         raise ContentExtractionError("Failed to fetch URL") from exc
 
-    readable = Document(response.text)
-    title = readable.short_title() or "Exported Article"
-    html = readable.summary(html_partial=True)
+    html = response.text
+    soup = BeautifulSoup(html, "html.parser")
+    title = (soup.title.string.strip() if soup.title and soup.title.string else "Exported Website")
 
     if not html or not html.strip():
-        raise ContentExtractionError("Failed to extract readable content from the page")
+        raise ContentExtractionError("Failed to extract content from the page")
 
     return ExtractedContent(title=title, html=html)

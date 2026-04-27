@@ -86,6 +86,16 @@ python manage.py migrate
 - Playwright (for better rendering)
 - wkhtmltopdf (fallback)
 
+#### Playwright runtime setup
+
+For full-page rendering similar to browser "Print as PDF", install Playwright browser binaries after dependencies:
+
+```bash
+cd backend
+pip install -r requirements.txt
+python -m playwright install chromium
+```
+
 ### Content Extraction
 
 - readability-lxml

@@ -4,9 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import ExportRequestSerializer
-from .services.cleaner import clean_html
-from .services.extractor import ContentExtractionError, extract_main_content
-from .services.pdf_generator import PdfGenerationError, generate_pdf
+from .services.pdf_generator import PdfGenerationError, generate_pdf_from_url
 
 
 class ExportPdfView(APIView):
@@ -15,7 +13,8 @@ class ExportPdfView(APIView):
         request=ExportRequestSerializer,
         responses={
             200: OpenApiResponse(description="PDF generated successfully"),
-            400: OpenApiResponse(description="Validation or extraction error"),
+            400: OpenApiResponse(description="Validation error"),
+            500: OpenApiResponse(description="PDF generation error"),
         },
         examples=[
             OpenApiExample(
@@ -32,14 +31,7 @@ class ExportPdfView(APIView):
         url = serializer.validated_data["url"]
 
         try:
-            extracted = extract_main_content(url)
-            cleaned_html = clean_html(extracted.html)
-            relative_pdf_path = generate_pdf(extracted.title, cleaned_html)
-        except ContentExtractionError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            generated = generate_pdf_from_url(url)
         except PdfGenerationError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -51,10 +43,10 @@ class ExportPdfView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        pdf_url = request.build_absolute_uri(f"/media/{relative_pdf_path}")
+        pdf_url = request.build_absolute_uri(f"/media/{generated.relative_path}")
         return Response(
             {
-                "title": extracted.title,
+                "title": generated.title,
                 "pdf_url": pdf_url,
             },
             status=status.HTTP_200_OK,

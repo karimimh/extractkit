@@ -2,17 +2,7 @@ from bs4 import BeautifulSoup
 
 BLOCKED_TAGS = [
     "script",
-    "style",
     "noscript",
-    "iframe",
-    "header",
-    "footer",
-    "nav",
-    "aside",
-    "form",
-    "button",
-    "input",
-    "svg",
 ]
 
 
@@ -23,13 +13,9 @@ def clean_html(raw_html: str) -> str:
         for element in soup.find_all(tag_name):
             element.decompose()
 
-    for element in soup.find_all(attrs={"style": True}):
-        del element["style"]
-
     for element in soup.find_all(True):
-        for attr in ["class", "id", "onclick", "onload", "onerror", "role"]:
-            if attr in element.attrs:
+        for attr in list(element.attrs):
+            if attr.lower().startswith("on"):
                 del element.attrs[attr]
 
-    body_html = soup.decode()
-    return f"<article>{body_html}</article>"
+    return str(soup)
