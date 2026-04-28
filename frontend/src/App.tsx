@@ -163,7 +163,7 @@ function App() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [mode, setMode] = useState<SelectionMode>("exclude");
-  const [renderMode, setRenderMode] = useState<RenderMode>("screen");
+  const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -322,134 +322,139 @@ function App() {
     <main className="page-shell">
       <div className="grain-layer" />
       <section className="export-card">
-        <p className="eyebrow">Custom PDF Builder</p>
-        <h1>Click exactly what should appear in the PDF</h1>
-        <p className="subtitle">
-          Load a page, tap the sections you want, and export a tailored PDF preview
-          before you download.
-        </p>
+        <header className="card-header">
+          <p className="eyebrow">Custom PDF Builder</p>
+          <h1>Click exactly what should appear in the PDF</h1>
+          <p className="subtitle">
+            Load a page, tap the sections you want, and export a tailored PDF preview
+            before you download.
+          </p>
+        </header>
 
-        <form onSubmit={handlePreview} className="export-form">
-          <label htmlFor="url">Website URL</label>
-          <div className="url-row">
-            <input
-              id="url"
-              type="url"
-              placeholder="https://example.com/pricing"
-              value={url}
-              onChange={(event) => handleUrlChange(event.target.value)}
-              required
-            />
-            <button type="submit" disabled={isPreviewLoading} className="secondary">
-              {isPreviewLoading ? "Loading..." : "Load preview"}
-            </button>
-          </div>
-        </form>
+        <div className="card-grid">
+          <div className="control-stack">
+            <form onSubmit={handlePreview} className="export-form">
+              <label htmlFor="url">Website URL</label>
+              <div className="url-row">
+                <input
+                  id="url"
+                  type="url"
+                  placeholder="https://example.com/pricing"
+                  value={url}
+                  onChange={(event) => handleUrlChange(event.target.value)}
+                  required
+                />
+                <button type="submit" disabled={isPreviewLoading} className="secondary">
+                  {isPreviewLoading ? "Loading..." : "Load preview"}
+                </button>
+              </div>
+            </form>
 
-        {previewError && <p className="message error">{previewError}</p>}
+            {previewError && <p className="message error">{previewError}</p>}
 
-        <div className="toolbar">
-          <div className="toggle-group">
-            <span>Selection mode</span>
-            <div className="toggle-buttons">
-              <button
-                type="button"
-                className={mode === "include" ? "active" : ""}
-                onClick={() => setMode("include")}
-              >
-                Include
-              </button>
-              <button
-                type="button"
-                className={mode === "exclude" ? "active" : ""}
-                onClick={() => setMode("exclude")}
-              >
-                Exclude
+            <div className="toolbar">
+              <div className="toggle-group">
+                <span>Selection mode</span>
+                <div className="toggle-buttons">
+                  <button
+                    type="button"
+                    className={mode === "include" ? "active" : ""}
+                    onClick={() => setMode("include")}
+                  >
+                    Include
+                  </button>
+                  <button
+                    type="button"
+                    className={mode === "exclude" ? "active" : ""}
+                    onClick={() => setMode("exclude")}
+                  >
+                    Exclude
+                  </button>
+                </div>
+              </div>
+              <div className="toggle-group">
+                <span>Render as</span>
+                <div className="toggle-buttons">
+                  <button
+                    type="button"
+                    className={renderMode === "screen" ? "active" : ""}
+                    onClick={() => handleRenderModeChange("screen")}
+                  >
+                    Screen
+                  </button>
+                  <button
+                    type="button"
+                    className={renderMode === "print" ? "active" : ""}
+                    onClick={() => handleRenderModeChange("print")}
+                  >
+                    Print
+                  </button>
+                </div>
+              </div>
+              <div className="selection-info">
+                <p>{selections.length} selected</p>
+                <button type="button" className="ghost" onClick={clearSelections}>
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="selection-list">
+              <p>Selected selectors</p>
+              {selections.length ? (
+                <div className="chips">
+                  {selections.map((selector) => (
+                    <span className="chip" key={selector}>
+                      {selector}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="empty">No selections yet.</span>
+              )}
+            </div>
+
+            <div className="export-actions">
+              <button type="button" onClick={onSubmit} disabled={isLoading}>
+                {isLoading ? "Generating PDF..." : "Export PDF"}
               </button>
             </div>
+
+            {error && <p className="message error">{error}</p>}
+
+            {result && (
+              <div className="result-panel">
+                <h2>{result.title}</h2>
+                <p>Your PDF is ready.</p>
+                <a href={result.pdf_url} target="_blank" rel="noreferrer">
+                  Download PDF
+                </a>
+              </div>
+            )}
+
           </div>
-          <div className="toggle-group">
-            <span>Render as</span>
-            <div className="toggle-buttons">
-              <button
-                type="button"
-                className={renderMode === "screen" ? "active" : ""}
-                onClick={() => handleRenderModeChange("screen")}
-              >
-                Screen
-              </button>
-              <button
-                type="button"
-                className={renderMode === "print" ? "active" : ""}
-                onClick={() => handleRenderModeChange("print")}
-              >
-                Print
-              </button>
-            </div>
-          </div>
-          <div className="selection-info">
-            <p>{selections.length} selected</p>
-            <button type="button" className="ghost" onClick={clearSelections}>
-              Clear
-            </button>
+
+          <div className="preview-shell">
+            {previewHtml ? (
+              <div className="preview-panel">
+                <div className="preview-head">
+                  <h2>{previewTitle ?? "Preview"}</h2>
+                  <p>Click to {mode === "include" ? "include" : "exclude"} sections.</p>
+                </div>
+                <iframe
+                  ref={iframeRef}
+                  title="Preview"
+                  className="preview-frame"
+                  srcDoc={previewHtml}
+                />
+              </div>
+            ) : (
+              <div className="preview-empty">
+                <p>Load a page to start selecting elements.</p>
+              </div>
+            )}
           </div>
         </div>
-
-        {previewHtml ? (
-          <div className="preview-panel">
-            <div className="preview-head">
-              <h2>{previewTitle ?? "Preview"}</h2>
-              <p>Click to {mode === "include" ? "include" : "exclude"} sections.</p>
-            </div>
-            <iframe
-              ref={iframeRef}
-              title="Preview"
-              className="preview-frame"
-              srcDoc={previewHtml}
-            />
-          </div>
-        ) : (
-          <div className="preview-empty">
-            <p>Load a page to start selecting elements.</p>
-          </div>
-        )}
-
-        <div className="selection-list">
-          <p>Selected selectors</p>
-          {selections.length ? (
-            <div className="chips">
-              {selections.map((selector) => (
-                <span className="chip" key={selector}>
-                  {selector}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span className="empty">No selections yet.</span>
-          )}
-        </div>
-
-        <div className="export-actions">
-          <button type="button" onClick={onSubmit} disabled={isLoading}>
-            {isLoading ? "Generating PDF..." : "Export PDF"}
-          </button>
-        </div>
-
-        {error && <p className="message error">{error}</p>}
-
-        {result && (
-          <div className="result-panel">
-            <h2>{result.title}</h2>
-            <p>Your PDF is ready.</p>
-            <a href={result.pdf_url} target="_blank" rel="noreferrer">
-              Download PDF
-            </a>
-          </div>
-        )}
-
-        <p className="docs-link">
-          API docs: <a href={docsUrl}>{docsUrl}</a>
-        </p>
       </section>
     </main>
   );
