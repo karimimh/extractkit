@@ -10,6 +10,7 @@ from .services.pdf_generator import (
     PdfGenerationError,
     generate_pdf_from_snapshot,
     generate_pdf_from_url,
+    render_html_snapshot,
 )
 
 
@@ -48,6 +49,7 @@ class ExportPdfView(APIView):
         base_url = serializer.validated_data.get("base_url")
         selectors = serializer.validated_data.get("selectors") or []
         mode = serializer.validated_data.get("mode", "exclude")
+        use_print_css = serializer.validated_data.get("use_print_css", False)
 
         try:
             if html_snapshot and base_url:
@@ -56,9 +58,15 @@ class ExportPdfView(APIView):
                     base_url,
                     selectors=selectors,
                     mode=mode,
+                    use_print_css=use_print_css,
                 )
             else:
-                generated = generate_pdf_from_url(url, selectors=selectors, mode=mode)
+                generated = generate_pdf_from_url(
+                    url,
+                    selectors=selectors,
+                    mode=mode,
+                    use_print_css=use_print_css,
+                )
         except PdfGenerationError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -101,10 +109,20 @@ class PreviewPageView(APIView):
         serializer = PreviewRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         url = serializer.validated_data["url"]
+        use_print_css = serializer.validated_data.get("use_print_css", False)
 
         try:
-            extracted = extract_main_content(url)
-            safe_html = clean_html(extracted.html)
+            if use_print_css:
+                title, html_snapshot = render_html_snapshot(
+                    url,
+                    use_print_css=True,
+                )
+                safe_html = clean_html(html_snapshot)
+                extracted_title = title
+            else:
+                extracted = extract_main_content(url)
+                safe_html = clean_html(extracted.html)
+                extracted_title = extracted.title
         except ContentExtractionError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -118,7 +136,7 @@ class PreviewPageView(APIView):
 
         return Response(
             {
-                "title": extracted.title,
+                "title": extracted_title,
                 "html": safe_html,
                 "base_url": url,
             },

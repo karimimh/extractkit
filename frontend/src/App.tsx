@@ -17,6 +17,7 @@ type ErrorPayload = {
 };
 
 type SelectionMode = "include" | "exclude";
+type RenderMode = "screen" | "print";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "pdf-picker-select";
@@ -161,7 +162,8 @@ function App() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
-  const [mode, setMode] = useState<SelectionMode>("include");
+  const [mode, setMode] = useState<SelectionMode>("exclude");
+  const [renderMode, setRenderMode] = useState<RenderMode>("screen");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -211,7 +213,10 @@ function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({
+          url: url.trim(),
+          use_print_css: renderMode === "print",
+        }),
       });
 
       const payload = (await response.json()) as PreviewResponse | ErrorPayload;
@@ -249,17 +254,21 @@ function App() {
     setSelections([]);
   };
 
+  const handleRenderModeChange = (nextMode: RenderMode) => {
+    setRenderMode(nextMode);
+    setPreviewHtml(null);
+    setPreviewSnapshot(null);
+    setPreviewBaseUrl(null);
+    setPreviewTitle(null);
+    setSelections([]);
+  };
+
   const onSubmit = async () => {
     setError(null);
     setResult(null);
 
     if (!url.trim()) {
       setError("Please enter a URL.");
-      return;
-    }
-
-    if (mode === "include" && selections.length === 0) {
-      setError("Select at least one section for include mode.");
       return;
     }
 
@@ -272,10 +281,12 @@ function App() {
         mode: SelectionMode;
         html_snapshot?: string;
         base_url?: string;
+        use_print_css: boolean;
       } = {
         url: url.trim(),
         selectors: selections,
         mode,
+        use_print_css: renderMode === "print",
       };
 
       if (previewSnapshot && previewBaseUrl) {
@@ -354,6 +365,25 @@ function App() {
                 onClick={() => setMode("exclude")}
               >
                 Exclude
+              </button>
+            </div>
+          </div>
+          <div className="toggle-group">
+            <span>Render as</span>
+            <div className="toggle-buttons">
+              <button
+                type="button"
+                className={renderMode === "screen" ? "active" : ""}
+                onClick={() => handleRenderModeChange("screen")}
+              >
+                Screen
+              </button>
+              <button
+                type="button"
+                className={renderMode === "print" ? "active" : ""}
+                onClick={() => handleRenderModeChange("print")}
+              >
+                Print
               </button>
             </div>
           </div>

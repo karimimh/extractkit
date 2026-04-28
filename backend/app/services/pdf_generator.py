@@ -105,11 +105,70 @@ def _apply_selections(page, selectors: list[str] | None, mode: str) -> None:
   )
 
 
+def _inline_computed_styles(page) -> None:
+  page.evaluate(
+    """
+    () => {
+      const elements = Array.from(document.body.querySelectorAll("*"));
+      elements.forEach((element) => {
+        const computed = window.getComputedStyle(element);
+        let cssText = "";
+        for (const prop of computed) {
+          cssText += prop + ":" + computed.getPropertyValue(prop) + ";";
+        }
+        element.setAttribute("style", cssText);
+      });
+    }
+    """
+  )
+
+
+def render_html_snapshot(
+  url: str,
+  timeout_ms: int = 60000,
+  use_print_css: bool = False,
+) -> tuple[str, str]:
+  try:
+    from playwright.sync_api import sync_playwright
+  except Exception as exc:
+    raise PdfGenerationError(
+      "Browser preview engine is unavailable. Install Playwright and Chromium."
+    ) from exc
+
+  try:
+    with sync_playwright() as playwright:
+      browser = playwright.chromium.launch(headless=True)
+      context = browser.new_context(ignore_https_errors=True)
+      page = context.new_page()
+      response = page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+
+      if response is not None and response.status >= 400:
+        raise PdfGenerationError(f"Failed to load URL (status {response.status})")
+
+      page.emulate_media(media="print" if use_print_css else "screen")
+
+      if use_print_css:
+        _inline_computed_styles(page)
+
+      title = page.title().strip() or "Exported Website"
+      content = page.content()
+
+      context.close()
+      browser.close()
+  except PdfGenerationError:
+    raise
+  except Exception as exc:
+    raise PdfGenerationError("Failed to render preview snapshot") from exc
+
+  return title, content
+
+
 def generate_pdf_from_url(
   url: str,
   timeout_ms: int = 60000,
   selectors: list[str] | None = None,
   mode: str = "exclude",
+  use_print_css: bool = False,
 ) -> GeneratedPdf:
   try:
     from playwright.sync_api import sync_playwright
@@ -134,7 +193,7 @@ def generate_pdf_from_url(
       if response is not None and response.status >= 400:
         raise PdfGenerationError(f"Failed to load URL (status {response.status})")
 
-      page.emulate_media(media="print")
+      page.emulate_media(media="print" if use_print_css else "screen")
 
       _apply_selections(page, selectors, mode)
 
@@ -162,6 +221,7 @@ def generate_pdf_from_snapshot(
   timeout_ms: int = 60000,
   selectors: list[str] | None = None,
   mode: str = "exclude",
+  use_print_css: bool = False,
 ) -> GeneratedPdf:
   try:
     from playwright.sync_api import sync_playwright
@@ -184,7 +244,7 @@ def generate_pdf_from_snapshot(
       page = context.new_page()
       page.set_content(html_with_base, wait_until="load", timeout=timeout_ms)
 
-      page.emulate_media(media="print")
+      page.emulate_media(media="print" if use_print_css else "screen")
       _apply_selections(page, selectors, mode)
 
       title = page.title().strip() or "Exported Website"
