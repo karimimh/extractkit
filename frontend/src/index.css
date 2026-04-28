@@ -89,6 +89,13 @@ h1 {
 	gap: 0.72rem;
 }
 
+.url-row {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 0.75rem;
+	align-items: center;
+}
+
 .export-form label {
 	font-family: "Syne", sans-serif;
 	font-size: 0.85rem;
@@ -122,6 +129,33 @@ h1 {
 	padding: 0.72rem 1.25rem;
 	cursor: pointer;
 	transition: transform 160ms ease, box-shadow 180ms ease;
+}
+
+.export-actions button {
+	border: none;
+	border-radius: 999px;
+	background: linear-gradient(110deg, var(--accent), var(--accent-2));
+	color: white;
+	font-family: "Syne", sans-serif;
+	font-size: 0.95rem;
+	padding: 0.72rem 1.25rem;
+	cursor: pointer;
+	transition: transform 160ms ease, box-shadow 180ms ease;
+}
+
+.export-actions button:hover:enabled {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 20px #0f766e4f;
+}
+
+.export-actions button:disabled {
+	opacity: 0.75;
+	cursor: wait;
+}
+
+.export-form button.secondary {
+	background: #0f172a;
+	color: #f8fafc;
 }
 
 .export-form button:hover:enabled {
@@ -187,6 +221,145 @@ h1 {
 	text-underline-offset: 2px;
 }
 
+.toolbar {
+	margin-top: 1.4rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.toggle-group {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	font-family: "Syne", sans-serif;
+	font-size: 0.9rem;
+}
+
+.toggle-buttons {
+	display: inline-flex;
+	background: #e2e8f0;
+	border-radius: 999px;
+	padding: 0.2rem;
+}
+
+.toggle-buttons button {
+	border: none;
+	background: transparent;
+	padding: 0.35rem 0.9rem;
+	border-radius: 999px;
+	font-family: "Syne", sans-serif;
+	cursor: pointer;
+	color: #1f2937;
+}
+
+.toggle-buttons button.active {
+	background: #0f766e;
+	color: #f0fdfa;
+}
+
+.selection-info {
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+}
+
+.selection-info p {
+	margin: 0;
+	font-weight: 600;
+}
+
+.ghost {
+	border: none;
+	background: transparent;
+	color: #0f766e;
+	font-family: "Syne", sans-serif;
+	cursor: pointer;
+}
+
+.preview-panel {
+	margin-top: 1.5rem;
+	border-radius: 18px;
+	border: 1px solid #dbeafe;
+	background: #f8fafc;
+	overflow: hidden;
+}
+
+.preview-head {
+	padding: 0.9rem 1.2rem;
+	border-bottom: 1px solid #dbeafe;
+	background: #eff6ff;
+}
+
+.preview-head h2 {
+	margin: 0;
+	font-size: 1.05rem;
+	font-family: "Syne", sans-serif;
+}
+
+.preview-head p {
+	margin: 0.2rem 0 0;
+	color: #475569;
+}
+
+.preview-frame {
+	width: 100%;
+	border: none;
+	min-height: 420px;
+	background: white;
+}
+
+.preview-empty {
+	margin-top: 1.5rem;
+	border: 1px dashed #cbd5f5;
+	border-radius: 16px;
+	padding: 1.5rem;
+	text-align: center;
+	color: #64748b;
+}
+
+.selection-list {
+	margin-top: 1.5rem;
+	padding: 1rem 1.1rem;
+	border-radius: 16px;
+	background: #f1f5f9;
+}
+
+.selection-list p {
+	margin: 0 0 0.7rem;
+	font-family: "Syne", sans-serif;
+}
+
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.chip {
+	background: #0f172a;
+	color: #f8fafc;
+	padding: 0.35rem 0.65rem;
+	border-radius: 999px;
+	font-size: 0.8rem;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.empty {
+	color: #94a3b8;
+}
+
+.export-actions {
+	margin-top: 1.5rem;
+	display: flex;
+	justify-content: flex-start;
+}
+
 @media (max-width: 640px) {
 	.export-card {
 		padding: 1.35rem;
@@ -200,6 +373,14 @@ h1 {
 	.export-form button {
 		width: 100%;
 		justify-self: stretch;
+	}
+
+	.url-row {
+		grid-template-columns: 1fr;
+	}
+
+	.toolbar {
+		align-items: flex-start;
 	}
 }
 

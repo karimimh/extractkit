@@ -33,7 +33,12 @@ class GeneratedPdf:
   relative_path: str
 
 
-def generate_pdf_from_url(url: str, timeout_ms: int = 60000) -> GeneratedPdf:
+def generate_pdf_from_url(
+  url: str,
+  timeout_ms: int = 60000,
+  selectors: list[str] | None = None,
+  mode: str = "exclude",
+) -> GeneratedPdf:
   try:
     from playwright.sync_api import sync_playwright
   except Exception as exc:
@@ -58,6 +63,53 @@ def generate_pdf_from_url(url: str, timeout_ms: int = 60000) -> GeneratedPdf:
         raise PdfGenerationError(f"Failed to load URL (status {response.status})")
 
       page.emulate_media(media="print")
+
+      if selectors:
+        page.evaluate(
+          """
+          (payload) => {
+            const selectors = payload.selectors || [];
+            const mode = payload.mode || "exclude";
+
+            const markKeep = (element) => {
+              let node = element;
+              while (node && node !== document.documentElement) {
+                node.dataset.pdfKeep = "true";
+                node = node.parentElement;
+              }
+            };
+
+            if (mode === "include") {
+              selectors.forEach((selector) => {
+                document.querySelectorAll(selector).forEach((element) => {
+                  markKeep(element);
+                });
+              });
+
+              const toRemove = [];
+              const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_ELEMENT
+              );
+              while (walker.nextNode()) {
+                const element = walker.currentNode;
+                if (!element.dataset.pdfKeep) {
+                  toRemove.push(element);
+                }
+              }
+              toRemove.forEach((element) => element.remove());
+            } else {
+              selectors.forEach((selector) => {
+                document.querySelectorAll(selector).forEach((element) => {
+                  element.remove();
+                });
+              });
+            }
+          }
+          """,
+          {"selectors": selectors, "mode": mode},
+        )
+
       title = page.title().strip() or "Exported Website"
       page.pdf(
         path=str(output_path),
