@@ -6,7 +6,11 @@ from rest_framework.views import APIView
 from .serializers import ExportRequestSerializer, PreviewRequestSerializer
 from .services.cleaner import clean_html
 from .services.extractor import ContentExtractionError, extract_main_content
-from .services.pdf_generator import PdfGenerationError, generate_pdf_from_url
+from .services.pdf_generator import (
+    PdfGenerationError,
+    generate_pdf_from_snapshot,
+    generate_pdf_from_url,
+)
 
 
 class ExportPdfView(APIView):
@@ -40,11 +44,21 @@ class ExportPdfView(APIView):
         serializer.is_valid(raise_exception=True)
 
         url = serializer.validated_data["url"]
+        html_snapshot = serializer.validated_data.get("html_snapshot")
+        base_url = serializer.validated_data.get("base_url")
         selectors = serializer.validated_data.get("selectors") or []
         mode = serializer.validated_data.get("mode", "exclude")
 
         try:
-            generated = generate_pdf_from_url(url, selectors=selectors, mode=mode)
+            if html_snapshot and base_url:
+                generated = generate_pdf_from_snapshot(
+                    html_snapshot,
+                    base_url,
+                    selectors=selectors,
+                    mode=mode,
+                )
+            else:
+                generated = generate_pdf_from_url(url, selectors=selectors, mode=mode)
         except PdfGenerationError as exc:
             return Response(
                 {"detail": str(exc)},

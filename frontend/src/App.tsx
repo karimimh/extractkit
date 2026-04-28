@@ -155,6 +155,8 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
 function App() {
   const [url, setUrl] = useState("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSnapshot, setPreviewSnapshot] = useState<string | null>(null);
+  const [previewBaseUrl, setPreviewBaseUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -223,6 +225,8 @@ function App() {
       const preview = payload as PreviewResponse;
       setPreviewTitle(preview.title);
       setPreviewHtml(buildPreviewDocument(preview.html, preview.base_url));
+      setPreviewSnapshot(preview.html);
+      setPreviewBaseUrl(preview.base_url);
       setSelections([]);
     } catch {
       setPreviewError("Unable to reach backend. Ensure Django server is running.");
@@ -234,6 +238,15 @@ function App() {
   const clearSelections = () => {
     setSelections([]);
     iframeRef.current?.contentWindow?.postMessage({ type: CLEAR_MESSAGE }, "*");
+  };
+
+  const handleUrlChange = (value: string) => {
+    setUrl(value);
+    setPreviewHtml(null);
+    setPreviewSnapshot(null);
+    setPreviewBaseUrl(null);
+    setPreviewTitle(null);
+    setSelections([]);
   };
 
   const onSubmit = async () => {
@@ -253,16 +266,29 @@ function App() {
     setIsLoading(true);
 
     try {
+      const exportPayload: {
+        url: string;
+        selectors: string[];
+        mode: SelectionMode;
+        html_snapshot?: string;
+        base_url?: string;
+      } = {
+        url: url.trim(),
+        selectors: selections,
+        mode,
+      };
+
+      if (previewSnapshot && previewBaseUrl) {
+        exportPayload.html_snapshot = previewSnapshot;
+        exportPayload.base_url = previewBaseUrl;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/export/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          url: url.trim(),
-          selectors: selections,
-          mode,
-        }),
+        body: JSON.stringify(exportPayload),
       });
 
       const payload = (await response.json()) as ExportResult | ErrorPayload;
@@ -300,7 +326,7 @@ function App() {
               type="url"
               placeholder="https://example.com/pricing"
               value={url}
-              onChange={(event) => setUrl(event.target.value)}
+              onChange={(event) => handleUrlChange(event.target.value)}
               required
             />
             <button type="submit" disabled={isPreviewLoading} className="secondary">

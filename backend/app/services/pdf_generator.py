@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
+from bs4 import BeautifulSoup
 from django.conf import settings
 
 
@@ -31,6 +32,77 @@ class PdfGenerationError(Exception):
 class GeneratedPdf:
   title: str
   relative_path: str
+
+
+def _ensure_base_tag(html: str, base_url: str) -> str:
+  soup = BeautifulSoup(html, "html.parser")
+  head = soup.head
+  if head is None:
+    head = soup.new_tag("head")
+    if soup.html:
+      soup.html.insert(0, head)
+    else:
+      html_tag = soup.new_tag("html")
+      html_tag.insert(0, head)
+      if soup.body:
+        html_tag.append(soup.body)
+      soup.append(html_tag)
+
+  if not head.find("base"):
+    base_tag = soup.new_tag("base", href=base_url)
+    head.insert(0, base_tag)
+
+  return str(soup)
+
+
+def _apply_selections(page, selectors: list[str] | None, mode: str) -> None:
+  if not selectors:
+    return
+
+  page.evaluate(
+    """
+    (payload) => {
+      const selectors = payload.selectors || [];
+      const mode = payload.mode || "exclude";
+
+      const markKeep = (element) => {
+        let node = element;
+        while (node && node !== document.documentElement) {
+          node.dataset.pdfKeep = "true";
+          node = node.parentElement;
+        }
+      };
+
+      if (mode === "include") {
+        selectors.forEach((selector) => {
+          document.querySelectorAll(selector).forEach((element) => {
+            markKeep(element);
+          });
+        });
+
+        const toRemove = [];
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_ELEMENT
+        );
+        while (walker.nextNode()) {
+          const element = walker.currentNode;
+          if (!element.dataset.pdfKeep) {
+            toRemove.push(element);
+          }
+        }
+        toRemove.forEach((element) => element.remove());
+      } else {
+        selectors.forEach((selector) => {
+          document.querySelectorAll(selector).forEach((element) => {
+            element.remove();
+          });
+        });
+      }
+    }
+    """,
+    {"selectors": selectors, "mode": mode},
+  )
 
 
 def generate_pdf_from_url(
@@ -64,51 +136,7 @@ def generate_pdf_from_url(
 
       page.emulate_media(media="print")
 
-      if selectors:
-        page.evaluate(
-          """
-          (payload) => {
-            const selectors = payload.selectors || [];
-            const mode = payload.mode || "exclude";
-
-            const markKeep = (element) => {
-              let node = element;
-              while (node && node !== document.documentElement) {
-                node.dataset.pdfKeep = "true";
-                node = node.parentElement;
-              }
-            };
-
-            if (mode === "include") {
-              selectors.forEach((selector) => {
-                document.querySelectorAll(selector).forEach((element) => {
-                  markKeep(element);
-                });
-              });
-
-              const toRemove = [];
-              const walker = document.createTreeWalker(
-                document.body,
-                NodeFilter.SHOW_ELEMENT
-              );
-              while (walker.nextNode()) {
-                const element = walker.currentNode;
-                if (!element.dataset.pdfKeep) {
-                  toRemove.push(element);
-                }
-              }
-              toRemove.forEach((element) => element.remove());
-            } else {
-              selectors.forEach((selector) => {
-                document.querySelectorAll(selector).forEach((element) => {
-                  element.remove();
-                });
-              });
-            }
-          }
-          """,
-          {"selectors": selectors, "mode": mode},
-        )
+      _apply_selections(page, selectors, mode)
 
       title = page.title().strip() or "Exported Website"
       page.pdf(
@@ -124,6 +152,55 @@ def generate_pdf_from_url(
     raise
   except Exception as exc:
     raise PdfGenerationError("Failed to render full page PDF") from exc
+
+  return GeneratedPdf(title=title, relative_path=f"exports/{filename}")
+
+
+def generate_pdf_from_snapshot(
+  html_snapshot: str,
+  base_url: str,
+  timeout_ms: int = 60000,
+  selectors: list[str] | None = None,
+  mode: str = "exclude",
+) -> GeneratedPdf:
+  try:
+    from playwright.sync_api import sync_playwright
+  except Exception as exc:
+    raise PdfGenerationError(
+      "Browser PDF engine is unavailable. Install Playwright and Chromium."
+    ) from exc
+
+  exports_dir = Path(settings.MEDIA_ROOT) / "exports"
+  exports_dir.mkdir(parents=True, exist_ok=True)
+
+  filename = f"{uuid4().hex}.pdf"
+  output_path = exports_dir / filename
+  html_with_base = _ensure_base_tag(html_snapshot, base_url)
+
+  try:
+    with sync_playwright() as playwright:
+      browser = playwright.chromium.launch(headless=True)
+      context = browser.new_context(ignore_https_errors=True)
+      page = context.new_page()
+      page.set_content(html_with_base, wait_until="load", timeout=timeout_ms)
+
+      page.emulate_media(media="print")
+      _apply_selections(page, selectors, mode)
+
+      title = page.title().strip() or "Exported Website"
+      page.pdf(
+        path=str(output_path),
+        format="A4",
+        print_background=True,
+        prefer_css_page_size=True,
+      )
+
+      context.close()
+      browser.close()
+  except PdfGenerationError:
+    raise
+  except Exception as exc:
+    raise PdfGenerationError("Failed to render preview PDF") from exc
 
   return GeneratedPdf(title=title, relative_path=f"exports/{filename}")
 
