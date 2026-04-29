@@ -108,11 +108,17 @@ a {
 .control-stack {
 	display: grid;
 	gap: 1.4rem;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
 }
 
 .preview-shell {
 	display: grid;
 	align-content: start;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
 }
 
 .eyebrow {
@@ -158,6 +164,7 @@ h1 {
 
 .export-form input {
 	width: 100%;
+	min-width: 0;
 	border: 1px solid #c2d0e6;
 	border-radius: 14px;
 	padding: 0.9rem 1rem;
@@ -338,6 +345,8 @@ h1 {
 	background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
 	overflow: hidden;
 	min-height: 520px;
+	width: 100%;
+	max-width: 100%;
 	box-shadow: 
 		0 20px 60px #0f172a1a,
 		0 0 40px #38bdf81a,
@@ -380,6 +389,7 @@ h1 {
 
 .preview-frame {
 	width: 100%;
+	max-width: 100%;
 	border: none;
 	min-height: 520px;
 	background: white;
@@ -403,6 +413,10 @@ h1 {
 	padding: 1rem 1.1rem;
 	border-radius: 16px;
 	background: #f1f5f9;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .selection-list p {

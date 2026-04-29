@@ -1,21 +1,15 @@
 from bs4 import BeautifulSoup
 
 BLOCKED_TAGS = [
-    "script",
     "noscript",
 ]
 
-
 def clean_html(raw_html: str) -> str:
+    # Retain scripts so the interactive bits of the page work in the iframe
     soup = BeautifulSoup(raw_html, "html.parser")
 
     for tag_name in BLOCKED_TAGS:
         for element in soup.find_all(tag_name):
             element.decompose()
-
-    for element in soup.find_all(True):
-        for attr in list(element.attrs):
-            if attr.lower().startswith("on"):
-                del element.attrs[attr]
 
     return str(soup)

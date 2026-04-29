@@ -16,14 +16,16 @@ type ErrorPayload = {
   detail?: string;
 };
 
+type InteractionMode = "cursor" | "select";
 type SelectionMode = "include" | "exclude";
 type RenderMode = "screen" | "print";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "pdf-picker-select";
 const CLEAR_MESSAGE = "pdf-picker-clear";
+const MODE_MESSAGE = "pdf-picker-set-mode";
 
-function buildPreviewDocument(rawHtml: string, baseUrl: string) {
+function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode: InteractionMode) {
   const parser = new DOMParser();
   const documentNode = parser.parseFromString(rawHtml, "text/html");
   const head = documentNode.head ?? documentNode.createElement("head");
@@ -33,6 +35,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
   head.prepend(baseTag);
 
   const style = documentNode.createElement("style");
+  style.id = "pdf-picker-style";
   style.textContent = `
     .pdf-picker-hover {
       outline: 2px dashed #0f766e !important;
@@ -48,10 +51,60 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
   head.appendChild(style);
 
   const script = documentNode.createElement("script");
+  script.id = "pdf-picker-script";
   script.textContent = `
     (() => {
+      // Patch URL constructor for frameworks (like Next.js) that calculate using window.location.href
+      // which fails when the iframe is hosted via a blob: or about:srcdoc URL.
+      const OriginalURL = window.URL;
+      window.URL = function URL(url, base) {
+        let activeBase = base;
+        if (activeBase && (activeBase.startsWith('blob:') || activeBase.startsWith('about:'))) {
+          activeBase = document.baseURI;
+        } else if (!activeBase && typeof url === 'string' && url.startsWith('/')) {
+          activeBase = document.baseURI;
+        }
+        try {
+          return new OriginalURL(url, activeBase);
+        } catch (e) {
+          // Fallback to document.baseURI if no base was provided and original threw
+          if (!base && document.baseURI) {
+            return new OriginalURL(url, document.baseURI);
+          }
+          throw e;
+        }
+      };
+      
+      // Preserve static methods
+      window.URL.createObjectURL = OriginalURL.createObjectURL;
+      window.URL.revokeObjectURL = OriginalURL.revokeObjectURL;
+
+      window.URL.canParse = OriginalURL.canParse;
+
+      // Patch history.pushState and history.replaceState to prevent cross-origin errors
+      // when SPA frameworks try to navigate within the blob: iframe.
+      const originalPushState = window.history.pushState;
+      const originalReplaceState = window.history.replaceState;
+      
+      window.history.pushState = function() {
+        try {
+          return originalPushState.apply(this, arguments);
+        } catch (e) {
+          console.warn("Ignored pushState error in iframe", e);
+        }
+      };
+      
+      window.history.replaceState = function() {
+        try {
+          return originalReplaceState.apply(this, arguments);
+        } catch (e) {
+          console.warn("Ignored replaceState error in iframe", e);
+        }
+      };
+
       const HOVER = "pdf-picker-hover";
       const SELECTED = "pdf-picker-selected";
+      let isSelectMode = ${interactionMode === "select" ? "true" : "false"};
 
       const isSelectable = (element) => {
         if (!element || !(element instanceof Element)) return false;
@@ -103,6 +156,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
       document.addEventListener(
         "mouseover",
         (event) => {
+          if (!isSelectMode) return;
           const target = event.target;
           if (!isSelectable(target)) return;
           target.classList.add(HOVER);
@@ -113,6 +167,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
       document.addEventListener(
         "mouseout",
         (event) => {
+          if (!isSelectMode) return;
           const target = event.target;
           if (!isSelectable(target)) return;
           target.classList.remove(HOVER);
@@ -123,6 +178,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
       document.addEventListener(
         "click",
         (event) => {
+          if (!isSelectMode) return;
           const target = event.target;
           if (!isSelectable(target)) return;
           event.preventDefault();
@@ -137,14 +193,29 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string) {
       );
 
       window.addEventListener("message", (event) => {
-        if (!event.data || event.data.type !== "${CLEAR_MESSAGE}") return;
-        document.querySelectorAll("." + SELECTED).forEach((element) => {
-          element.classList.remove(SELECTED);
-        });
+        if (!event.data) return;
+        if (event.data.type === "${CLEAR_MESSAGE}") {
+          document.querySelectorAll("." + SELECTED).forEach((element) => {
+            element.classList.remove(SELECTED);
+          });
+        }
+        if (event.data.type === "${MODE_MESSAGE}") {
+          isSelectMode = event.data.mode === "select";
+          if (!isSelectMode) {
+            document.querySelectorAll("." + HOVER).forEach((element) => {
+              element.classList.remove(HOVER);
+            });
+          }
+        }
       });
     })();
   `;
-  head.appendChild(script);
+  // Prepend our script so it executes before any of the original website's scripts
+  if (head.firstChild) {
+    head.insertBefore(script, head.firstChild);
+  } else {
+    head.appendChild(script);
+  }
 
   if (!documentNode.head) {
     documentNode.documentElement.prepend(head);
@@ -163,6 +234,7 @@ function App() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [mode, setMode] = useState<SelectionMode>("exclude");
+  const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -192,6 +264,19 @@ function App() {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
+
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (previewHtml) {
+      const blob = new Blob([previewHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      setPreviewBlobUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewBlobUrl(null);
+    }
+  }, [previewHtml]);
 
   const loadPreview = async (
     previewUrl: string,
@@ -228,7 +313,7 @@ function App() {
 
       const preview = payload as PreviewResponse;
       setPreviewTitle(preview.title);
-      setPreviewHtml(buildPreviewDocument(preview.html, preview.base_url));
+      setPreviewHtml(buildPreviewDocument(preview.html, preview.base_url, interactionMode));
       setPreviewSnapshot(preview.html);
       setPreviewBaseUrl(preview.base_url);
       setSelections([]);
@@ -289,6 +374,11 @@ function App() {
     setSelections([]);
   };
 
+  const handleInteractionModeChange = (nextMode: InteractionMode) => {
+    setInteractionMode(nextMode);
+    iframeRef.current?.contentWindow?.postMessage({ type: MODE_MESSAGE, mode: nextMode }, "*");
+  };
+
   const handleRenderModeChange = (nextMode: RenderMode) => {
     setRenderMode(nextMode);
   };
@@ -320,7 +410,21 @@ function App() {
       };
 
       if (previewSnapshot && previewBaseUrl) {
-        exportPayload.html_snapshot = previewSnapshot;
+        let finalSnapshot = previewSnapshot;
+        if (iframeRef.current?.contentDocument) {
+          const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
+          docCopy.getElementById("pdf-picker-style")?.remove();
+          docCopy.getElementById("pdf-picker-script")?.remove();
+
+          // Remove all script tags from the snapshot before sending it to the PDF renderer.
+          // This prevents client-side frameworks (like Next.js/React) from attempting to 
+          // rehydrate on the static DOM within Playwright and crashing the page.
+          Array.from(docCopy.getElementsByTagName("script")).forEach(script => script.remove());
+
+          finalSnapshot = docCopy.documentElement.outerHTML;
+        }
+
+        exportPayload.html_snapshot = finalSnapshot;
         exportPayload.base_url = previewBaseUrl;
       }
 
@@ -381,6 +485,25 @@ function App() {
 
             <div className="toolbar">
               <div className="toggle-group">
+                <span>Interact tool</span>
+                <div className="toggle-buttons">
+                  <button
+                    type="button"
+                    className={interactionMode === "select" ? "active" : ""}
+                    onClick={() => handleInteractionModeChange("select")}
+                  >
+                    Select DOM
+                  </button>
+                  <button
+                    type="button"
+                    className={interactionMode === "cursor" ? "active" : ""}
+                    onClick={() => handleInteractionModeChange("cursor")}
+                  >
+                    Cursor
+                  </button>
+                </div>
+              </div>
+              <div className="toggle-group">
                 <span>Selection mode</span>
                 <div className="toggle-buttons">
                   <button
@@ -427,7 +550,7 @@ function App() {
             </div>
 
             <div className="preview-shell">
-              {previewHtml ? (
+              {previewBlobUrl ? (
                 <div className="preview-panel">
                   <div className="preview-head">
                     <h2>{previewTitle ?? "Preview"}</h2>
@@ -437,7 +560,8 @@ function App() {
                     ref={iframeRef}
                     title="Preview"
                     className="preview-frame"
-                    srcDoc={previewHtml}
+                    src={previewBlobUrl}
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                   />
                 </div>
               ) : isPreviewLoading ? (
