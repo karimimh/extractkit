@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 type ExportResult = {
@@ -168,8 +168,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-
-  const docsUrl = useMemo(() => `${API_BASE_URL}/api/docs/`, []);
+  const previewRequestIdRef = useRef(0);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -194,17 +193,13 @@ function App() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const handlePreview = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const loadPreview = async (
+    previewUrl: string,
+    requestId = ++previewRequestIdRef.current,
+  ) => {
     setPreviewError(null);
     setError(null);
     setResult(null);
-
-    if (!url.trim()) {
-      setPreviewError("Please enter a URL.");
-      return;
-    }
-
     setIsPreviewLoading(true);
 
     try {
@@ -214,12 +209,16 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          url: url.trim(),
-          use_print_css: renderMode === "print",
+          url: previewUrl,
+          use_print_css: false,
         }),
       });
 
       const payload = (await response.json()) as PreviewResponse | ErrorPayload;
+
+      if (requestId !== previewRequestIdRef.current) {
+        return;
+      }
 
       if (!response.ok) {
         const detail = (payload as ErrorPayload).detail;
@@ -234,10 +233,49 @@ function App() {
       setPreviewBaseUrl(preview.base_url);
       setSelections([]);
     } catch {
-      setPreviewError("Unable to reach backend. Ensure Django server is running.");
+      if (requestId === previewRequestIdRef.current) {
+        setPreviewError("Unable to reach backend. Ensure Django server is running.");
+      }
     } finally {
-      setIsPreviewLoading(false);
+      if (requestId === previewRequestIdRef.current) {
+        setIsPreviewLoading(false);
+      }
     }
+  };
+
+  useEffect(() => {
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl) {
+      previewRequestIdRef.current += 1;
+      setPreviewError(null);
+      setPreviewHtml(null);
+      setPreviewSnapshot(null);
+      setPreviewBaseUrl(null);
+      setPreviewTitle(null);
+      setIsPreviewLoading(false);
+      setSelections([]);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadPreview(trimmedUrl);
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [url]);
+
+  const handlePreview = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl) {
+      setPreviewError("Please enter a URL.");
+      return;
+    }
+
+    void loadPreview(trimmedUrl);
   };
 
   const clearSelections = () => {
@@ -247,20 +285,12 @@ function App() {
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
-    setPreviewHtml(null);
-    setPreviewSnapshot(null);
-    setPreviewBaseUrl(null);
-    setPreviewTitle(null);
+    setPreviewError(null);
     setSelections([]);
   };
 
   const handleRenderModeChange = (nextMode: RenderMode) => {
     setRenderMode(nextMode);
-    setPreviewHtml(null);
-    setPreviewSnapshot(null);
-    setPreviewBaseUrl(null);
-    setPreviewTitle(null);
-    setSelections([]);
   };
 
   const onSubmit = async () => {
@@ -344,9 +374,6 @@ function App() {
                   onChange={(event) => handleUrlChange(event.target.value)}
                   required
                 />
-                <button type="submit" disabled={isPreviewLoading} className="secondary">
-                  {isPreviewLoading ? "Loading..." : "Load preview"}
-                </button>
               </div>
             </form>
 
@@ -399,6 +426,37 @@ function App() {
               </div>
             </div>
 
+            <div className="preview-shell">
+              {previewHtml ? (
+                <div className="preview-panel">
+                  <div className="preview-head">
+                    <h2>{previewTitle ?? "Preview"}</h2>
+                    <p>Click to {mode === "include" ? "include" : "exclude"} sections.</p>
+                  </div>
+                  <iframe
+                    ref={iframeRef}
+                    title="Preview"
+                    className="preview-frame"
+                    srcDoc={previewHtml}
+                  />
+                </div>
+              ) : isPreviewLoading ? (
+                <div className="preview-panel">
+                  <div className="loading-container">
+                    <div className="loading-spinner" />
+                    <div className="loading-text">
+                      <h3>Loading Preview</h3>
+                      <p>Fetching and processing your page...</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="preview-empty">
+                  <p>Load a page to start selecting elements.</p>
+                </div>
+              )}
+            </div>
+
             <div className="selection-list">
               <p>Selected selectors</p>
               {selections.length ? (
@@ -434,26 +492,7 @@ function App() {
 
           </div>
 
-          <div className="preview-shell">
-            {previewHtml ? (
-              <div className="preview-panel">
-                <div className="preview-head">
-                  <h2>{previewTitle ?? "Preview"}</h2>
-                  <p>Click to {mode === "include" ? "include" : "exclude"} sections.</p>
-                </div>
-                <iframe
-                  ref={iframeRef}
-                  title="Preview"
-                  className="preview-frame"
-                  srcDoc={previewHtml}
-                />
-              </div>
-            ) : (
-              <div className="preview-empty">
-                <p>Load a page to start selecting elements.</p>
-              </div>
-            )}
-          </div>
+
         </div>
       </section>
     </main>
