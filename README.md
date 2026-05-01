@@ -73,8 +73,71 @@ backend/           Django + DRF API
 ### 5. REST API + Swagger UI
 
 - `POST /api/preview/` — fetch and prepare page HTML for the preview iframe.
-- `POST /api/export/` — apply selections and generate PDF.
+- `POST /api/export/` — apply selections and generate PDF (gated by download limits).
+- `POST /api/auth/register/` — register with email + password, returns JWT pair.
+- `POST /api/auth/login/` — sign in with email + password, returns JWT pair.
+- `POST /api/auth/google/` — sign in with a Google ID token, returns JWT pair.
+- `POST /api/auth/refresh/` — exchange refresh token for a new access token.
+- `GET  /api/auth/me/` — get current user info + credit balance (requires auth).
+- `POST /api/payments/create/` — create a NOWPayments invoice (requires auth).
+- `POST /api/payments/webhook/` — IPN callback from NOWPayments to credit accounts.
 - `GET /api/docs/` — interactive Swagger UI (drf-spectacular / OpenAPI 3).
+
+---
+
+## Authentication
+
+Users can sign in with:
+- **Email + password** — `POST /api/auth/register/` to create an account; `POST /api/auth/login/` to sign in.
+- **Google** — frontend uses `@react-oauth/google` to obtain a Google ID token, which is verified server-side by `google.oauth2.id_token.verify_oauth2_token`.
+
+JWTs are returned on sign-in: `access` token (15-minute lifetime) and `refresh` token (7-day lifetime). The frontend stores both in `localStorage`.
+
+The `Authorization: Bearer <access_token>` header is sent with export requests.
+
+---
+
+## Download Limits
+
+| User type | Limit |
+|-----------|-------|
+| Anonymous (not signed in) | **1 free download per IP address** |
+| Signed-in user, 0 credits | Blocked (HTTP 402) with a "Buy Credits" prompt |
+| Signed-in user, credits > 0 | Allowed; 1 credit deducted per successful export |
+
+Credits are deducted **after** a PDF is successfully generated (no charge for failed exports).
+
+---
+
+## Credit Packages & Pricing
+
+5 downloads per $1. Minimum purchase: $2 (10 downloads). Credits never expire.
+
+| Package | Downloads | Price |
+|---------|-----------|-------|
+| Starter | 10 | $2 |
+| Basic | 25 | $5 |
+| Standard | 50 | $10 |
+| Pro | 100 | $20 |
+| Business | 500 | $100 |
+| Enterprise | 1,000 | $200 |
+| Unlimited | 10,000 | $2,000 |
+
+---
+
+## Crypto Payments (NOWPayments)
+
+Payments are processed via [NOWPayments](https://nowpayments.io/) (100+ cryptocurrencies supported).
+
+**Flow:**
+1. Signed-in user opens the "Buy Credits" modal and selects a package.
+2. Frontend calls `POST /api/payments/create/` → backend creates a NOWPayments invoice and stores a pending `CryptoPayment` record.
+3. User is redirected to the NOWPayments hosted checkout page.
+4. After payment, NOWPayments sends an IPN webhook to `POST /api/payments/webhook/`.
+5. Backend verifies the HMAC-SHA512 signature, updates the `CryptoPayment` status, and adds credits to the user's `UserProfile`.
+6. User is redirected back to the app (`?payment=success`); frontend calls `/api/auth/me/` to refresh the credit balance.
+
+**NOWPayments sandbox:** Use the sandbox API key and set `NOWPAYMENTS_SANDBOX=true` for local testing. Webhooks require a public URL — use [ngrok](https://ngrok.com/) during development.
 
 ---
 
@@ -182,6 +245,31 @@ To point the frontend at a non-default backend, create `frontend/.env`:
 
 ```
 VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
+```
+
+### Backend environment variables
+
+Create `.env` in the project root (next to `backend/`):
+
+```
+# Database
+POSTGRES_DB=web_to_pdf
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+
+# Google OAuth (get from Google Cloud Console → Credentials → OAuth 2.0 Client IDs)
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+
+# NOWPayments (get from https://nowpayments.io → API Keys)
+NOWPAYMENTS_API_KEY=your-nowpayments-api-key
+NOWPAYMENTS_IPN_SECRET=your-ipn-secret
+NOWPAYMENTS_SANDBOX=true                       # set to false in production
+NOWPAYMENTS_IPN_CALLBACK_URL=https://your-public-domain/api/payments/webhook/
+NOWPAYMENTS_SUCCESS_URL=https://your-frontend-domain?payment=success
+NOWPAYMENTS_CANCEL_URL=https://your-frontend-domain
 ```
 
 ### API Docs
@@ -195,8 +283,9 @@ Open [http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/) for the 
 - Undo / redo for element selections in the preview
 - Save and reuse selection profiles per domain
 - Batch URL processing
-- Usage quotas and payment integration (free tier / credits / crypto)
 - Developer API access with API keys
 - Browser extension for one-click export from any tab
+- Admin dashboard for monitoring payments and user credits
+- Fiat payment option (Stripe) in addition to crypto
 
 ---

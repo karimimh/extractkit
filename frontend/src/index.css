@@ -93,10 +93,6 @@ a {
 	z-index: 1;
 }
 
-.card-header {
-	max-width: 760px;
-}
-
 .card-grid {
 	margin-top: 1.9rem;
 	display: grid;
@@ -584,3 +580,349 @@ h1 {
 	font-size: 0.95rem;
 	color: #64748b;
 }
+
+/* -------------------------------------------------------------------------
+   Auth & monetization UI
+   ------------------------------------------------------------------------- */
+
+/* card-header-top: eyebrow + UserHeader side by side */
+.card-header-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+/* UserHeader bar */
+.user-header {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+}
+
+.user-email {
+	font-size: 0.85rem;
+	color: var(--text-subtle);
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.credit-badge {
+	font-family: "Syne", sans-serif;
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	padding: 0.25rem 0.65rem;
+	border-radius: 999px;
+	background: linear-gradient(110deg, #ecfdf5, #cffafe);
+	border: 1px solid #a7f3d0;
+	color: #065f46;
+	white-space: nowrap;
+}
+
+/* Shared button styles */
+.btn-primary {
+	border: none;
+	border-radius: 999px;
+	background: linear-gradient(110deg, var(--accent), #0ea5e9);
+	color: #fff;
+	font-family: "Syne", sans-serif;
+	font-size: 0.88rem;
+	padding: 0.52rem 1.1rem;
+	cursor: pointer;
+	transition: transform 160ms ease, box-shadow 180ms ease;
+	white-space: nowrap;
+}
+
+.btn-primary:hover:enabled {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px #0f766e40;
+}
+
+.btn-buy {
+	border: none;
+	border-radius: 999px;
+	background: linear-gradient(110deg, var(--accent-2), #f59e0b);
+	color: #fff;
+	font-family: "Syne", sans-serif;
+	font-size: 0.88rem;
+	padding: 0.52rem 1.1rem;
+	cursor: pointer;
+	transition: transform 160ms ease, box-shadow 180ms ease;
+	white-space: nowrap;
+}
+
+.btn-buy:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px #f9731640;
+}
+
+.btn-ghost {
+	background: none;
+	border: 1px solid #c2d0e6;
+	border-radius: 999px;
+	font-family: "Syne", sans-serif;
+	font-size: 0.85rem;
+	padding: 0.45rem 0.9rem;
+	cursor: pointer;
+	color: var(--text-subtle);
+	transition: border-color 150ms, color 150ms;
+	white-space: nowrap;
+}
+
+.btn-ghost:hover {
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+/* Inline action button inside error message */
+.message.error {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+
+.inline-action {
+	border: none;
+	border-radius: 999px;
+	background: var(--error);
+	color: #fff;
+	font-family: "Syne", sans-serif;
+	font-size: 0.82rem;
+	padding: 0.3rem 0.8rem;
+	cursor: pointer;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+/* Modal shared styles */
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.55);
+	backdrop-filter: blur(4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+	padding: 1rem;
+}
+
+.modal {
+	background: #fff;
+	border-radius: 20px;
+	padding: 2rem;
+	width: min(420px, 96vw);
+	position: relative;
+	box-shadow: 0 24px 60px #0f172a3a;
+	animation: pop-in 280ms ease;
+	max-height: 90vh;
+	overflow-y: auto;
+}
+
+.modal-wide {
+	width: min(680px, 96vw);
+}
+
+.modal-close {
+	position: absolute;
+	top: 1rem;
+	right: 1rem;
+	background: none;
+	border: none;
+	font-size: 1rem;
+	cursor: pointer;
+	color: var(--text-subtle);
+	line-height: 1;
+	padding: 0.25rem 0.4rem;
+	border-radius: 6px;
+	transition: background 150ms;
+}
+
+.modal-close:hover {
+	background: #f1f5f9;
+}
+
+.modal-tabs {
+	display: flex;
+	gap: 0.25rem;
+	border-bottom: 2px solid #e2e8f0;
+	margin-bottom: 1.4rem;
+}
+
+.modal-tab {
+	background: none;
+	border: none;
+	padding: 0.55rem 1rem;
+	font-family: "Syne", sans-serif;
+	font-size: 0.9rem;
+	cursor: pointer;
+	color: var(--text-subtle);
+	border-bottom: 2px solid transparent;
+	margin-bottom: -2px;
+	transition: color 150ms, border-color 150ms;
+}
+
+.modal-tab.active {
+	color: var(--accent);
+	border-bottom-color: var(--accent);
+}
+
+.modal-google {
+	margin-bottom: 1rem;
+}
+
+.modal-divider {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 0.9rem 0;
+	color: #94a3b8;
+	font-size: 0.82rem;
+}
+
+.modal-divider::before,
+.modal-divider::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: #e2e8f0;
+}
+
+.modal-form {
+	display: grid;
+	gap: 0.55rem;
+}
+
+.modal-form label {
+	font-family: "Syne", sans-serif;
+	font-size: 0.82rem;
+	letter-spacing: 0.03em;
+	margin-top: 0.35rem;
+}
+
+.modal-form input {
+	width: 100%;
+	border: 1px solid #c2d0e6;
+	border-radius: 10px;
+	padding: 0.75rem 0.9rem;
+	font-size: 0.95rem;
+	background: #f8fafc;
+	transition: box-shadow 180ms, border-color 180ms;
+}
+
+.modal-form input:focus {
+	outline: none;
+	border-color: #0284c7;
+	box-shadow: 0 0 0 3px #38bdf81f;
+}
+
+.modal-form .btn-primary {
+	width: 100%;
+	margin-top: 0.5rem;
+	padding: 0.72rem 1rem;
+	font-size: 0.95rem;
+	text-align: center;
+}
+
+.modal-header {
+	margin-bottom: 1.2rem;
+}
+
+.modal-header h2 {
+	margin: 0 0 0.3rem;
+	font-family: "Syne", sans-serif;
+	font-size: 1.3rem;
+}
+
+.modal-subtitle {
+	margin: 0;
+	font-size: 0.88rem;
+	color: var(--text-subtle);
+}
+
+.modal-footnote {
+	margin: 1.2rem 0 0;
+	font-size: 0.8rem;
+	color: var(--text-subtle);
+	line-height: 1.5;
+}
+
+/* Credit packages grid */
+.packages-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+	gap: 0.75rem;
+}
+
+.package-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 1rem 0.75rem;
+	border: 1.5px solid #e2e8f0;
+	border-radius: 14px;
+	background: #f8fafc;
+	cursor: pointer;
+	transition: border-color 160ms, transform 160ms, box-shadow 160ms;
+	position: relative;
+}
+
+.package-card:hover:enabled {
+	border-color: var(--accent);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 18px #0f766e20;
+}
+
+.package-card:disabled {
+	opacity: 0.6;
+	cursor: wait;
+}
+
+.package-downloads {
+	font-family: "Syne", sans-serif;
+	font-size: 1.4rem;
+	font-weight: 800;
+	color: var(--text-main);
+	line-height: 1;
+}
+
+.package-unit {
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--text-subtle);
+}
+
+.package-price {
+	margin-top: 0.4rem;
+	font-family: "Syne", sans-serif;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--accent);
+}
+
+.package-spinner {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.package-spinner::after {
+	content: "";
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 2px solid #e2e8f0;
+	border-top-color: var(--accent);
+	animation: spin 0.8s linear infinite;
+}
+

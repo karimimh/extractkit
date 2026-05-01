@@ -10,3 +10,5 @@ beautifulsoup4==4.13.3
 weasyprint==64.1
 playwright==1.52.0
 psycopg[binary]==3.2.9
+djangorestframework-simplejwt
+google-auth

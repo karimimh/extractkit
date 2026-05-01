@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
+    'rest_framework_simplejwt',
     'drf_spectacular',
     'app',
 ]
@@ -172,7 +173,39 @@ CORS_ALLOWED_ORIGINS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
 }
+
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
+GOOGLE_CLIENT_ID = _env('GOOGLE_CLIENT_ID', '')
+
+NOWPAYMENTS_API_KEY = _env('NOWPAYMENTS_API_KEY', '')
+NOWPAYMENTS_IPN_SECRET = _env('NOWPAYMENTS_IPN_SECRET', '')
+NOWPAYMENTS_SANDBOX = _env('NOWPAYMENTS_SANDBOX', 'true').lower() in ('true', '1', 'yes')
+NOWPAYMENTS_IPN_CALLBACK_URL = _env('NOWPAYMENTS_IPN_CALLBACK_URL', '')
+NOWPAYMENTS_SUCCESS_URL = _env('NOWPAYMENTS_SUCCESS_URL', 'http://localhost:5173?payment=success')
+NOWPAYMENTS_CANCEL_URL = _env('NOWPAYMENTS_CANCEL_URL', 'http://localhost:5173?payment=cancelled')
+
+CREDIT_PACKAGES = [
+    {'id': 1, 'downloads': 10,    'price_usd': 2.00},
+    {'id': 2, 'downloads': 25,    'price_usd': 5.00},
+    {'id': 3, 'downloads': 50,    'price_usd': 10.00},
+    {'id': 4, 'downloads': 100,   'price_usd': 20.00},
+    {'id': 5, 'downloads': 500,   'price_usd': 100.00},
+    {'id': 6, 'downloads': 1000,  'price_usd': 200.00},
+    {'id': 7, 'downloads': 10000, 'price_usd': 2000.00},
+]
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Web to PDF API',

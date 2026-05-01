@@ -1,6 +1,10 @@
 import { Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "./context/AuthContext";
+import { AuthModal } from "./components/AuthModal";
+import { UserHeader } from "./components/UserHeader";
+import { PaymentModal } from "./components/PaymentModal";
 
 type ExportResult = {
   title: string;
@@ -225,6 +229,9 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 }
 
 function App() {
+  const { token, refreshUser } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [url, setUrl] = useState("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSnapshot, setPreviewSnapshot] = useState<string | null>(null);
@@ -237,6 +244,7 @@ function App() {
   const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<"generic" | "no_credits" | "anon_limit" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewRequestIdRef = useRef(0);
@@ -382,8 +390,18 @@ function App() {
     setRenderMode(nextMode);
   };
 
+  // Handle ?payment=success redirect from NOWPayments
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      window.history.replaceState({}, "", window.location.pathname);
+      void refreshUser();
+    }
+  }, [refreshUser]);
+
   const onSubmit = async () => {
     setError(null);
+    setErrorType(null);
     setResult(null);
 
     if (!url.trim()) {
@@ -425,11 +443,12 @@ function App() {
         exportPayload.base_url = previewBaseUrl;
       }
 
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const response = await fetch(`${API_BASE_URL}/api/export/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(exportPayload),
       });
 
@@ -437,7 +456,16 @@ function App() {
 
       if (!response.ok) {
         const detail = (payload as ErrorPayload).detail;
-        setError(detail ?? "Failed to export PDF.");
+        if (response.status === 402) {
+          setErrorType("no_credits");
+          setError(detail ?? "No download credits remaining.");
+        } else if (response.status === 403) {
+          setErrorType("anon_limit");
+          setError(detail ?? "Free download limit reached.");
+        } else {
+          setErrorType("generic");
+          setError(detail ?? "Failed to export PDF.");
+        }
         return;
       }
 
@@ -454,7 +482,10 @@ function App() {
       <div className="grain-layer" />
       <section className="export-card">
         <header className="card-header">
-          <p className="eyebrow">Web2TailoredPDF</p>
+          <div className="card-header-top">
+            <p className="eyebrow">Web2TailoredPDF</p>
+            <UserHeader />
+          </div>
           <h1>Create perfectly tailored PDFs</h1>
           <p className="subtitle">
             Enter a URL, select the elements you want to hide, and export a clean PDF.
@@ -580,7 +611,21 @@ function App() {
               </button>
             </div>
 
-            {error && <p className="message error">{error}</p>}
+            {error && (
+              <div className="message error">
+                <span>{error}</span>
+                {errorType === "no_credits" && (
+                  <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                    Buy Credits
+                  </button>
+                )}
+                {errorType === "anon_limit" && (
+                  <button type="button" className="inline-action" onClick={() => setShowAuthModal(true)}>
+                    Sign In
+                  </button>
+                )}
+              </div>
+            )}
 
             {result && (
               <div className="result-panel">
@@ -597,6 +642,9 @@ function App() {
 
         </div>
       </section>
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
     </main>
   );
 }
