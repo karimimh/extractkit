@@ -55,53 +55,21 @@ def _ensure_base_tag(html: str, base_url: str) -> str:
   return str(soup)
 
 
-def _apply_selections(page, selectors: list[str] | None, mode: str) -> None:
+def _apply_selections(page, selectors: list[str] | None) -> None:
   if not selectors:
     return
 
   page.evaluate(
     """
-    (payload) => {
-      const selectors = payload.selectors || [];
-      const mode = payload.mode || "exclude";
-
-      const markKeep = (element) => {
-        let node = element;
-        while (node && node !== document.documentElement) {
-          node.dataset.pdfKeep = "true";
-          node = node.parentElement;
-        }
-      };
-
-      if (mode === "include") {
-        selectors.forEach((selector) => {
-          document.querySelectorAll(selector).forEach((element) => {
-            markKeep(element);
-          });
+    (selectors) => {
+      selectors.forEach((selector) => {
+        document.querySelectorAll(selector).forEach((element) => {
+          element.remove();
         });
-
-        const toRemove = [];
-        const walker = document.createTreeWalker(
-          document.body,
-          NodeFilter.SHOW_ELEMENT
-        );
-        while (walker.nextNode()) {
-          const element = walker.currentNode;
-          if (!element.dataset.pdfKeep) {
-            toRemove.push(element);
-          }
-        }
-        toRemove.forEach((element) => element.remove());
-      } else {
-        selectors.forEach((selector) => {
-          document.querySelectorAll(selector).forEach((element) => {
-            element.remove();
-          });
-        });
-      }
+      });
     }
     """,
-    {"selectors": selectors, "mode": mode},
+    selectors,
   )
 
 
@@ -167,7 +135,6 @@ def generate_pdf_from_url(
   url: str,
   timeout_ms: int = 60000,
   selectors: list[str] | None = None,
-  mode: str = "exclude",
   use_print_css: bool = False,
 ) -> GeneratedPdf:
   try:
@@ -195,7 +162,7 @@ def generate_pdf_from_url(
 
       page.emulate_media(media="print" if use_print_css else "screen")
 
-      _apply_selections(page, selectors, mode)
+      _apply_selections(page, selectors)
 
       title = page.title().strip() or "Exported Website"
       page.pdf(
@@ -220,7 +187,6 @@ def generate_pdf_from_snapshot(
   base_url: str,
   timeout_ms: int = 60000,
   selectors: list[str] | None = None,
-  mode: str = "exclude",
   use_print_css: bool = False,
 ) -> GeneratedPdf:
   try:
@@ -245,7 +211,7 @@ def generate_pdf_from_snapshot(
       page.set_content(html_with_base, wait_until="load", timeout=timeout_ms)
 
       page.emulate_media(media="print" if use_print_css else "screen")
-      _apply_selections(page, selectors, mode)
+      _apply_selections(page, selectors)
 
       title = page.title().strip() or "Exported Website"
       page.pdf(

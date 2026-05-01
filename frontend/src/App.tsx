@@ -18,7 +18,6 @@ type ErrorPayload = {
 };
 
 type InteractionMode = "cursor" | "select";
-type SelectionMode = "include" | "exclude";
 type RenderMode = "screen" | "print";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -234,7 +233,6 @@ function App() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
-  const mode: SelectionMode = "exclude";
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
@@ -399,14 +397,12 @@ function App() {
       const exportPayload: {
         url: string;
         selectors: string[];
-        mode: SelectionMode;
         html_snapshot?: string;
         base_url?: string;
         use_print_css: boolean;
       } = {
         url: url.trim(),
         selectors: selections,
-        mode,
         use_print_css: renderMode === "print",
       };
 

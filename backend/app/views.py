@@ -33,8 +33,7 @@ class ExportPdfView(APIView):
                 "With selections",
                 value={
                     "url": "https://example.com/article",
-                    "mode": "include",
-                    "selectors": ["main article", ".hero", "#pricing"],
+                    "selectors": [".site-header", "#cookie-banner", ".sidebar"],
                 },
                 request_only=True,
             )
@@ -48,7 +47,6 @@ class ExportPdfView(APIView):
         html_snapshot = serializer.validated_data.get("html_snapshot")
         base_url = serializer.validated_data.get("base_url")
         selectors = serializer.validated_data.get("selectors") or []
-        mode = serializer.validated_data.get("mode", "exclude")
         use_print_css = serializer.validated_data.get("use_print_css", False)
 
         try:
@@ -57,14 +55,12 @@ class ExportPdfView(APIView):
                     html_snapshot,
                     base_url,
                     selectors=selectors,
-                    mode=mode,
                     use_print_css=use_print_css,
                 )
             else:
                 generated = generate_pdf_from_url(
                     url,
                     selectors=selectors,
-                    mode=mode,
                     use_print_css=use_print_css,
                 )
         except PdfGenerationError as exc:

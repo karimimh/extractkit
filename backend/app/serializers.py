@@ -17,11 +17,6 @@ class ExportRequestSerializer(serializers.Serializer):
         default=list,
         allow_empty=True,
     )
-    mode = serializers.ChoiceField(
-        choices=["include", "exclude"],
-        required=False,
-        default="exclude",
-    )
 
     def validate(self, attrs):
         mode = attrs.get("mode", "exclude")
