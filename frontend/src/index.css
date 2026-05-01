@@ -326,7 +326,7 @@ h1 {
 	gap: 0.8rem;
 }
 
-.selection-info p {
+.selection-info div {
 	margin: 0;
 	font-weight: 600;
 }
@@ -371,6 +371,14 @@ h1 {
 	background: linear-gradient(135deg, #eff6ff 0%, #f0fdfa 100%);
 	position: relative;
 	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.preview-head-left {
+	min-width: 0;
 }
 
 .preview-head h2 {

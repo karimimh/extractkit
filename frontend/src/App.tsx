@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ExportResult = {
   title: string;
@@ -233,7 +234,7 @@ function App() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
-  const [mode, setMode] = useState<SelectionMode>("exclude");
+  const mode: SelectionMode = "exclude";
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
@@ -457,11 +458,10 @@ function App() {
       <div className="grain-layer" />
       <section className="export-card">
         <header className="card-header">
-          <p className="eyebrow">Custom PDF Builder</p>
-          <h1>Click exactly what should appear in the PDF</h1>
+          <p className="eyebrow">Web2TailoredPDF</p>
+          <h1>Create perfectly tailored PDFs</h1>
           <p className="subtitle">
-            Load a page, tap the sections you want, and export a tailored PDF preview
-            before you download.
+            Enter a URL, select the elements you want to hide, and export a clean PDF.
           </p>
         </header>
 
@@ -483,78 +483,32 @@ function App() {
 
             {previewError && <p className="message error">{previewError}</p>}
 
-            <div className="toolbar">
-              <div className="toggle-group">
-                <span>Interact tool</span>
-                <div className="toggle-buttons">
-                  <button
-                    type="button"
-                    className={interactionMode === "select" ? "active" : ""}
-                    onClick={() => handleInteractionModeChange("select")}
-                  >
-                    Select DOM
-                  </button>
-                  <button
-                    type="button"
-                    className={interactionMode === "cursor" ? "active" : ""}
-                    onClick={() => handleInteractionModeChange("cursor")}
-                  >
-                    Cursor
-                  </button>
-                </div>
-              </div>
-              <div className="toggle-group">
-                <span>Selection mode</span>
-                <div className="toggle-buttons">
-                  <button
-                    type="button"
-                    className={mode === "include" ? "active" : ""}
-                    onClick={() => setMode("include")}
-                  >
-                    Include
-                  </button>
-                  <button
-                    type="button"
-                    className={mode === "exclude" ? "active" : ""}
-                    onClick={() => setMode("exclude")}
-                  >
-                    Exclude
-                  </button>
-                </div>
-              </div>
-              <div className="toggle-group">
-                <span>Render as</span>
-                <div className="toggle-buttons">
-                  <button
-                    type="button"
-                    className={renderMode === "screen" ? "active" : ""}
-                    onClick={() => handleRenderModeChange("screen")}
-                  >
-                    Screen
-                  </button>
-                  <button
-                    type="button"
-                    className={renderMode === "print" ? "active" : ""}
-                    onClick={() => handleRenderModeChange("print")}
-                  >
-                    Print
-                  </button>
-                </div>
-              </div>
-              <div className="selection-info">
-                <p>{selections.length} selected</p>
-                <button type="button" className="ghost" onClick={clearSelections}>
-                  Clear
-                </button>
-              </div>
-            </div>
-
             <div className="preview-shell">
               {previewBlobUrl ? (
                 <div className="preview-panel">
                   <div className="preview-head">
-                    <h2>{previewTitle ?? "Preview"}</h2>
-                    <p>Click to {mode === "include" ? "include" : "exclude"} sections.</p>
+                    <div className="preview-head-left">
+                      <h2>{previewTitle ?? "Preview"}</h2>
+                      <p>Click to remove elements.</p>
+                    </div>
+                    <div className="toggle-buttons">
+                      <button
+                        type="button"
+                        className={interactionMode === "select" ? "active flex-button" : "flex-button"}
+                        onClick={() => handleInteractionModeChange("select")}
+                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                      >
+                        <Minus size={16} /> Remove elements
+                      </button>
+                      <button
+                        type="button"
+                        className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
+                        onClick={() => handleInteractionModeChange("cursor")}
+                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                      >
+                        <MousePointer size={16} /> Browse page
+                      </button>
+                    </div>
                   </div>
                   <iframe
                     ref={iframeRef}
@@ -576,13 +530,21 @@ function App() {
                 </div>
               ) : (
                 <div className="preview-empty">
-                  <p>Load a page to start selecting elements.</p>
+                  <p>Load a page to start removing elements.</p>
                 </div>
               )}
             </div>
 
             <div className="selection-list">
-              <p>Selected selectors</p>
+              <div className="flex items-center justify-between">
+                <div>Removed elements</div>
+                <div className="selection-info">
+                  <div>{selections.length} removed</div>
+                  <button type="button" className="ghost" onClick={clearSelections}>
+                    Clear
+                  </button>
+                </div>
+              </div>
               {selections.length ? (
                 <div className="chips">
                   {selections.map((selector) => (
@@ -594,6 +556,26 @@ function App() {
               ) : (
                 <span className="empty">No selections yet.</span>
               )}
+            </div>
+
+            <div className="toggle-group">
+              <span>Layout mode</span>
+              <div className="toggle-buttons">
+                <button
+                  type="button"
+                  className={renderMode === "screen" ? "active" : ""}
+                  onClick={() => handleRenderModeChange("screen")}
+                >
+                  Screen
+                </button>
+                <button
+                  type="button"
+                  className={renderMode === "print" ? "active" : ""}
+                  onClick={() => handleRenderModeChange("print")}
+                >
+                  Print
+                </button>
+              </div>
             </div>
 
             <div className="export-actions">

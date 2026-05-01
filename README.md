@@ -17,6 +17,8 @@ And keeps:
 - Images (optional)
 - Proper formatting for reading
 
+suggested name: Web2TailoredPDF
+
 ---
 
 ## Core Features (MVP)
