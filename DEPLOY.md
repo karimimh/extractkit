@@ -269,6 +269,8 @@ This pulls the latest commits, installs any new dependencies, runs migrations, r
 | Service   | Command                                   |
 |-----------|-------------------------------------------|
 | Restart backend | `sudo systemctl restart webtopdf`   |
+| Stop backend    | `sudo systemctl stop webtopdf`      |
+| Start backend   | `sudo systemctl start webtopdf`     |
 | Rebuild frontend | `cd /srv/web-to-pdf/frontend && VITE_API_BASE_URL='' npm run build` |
 | Run migrations   | `cd /srv/web-to-pdf/backend && /srv/web-to-pdf/.venv/bin/python manage.py migrate` |
 | Nginx reload     | `sudo systemctl reload nginx`        |
