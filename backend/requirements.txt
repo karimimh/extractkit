@@ -8,6 +8,7 @@ chardet==5.2.0
 lxml_html_clean==0.4.3
 beautifulsoup4==4.13.3
 weasyprint==64.1
+gunicorn==25.3.0
 playwright==1.52.0
 psycopg[binary]==3.2.9
 djangorestframework-simplejwt
