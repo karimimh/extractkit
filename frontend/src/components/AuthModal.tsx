@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
 
@@ -81,7 +82,7 @@ export function AuthModal({ onClose }: Props) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
@@ -163,6 +164,7 @@ export function AuthModal({ onClose }: Props) {
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

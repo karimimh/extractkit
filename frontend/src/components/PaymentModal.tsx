@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -55,7 +56,7 @@ export function PaymentModal({ onClose }: Props) {
     onClose();
   };
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={handleClose}>
       <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="modal-close" onClick={handleClose} aria-label="Close">
@@ -91,6 +92,7 @@ export function PaymentModal({ onClose }: Props) {
           Credits are added automatically after payment confirmation.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

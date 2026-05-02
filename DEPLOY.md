@@ -235,6 +235,35 @@ sudo journalctl -u webtopdf -f                  # Live logs
 
 ---
 
+## 12. Create a superuser
+
+```bash
+cd /srv/web-to-pdf/backend
+source /srv/web-to-pdf/.venv/bin/activate
+python manage.py createsuperuser
+```
+
+Follow the prompts to set a username, email, and password. The Django admin panel will then be accessible at `https://web2tailoredpdf.com/admin/`.
+
+---
+
+## 13. Updating the project
+
+An `update.sh` script is included in the repo root. After the first deploy, just run:
+
+```bash
+sudo bash /srv/web-to-pdf/update.sh
+```
+
+This pulls the latest commits, installs any new dependencies, runs migrations, rebuilds the frontend, and restarts all services.
+
+> If only backend code changed (no new dependencies, no new migrations, no frontend changes), you can skip the full script and just restart Gunicorn:
+> ```bash
+> sudo systemctl restart webtopdf
+> ```
+
+---
+
 ## Quick reference
 
 | Service   | Command                                   |
@@ -243,3 +272,5 @@ sudo journalctl -u webtopdf -f                  # Live logs
 | Rebuild frontend | `cd /srv/web-to-pdf/frontend && VITE_API_BASE_URL='' npm run build` |
 | Run migrations   | `cd /srv/web-to-pdf/backend && /srv/web-to-pdf/.venv/bin/python manage.py migrate` |
 | Nginx reload     | `sudo systemctl reload nginx`        |
+| Create superuser | `cd /srv/web-to-pdf/backend && source /srv/web-to-pdf/.venv/bin/activate && python manage.py createsuperuser` |
+| Update project   | `sudo bash /srv/web-to-pdf/update.sh` |
