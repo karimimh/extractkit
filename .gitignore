@@ -36,3 +36,5 @@ frontend/*.local
 *.log
 
 .env
+
+.playwright/
