@@ -137,7 +137,19 @@ Payments are processed via [NOWPayments](https://nowpayments.io/) (100+ cryptocu
 5. Backend verifies the HMAC-SHA512 signature, updates the `CryptoPayment` status, and adds credits to the user's `UserProfile`.
 6. User is redirected back to the app (`?payment=success`); frontend calls `/api/auth/me/` to refresh the credit balance.
 
-**NOWPayments sandbox:** Use the sandbox API key and set `NOWPAYMENTS_SANDBOX=true` for local testing. Webhooks require a public URL — use [ngrok](https://ngrok.com/) during development.
+**NOWPayments sandbox testing:**
+
+1. Register a separate account at [sandbox.nowpayments.io](https://sandbox.nowpayments.io) and generate a sandbox API key + IPN secret.
+2. Set in `.env`:
+   ```ini
+   NOWPAYMENTS_SANDBOX=true
+   NOWPAYMENTS_API_KEY=<sandbox-api-key>
+   NOWPAYMENTS_IPN_SECRET=<sandbox-ipn-secret>
+   NOWPAYMENTS_IPN_CALLBACK_URL=https://<ngrok-subdomain>.ngrok.io/api/payments/webhook/
+   ```
+3. Expose the local backend with `ngrok http 8000` and copy the HTTPS URL into `NOWPAYMENTS_IPN_CALLBACK_URL`.
+4. Select a package in the UI → complete the checkout using a test coin (e.g. **BTCTEST** or **USDTTEST**).
+5. Verify credits were added via Django admin → **Crypto Payments** (status should become `finished`).
 
 ---
 
