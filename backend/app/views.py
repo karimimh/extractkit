@@ -350,11 +350,14 @@ class PaymentWebhookView(APIView):
             if not hmac.compare_digest(received_sig, expected_sig):
                 return Response({"detail": "Invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
-        payment_id = str(body.get("payment_id", ""))
+        # NOWPayments IPN body contains both `payment_id` (the crypto payment) and
+        # `invoice_id` (the invoice created via /v1/invoice). The CryptoPayment record
+        # is stored with the invoice ID, so look up by invoice_id.
+        invoice_id = str(body.get("invoice_id", ""))
         payment_status = body.get("payment_status", "")
 
         try:
-            payment = CryptoPayment.objects.get(nowpayments_payment_id=payment_id)
+            payment = CryptoPayment.objects.get(nowpayments_payment_id=invoice_id)
         except CryptoPayment.DoesNotExist:
             return Response({"detail": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
 
