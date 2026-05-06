@@ -127,7 +127,7 @@ a {
 }
 
 h1 {
-	margin: 0.35rem 0 0;
+	margin: 1.5rem 0 0;
 	font-family: "Syne", sans-serif;
 	line-height: 1.05;
 	font-size: clamp(1.9rem, 4.2vw, 3rem);
