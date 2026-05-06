@@ -486,9 +486,9 @@ function App() {
             <p className="eyebrow">Web2TailoredPDF</p>
             <UserHeader />
           </div>
-          <h1>Create perfectly tailored PDFs</h1>
+          <h1>Create PDF from a webpage</h1>
           <p className="subtitle">
-            Enter a URL, select the elements you want to hide, and export a clean PDF.
+            Enter a URL, interact with the website, select the elements you want to hide, and export a perfectly tailored PDF.
           </p>
         </header>
 
@@ -557,7 +557,7 @@ function App() {
                 </div>
               ) : (
                 <div className="preview-empty">
-                  <p>Load a page to start removing elements.</p>
+                  <p>Load a page to start interacting or remove elements from the webpage.</p>
                 </div>
               )}
             </div>
