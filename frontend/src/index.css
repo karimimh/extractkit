@@ -152,6 +152,24 @@ h1 {
 	align-items: center;
 }
 
+.support-footer {
+	margin-top: 2rem;
+	padding-top: 1rem;
+	border-top: 1px solid #e2e8f0;
+	text-align: end;
+	font-size: 0.85rem;
+	color: var(--text-subtle);
+}
+
+.support-footer a {
+	color: var(--accent);
+	text-decoration: none;
+}
+
+.support-footer a:hover {
+	text-decoration: underline;
+}
+
 .export-form label {
 	font-family: "Syne", sans-serif;
 	font-size: 0.85rem;

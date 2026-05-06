@@ -641,6 +641,11 @@ function App() {
 
 
         </div>
+
+        <footer className="support-footer">
+          Need help? Email us at{" "}
+          <a href="mailto:mhkarimiu@gmail.com">mhkarimiu@gmail.com</a>
+        </footer>
       </section>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
