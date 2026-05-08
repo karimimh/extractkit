@@ -143,12 +143,22 @@ VITE_API_BASE_URL='' npm run build   # empty = relative paths, Nginx handles pro
 
 ## 8. Nginx
 
-Create `/etc/nginx/sites-available/webtopdf` (HTTP only at this stage — Certbot will add HTTPS in step 9):
+Create `/etc/nginx/sites-available/webtopdf` (HTTP only at this stage — Certbot will add HTTPS in step 9).
+
+> **Important:** Use two separate server blocks so `www` is a pure redirect and never serves content. This prevents Google Search Console from flagging `www` pages as "Alternate page with proper canonical tag".
 
 ```nginx
+# Redirect www → non-www (Certbot will upgrade this to HTTPS in step 9)
 server {
     listen 80;
-    server_name web2tailoredpdf.com www.web2tailoredpdf.com;
+    server_name www.web2tailoredpdf.com;
+    return 301 http://web2tailoredpdf.com$request_uri;
+}
+
+# Main site
+server {
+    listen 80;
+    server_name web2tailoredpdf.com;
 
     # Frontend static files
     root /srv/web-to-pdf/frontend/dist;
@@ -202,14 +212,84 @@ sudo certbot --nginx -d web2tailoredpdf.com -d www.web2tailoredpdf.com
 
 Certbot will:
 - Obtain a free TLS certificate from Let's Encrypt
-- Edit `/etc/nginx/sites-available/webtopdf` to add SSL and an HTTP→HTTPS redirect
+- Edit `/etc/nginx/sites-available/webtopdf` to add SSL and HTTP→HTTPS redirects
 - Install a systemd timer for automatic renewal (verify with `sudo systemctl status certbot.timer`)
+
+After Certbot runs, verify the www block still redirects to the non-www URL (not to `https://www.`). The www server block should look like this:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name www.web2tailoredpdf.com;
+    ssl_certificate /etc/letsencrypt/live/web2tailoredpdf.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/web2tailoredpdf.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://web2tailoredpdf.com$request_uri;
+}
+```
+
+If Certbot changed the redirect target to `https://$host$request_uri` inside the www block, fix it manually:
+
+```bash
+sudo nano /etc/nginx/sites-available/webtopdf
+# Change:  return 301 https://$host$request_uri;
+# To:      return 301 https://web2tailoredpdf.com$request_uri;
+# (only inside the www.web2tailoredpdf.com server blocks)
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 Test renewal without actually renewing:
 
 ```bash
 sudo certbot renew --dry-run
 ```
+
+---
+
+## 9a. Fix www redirect on an already-deployed server
+
+If the site is already live and Google Search Console reports **"Alternate page with proper canonical tag"** or **"Page with redirect"** for www URLs, the deployed Nginx config needs to be patched.
+
+```bash
+# View the current config to understand what Certbot generated
+sudo cat /etc/nginx/sites-available/webtopdf
+```
+
+Replace any `server_name www.web2tailoredpdf.com` block (both port 80 and port 443) so they only redirect:
+
+```nginx
+# HTTP www → HTTPS non-www
+server {
+    listen 80;
+    server_name www.web2tailoredpdf.com;
+    return 301 https://web2tailoredpdf.com$request_uri;
+}
+
+# HTTPS www → HTTPS non-www
+server {
+    listen 443 ssl;
+    server_name www.web2tailoredpdf.com;
+    ssl_certificate /etc/letsencrypt/live/web2tailoredpdf.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/web2tailoredpdf.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://web2tailoredpdf.com$request_uri;
+}
+```
+
+Apply and verify:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+
+# Confirm: www redirects to non-www (expect: Location: https://web2tailoredpdf.com/)
+curl -I https://www.web2tailoredpdf.com/
+# Confirm: HTTP redirects to HTTPS non-www (expect: Location: https://web2tailoredpdf.com/)
+curl -I http://web2tailoredpdf.com/
+```
+
+After applying, go to Google Search Console → **Sitemaps** → resubmit the sitemap, then use **URL Inspection** on `https://web2tailoredpdf.com/` and request reindexing.
 
 ---
 

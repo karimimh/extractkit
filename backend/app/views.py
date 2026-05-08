@@ -1,9 +1,12 @@
 import hashlib
 import hmac
 import json
+import logging
 
 import requests as http_requests
 from django.conf import settings
+
+logger = logging.getLogger("app.payments")
 from django.contrib.auth.models import User
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
@@ -332,10 +335,22 @@ class PaymentWebhookView(APIView):
 
     @extend_schema(tags=["Payments"])
     def post(self, request):
+        logger.info("=== IPN WEBHOOK RECEIVED ===")
+        logger.info("Remote IP: %s", get_client_ip(request))
+        logger.info(
+            "Headers: %s",
+            {k: v for k, v in request.headers.items()},
+        )
+        raw_body = request.body.decode("utf-8", errors="replace")
+        logger.info("Raw body: %s", raw_body)
+
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
+            logger.error("Failed to parse JSON body")
             return Response({"detail": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
+
+        logger.info("Parsed body: %s", json.dumps(body, indent=2))
 
         # Verify HMAC-SHA512 signature if IPN secret is configured
         ipn_secret = settings.NOWPAYMENTS_IPN_SECRET
@@ -347,18 +362,55 @@ class PaymentWebhookView(APIView):
                 sorted_body.encode("utf-8"),
                 hashlib.sha512,
             ).hexdigest()
+            logger.info("HMAC check — received_sig: %s", received_sig)
+            logger.info("HMAC check — expected_sig: %s", expected_sig)
+            logger.info("HMAC check — sorted_body:  %s", sorted_body)
             if not hmac.compare_digest(received_sig, expected_sig):
+                logger.error("HMAC signature MISMATCH — rejecting webhook")
                 return Response({"detail": "Invalid signature"}, status=status.HTTP_403_FORBIDDEN)
+            logger.info("HMAC signature OK")
+        else:
+            logger.warning("NOWPAYMENTS_IPN_SECRET not set — skipping signature check")
 
         # NOWPayments IPN body contains both `payment_id` (the crypto payment) and
         # `invoice_id` (the invoice created via /v1/invoice). The CryptoPayment record
         # is stored with the invoice ID, so look up by invoice_id.
         invoice_id = str(body.get("invoice_id", ""))
         payment_status = body.get("payment_status", "")
+        logger.info(
+            "invoice_id=%r  payment_id=%r  payment_status=%r",
+            invoice_id,
+            body.get("payment_id"),
+            payment_status,
+        )
 
         try:
             payment = CryptoPayment.objects.get(nowpayments_payment_id=invoice_id)
+            logger.info(
+                "DB record found — CryptoPayment id=%s user=%s status=%s credits=%s",
+                payment.id,
+                payment.user.email,
+                payment.status,
+                payment.download_credits,
+            )
         except CryptoPayment.DoesNotExist:
+            logger.error(
+                "CryptoPayment NOT FOUND for invoice_id=%r — "
+                "the invoice_id in the IPN body does not match any stored record",
+                invoice_id,
+            )
+            # Log recent records to help diagnose field mismatch
+            recent = list(CryptoPayment.objects.order_by("-created_at")[:10])
+            logger.error("Recent CryptoPayment records (newest first):")
+            for p in recent:
+                logger.error(
+                    "  pk=%s  nowpayments_payment_id=%r  user=%s  status=%s  created=%s",
+                    p.id,
+                    p.nowpayments_payment_id,
+                    p.user.email,
+                    p.status,
+                    p.created_at,
+                )
             return Response({"detail": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
 
         if (
@@ -372,5 +424,136 @@ class PaymentWebhookView(APIView):
             profile, _ = UserProfile.objects.get_or_create(user=payment.user)
             profile.download_credits += payment.download_credits
             profile.save()
+            logger.info(
+                "Credits APPLIED — %s credits added to user %s (total now: %s)",
+                payment.download_credits,
+                payment.user.email,
+                profile.download_credits,
+            )
+        elif payment_status in ("finished", "confirmed"):
+            logger.info(
+                "Payment already processed (db status=%s) — skipping duplicate IPN",
+                payment.status,
+            )
+        else:
+            logger.info(
+                "payment_status=%r does not trigger credit award — no action taken",
+                payment_status,
+            )
 
+        logger.info("=== IPN WEBHOOK DONE ===")
         return Response({"detail": "ok"})
+
+
+class PaymentDebugView(APIView):
+    """
+    GET /api/payments/<payment_id>/debug/
+    Returns the local DB state for the payment plus the live NOWPayments API state.
+    Restricted to the owner of the payment OR staff users.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=["Payments"])
+    def get(self, request, payment_id):
+        qs = CryptoPayment.objects.filter(nowpayments_payment_id=str(payment_id))
+        if not request.user.is_staff:
+            qs = qs.filter(user=request.user)
+        try:
+            payment = qs.get()
+        except CryptoPayment.DoesNotExist:
+            return Response({"detail": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        profile, _ = UserProfile.objects.get_or_create(user=payment.user)
+
+        db_state = {
+            "db_pk": payment.id,
+            "nowpayments_payment_id": payment.nowpayments_payment_id,
+            "db_status": payment.status,
+            "download_credits": payment.download_credits,
+            "amount_usd": str(payment.amount_usd),
+            "created_at": payment.created_at.isoformat(),
+            "confirmed_at": payment.confirmed_at.isoformat() if payment.confirmed_at else None,
+            "user_email": payment.user.email,
+            "user_current_credits": profile.download_credits,
+        }
+
+        # Poll the NOWPayments invoice endpoint for live status
+        api_base = (
+            "https://api-sandbox.nowpayments.io/v1/"
+            if settings.NOWPAYMENTS_SANDBOX
+            else "https://api.nowpayments.io/v1/"
+        )
+        nowpayments_data = None
+        nowpayments_error = None
+        try:
+            resp = http_requests.get(
+                f"{api_base}invoice/{payment_id}",
+                headers={"x-api-key": settings.NOWPAYMENTS_API_KEY},
+                timeout=15,
+            )
+            nowpayments_data = resp.json()
+        except Exception as exc:
+            nowpayments_error = str(exc)
+
+        return Response(
+            {
+                "db_state": db_state,
+                "nowpayments_sandbox_mode": settings.NOWPAYMENTS_SANDBOX,
+                "nowpayments_ipn_callback_url": settings.NOWPAYMENTS_IPN_CALLBACK_URL,
+                "nowpayments_api_response": nowpayments_data,
+                "nowpayments_api_error": nowpayments_error,
+            }
+        )
+
+
+class PaymentForceConfirmView(APIView):
+    """
+    POST /api/payments/<payment_id>/force-confirm/
+    Staff-only: manually applies credits for a payment that the IPN never delivered.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=["Payments"])
+    def post(self, request, payment_id):
+        if not request.user.is_staff:
+            return Response({"detail": "Staff only."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            payment = CryptoPayment.objects.get(nowpayments_payment_id=str(payment_id))
+        except CryptoPayment.DoesNotExist:
+            return Response({"detail": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if payment.status in ("finished", "confirmed"):
+            return Response(
+                {
+                    "detail": "Payment already confirmed — credits were already applied.",
+                    "status": payment.status,
+                }
+            )
+
+        profile, _ = UserProfile.objects.get_or_create(user=payment.user)
+        profile.download_credits += payment.download_credits
+        profile.save()
+
+        payment.status = "finished"
+        payment.confirmed_at = timezone.now()
+        payment.save()
+
+        logger.info(
+            "FORCE-CONFIRM by staff %s — payment_id=%s user=%s credits=%s (total now %s)",
+            request.user.email,
+            payment_id,
+            payment.user.email,
+            payment.download_credits,
+            profile.download_credits,
+        )
+
+        return Response(
+            {
+                "detail": "Credits applied successfully.",
+                "credits_added": payment.download_credits,
+                "user_total_credits": profile.download_credits,
+            }
+        )

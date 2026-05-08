@@ -183,6 +183,9 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    # Exempt the NOWPayments IPN callback from SSL redirect so the POST body
+    # is not lost when NOWPayments calls http:// instead of https://
+    SECURE_REDIRECT_EXEMPT = [r'^api/payments/webhook/$']
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -224,6 +227,39 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Web to PDF API',
     'DESCRIPTION': 'API for exporting cleaned webpage content to PDF.',
     'VERSION': '1.0.0',
+}
+
+# Logging — payments log goes to both console and a file for debugging
+_LOG_DIR = BASE_DIR / 'logs'
+_LOG_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'payments_file': {
+            'class': 'logging.FileHandler',
+            'filename': str(_LOG_DIR / 'payments.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'app.payments': {
+            'handlers': ['console', 'payments_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
 }
 
 # Default primary key field type

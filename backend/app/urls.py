@@ -6,6 +6,8 @@ from .views import (
     ExportPdfView,
     GoogleAuthView,
     LoginView,
+    PaymentDebugView,
+    PaymentForceConfirmView,
     PaymentWebhookView,
     PreviewPageView,
     RegisterView,
@@ -24,5 +26,7 @@ urlpatterns = [
     # Payments
     path("payments/create/", CreatePaymentView.as_view(), name="payments-create"),
     path("payments/webhook/", PaymentWebhookView.as_view(), name="payments-webhook"),
+    path("payments/<str:payment_id>/debug/", PaymentDebugView.as_view(), name="payments-debug"),
+    path("payments/<str:payment_id>/force-confirm/", PaymentForceConfirmView.as_view(), name="payments-force-confirm"),
 ]
 
