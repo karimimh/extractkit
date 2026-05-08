@@ -65,7 +65,7 @@ export function PaymentModal({ onClose }: Props) {
 
         <div className="modal-header">
           <h2>Buy Download Credits</h2>
-          <p className="modal-subtitle">Pay with crypto · 5 downloads per $1 · Credits never expire</p>
+          <p className="modal-subtitle">Pay with crypto · Credits never expire</p>
         </div>
 
         {error && <p className="message error">{error}</p>}

@@ -4,7 +4,8 @@ set -euo pipefail
 PROJECT=/srv/web-to-pdf
 
 cd "$PROJECT"
-git pull origin main
+git fetch origin
+git reset --hard origin/main
 
 source .venv/bin/activate
 pip install -q -r backend/requirements.txt

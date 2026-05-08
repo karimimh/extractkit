@@ -486,7 +486,8 @@ function App() {
             <p className="eyebrow">Web2TailoredPDF</p>
             <UserHeader />
           </div>
-          <h1>Web to PDF: Create PDF from Any Webpage</h1>
+          <h1>Export Webpage to PDF</h1>
+          <h2 className="subtitle">Create a custom PDF from any webpage</h2>
           <p className="subtitle">
             Enter a URL, interact with the website, select the elements you want to hide, and export a perfectly tailored PDF.
           </p>
