@@ -45,18 +45,26 @@ backend/           Django + DRF API
 
 ## Core Features
 
-### 1. Live Interactive Preview
+### 1. Live Interactive Preview (Browse & Interact)
+
+This is a key differentiator. Rather than a static screenshot, the page is rendered in a fully functional sandboxed iframe:
 
 - Backend fetches the page and returns the raw HTML and resolved `base_url`.
 - Frontend injects a `<base href="...">` tag and a picker script into the document.
+- **The user can interact with the page in real time** — click expand/collapse buttons, open dropdowns, navigate tabs, scroll to lazy-loaded content — exactly as they would in a normal browser.
+- The resulting DOM state (with all user interactions applied) is captured as an HTML snapshot and sent to the backend for PDF rendering, so the exported PDF reflects what the user actually saw and configured on screen.
 - Two interaction modes:
-  - **Cursor mode** — normal browsing inside the iframe (scroll, read).
-  - **Select mode** — hover highlights elements with a dashed teal outline; click locks the selection with a solid orange outline.
+  - **Cursor mode** — normal browsing inside the iframe (scroll, click, interact).
+  - **Select (Remove) mode** — hover highlights elements with a dashed teal outline; click locks the removal with a solid orange outline.
 
-### 2. Element Selection (Exclude Mode)
+### 2. Element Removal (Custom PDF)
 
-- Selected elements are removed from the DOM before PDF generation.
-- CSS selectors for each selected element are captured in the frontend and sent to the backend.
+This is the other core differentiator. Instead of exporting the full page, the user can surgically remove any unwanted element:
+
+- In **Select mode**, clicking any element (ad, cookie banner, navbar, sidebar, footer, paywall overlay, etc.) marks it for removal.
+- CSS selectors for each marked element are captured in the frontend.
+- Before PDF generation the backend applies selector-based DOM removal using BeautifulSoup, stripping exactly those elements from the HTML snapshot.
+- The result is a clean, distraction-free PDF that contains only the content the user cares about.
 
 ### 3. Render Mode
 

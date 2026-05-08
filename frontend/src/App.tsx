@@ -486,10 +486,15 @@ function App() {
             <p className="eyebrow">Web2TailoredPDF</p>
             <UserHeader />
           </div>
-          <h1>Export Webpage to PDF</h1>
-          <h2 className="subtitle">Create a custom PDF from any webpage</h2>
+          <h1>Export Any Webpage to a Custom PDF</h1>
+          <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
+          <div className="seo-tags">
+            {["custom pdf from webpage", "remove elements from pdf", "clean webpage to pdf", "export website without ads", "web to pdf converter", "html to pdf", "save webpage as pdf"].map((tag) => (
+              <span className="seo-tag" key={tag}>{tag}</span>
+            ))}
+          </div>
           <p className="subtitle">
-            Enter a URL, interact with the website, select the elements you want to hide, and export a perfectly tailored PDF.
+            Paste a URL and get a live, interactive preview of the page. Click buttons, expand sections, and navigate — just like a real browser. Then switch to Remove mode and click any element (ads, cookie banners, sidebars, headers) to strip it out. Export the final result as a pixel-perfect PDF.
           </p>
         </header>
 
@@ -645,7 +650,7 @@ function App() {
 
         <footer className="support-footer">
           Need help? Email us at{" "}
-          <a href="mailto:mhkarimiu@gmail.com">mhkarimiu@gmail.com</a>
+          <a href="mailto:web2tailoredpdf@gmail.com">web2tailoredpdf@gmail.com</a>
         </footer>
       </section>
 
