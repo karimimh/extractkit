@@ -477,9 +477,8 @@ function PdfTool() {
   };
 
   return (
-    <main className="page-shell">
-      <div className="grain-layer" />
-      <section className="export-card">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <header className="card-header">
           <h1>Export Any Webpage to a Custom PDF</h1>
           <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
@@ -493,7 +492,7 @@ function PdfTool() {
           </p>
         </header>
 
-        <div className="card-grid">
+        <div className="card-grid" style={{ marginTop: "1.9rem" }}>
           <div className="control-stack">
             <form onSubmit={handlePreview} className="export-form">
               <label htmlFor="url">Website URL</label>
@@ -645,9 +644,9 @@ function PdfTool() {
 
         <footer className="support-footer">
           Need help? Email us at{" "}
-          <a href="mailto:contact@distillpage.com">contact@distillpage.com</a>
+          <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
         </footer>
-      </section>
+      </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}

@@ -5,9 +5,8 @@ type PlaceholderProps = {
 
 export function ToolPlaceholder({ title, description }: PlaceholderProps) {
   return (
-    <main className="page-shell">
-      <div className="grain-layer" />
-      <section className="export-card">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <header className="card-header">
           <h1>{title}</h1>
           <h2 className="subtitle">{description}</h2>
@@ -17,7 +16,7 @@ export function ToolPlaceholder({ title, description }: PlaceholderProps) {
             <p className="message">This tool is coming soon.</p>
           </div>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
