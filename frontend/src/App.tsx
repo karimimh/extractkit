@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AppNav } from "./components/AppNav";
 import PdfTool from "./pages/PdfTool";
+import MarkdownTool from "./pages/MarkdownTool";
 import { ToolPlaceholder } from "./pages/ToolPlaceholder";
 import StudyTool from "./tools/study/StudyTool";
 import ImagesTool from "./tools/images/ImagesTool";
@@ -23,15 +24,7 @@ function App() {
         <Route path="/pdf" element={<PdfTool />} />
         {!import.meta.env.PROD && (
           <>
-            <Route
-              path="/markdown"
-              element={
-                <ToolPlaceholder
-                  title="Export Any Webpage to Markdown"
-                  description="Convert a web page into clean, portable Markdown."
-                />
-              }
-            />
+            <Route path="/markdown" element={<MarkdownTool />} />
             <Route
               path="/screenshots"
               element={

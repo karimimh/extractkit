@@ -19,6 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import AnonymousDownload, CryptoPayment, UserProfile
 from .serializers import (
     CreatePaymentSerializer,
+    ExportMarkdownSerializer,
     ExportRequestSerializer,
     GoogleAuthSerializer,
     LoginSerializer,
@@ -28,6 +29,7 @@ from .serializers import (
 from .services.cleaner import clean_html
 from .services.credits import InsufficientCredits, charge, get_balance, grant
 from .services.extractor import ContentExtractionError, extract_main_content
+from .services.markdown_generator import MarkdownGenerationError, html_to_markdown
 from .services.pdf_generator import (
     PdfGenerationError,
     generate_pdf_from_snapshot,
@@ -318,6 +320,102 @@ class PreviewPageView(APIView):
                 "title": extracted_title,
                 "html": safe_html,
                 "base_url": url,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Markdown export view
+# ---------------------------------------------------------------------------
+
+class ExportMarkdownView(APIView):
+    @extend_schema(
+        tags=["Export"],
+        request=ExportMarkdownSerializer,
+        responses={
+            200: OpenApiResponse(description="Markdown generated successfully"),
+            400: OpenApiResponse(description="Validation error"),
+            402: OpenApiResponse(description="No download credits remaining"),
+            403: OpenApiResponse(description="Free anonymous download limit reached"),
+            500: OpenApiResponse(description="Markdown generation error"),
+        },
+    )
+    def post(self, request):
+        # --- Access control ---
+        if request.user.is_authenticated:
+            if get_balance(request.user) < 1:
+                return Response(
+                    {"detail": "No download credits remaining. Please purchase more."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+        else:
+            ip = get_client_ip(request)
+            if AnonymousDownload.objects.filter(ip_address=ip).exists():
+                return Response(
+                    {"detail": "Free download limit reached. Sign in to download more."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # --- Validate input ---
+        serializer = ExportMarkdownSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        url = serializer.validated_data["url"]
+        html_snapshot = serializer.validated_data.get("html_snapshot")
+        selectors = serializer.validated_data.get("selectors") or []
+
+        # --- Fetch HTML if no snapshot provided ---
+        try:
+            if html_snapshot:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_snapshot, "html.parser")
+                title = (
+                    soup.title.string.strip()
+                    if soup.title and soup.title.string
+                    else "Exported Page"
+                )
+                source_html = html_snapshot
+            else:
+                extracted = extract_main_content(url)
+                title = extracted.title
+                source_html = extracted.html
+        except ContentExtractionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response(
+                {"detail": "Failed to fetch page"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # --- Convert to Markdown ---
+        try:
+            generated = html_to_markdown(source_html, title, selectors=selectors)
+        except MarkdownGenerationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response(
+                {"detail": "Failed to generate Markdown"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # --- Record usage ---
+        if request.user.is_authenticated:
+            try:
+                charge(request.user, "markdown.export")
+            except InsufficientCredits:
+                return Response(
+                    {"detail": "No download credits remaining. Please purchase more."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+        else:
+            ip = get_client_ip(request)
+            AnonymousDownload.objects.create(ip_address=ip)
+
+        return Response(
+            {
+                "title": generated.title,
+                "content": generated.content,
             },
             status=status.HTTP_200_OK,
         )

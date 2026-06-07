@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     ChangePasswordView,
     CreatePaymentView,
+    ExportMarkdownView,
     ExportPdfView,
     ForgotPasswordView,
     GoogleAuthView,
@@ -19,6 +20,7 @@ from .views import (
 
 urlpatterns = [
     path("export/", ExportPdfView.as_view(), name="export-pdf"),
+    path("export-markdown/", ExportMarkdownView.as_view(), name="export-markdown"),
     path("preview/", PreviewPageView.as_view(), name="preview-page"),
     # Auth
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
