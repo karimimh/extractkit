@@ -4,7 +4,9 @@ A unified platform for working with web content. Four tools, one account, one cr
 
 | Tool | Route | Description |
 |------|-------|-------------|
-| **Web → PDF** | `/pdf` | Render any URL in a live interactive preview, remove unwanted elements by clicking them, export a clean PDF |
+| **Web → PDF** | `/web-to-pdf` | Render any URL in a live interactive preview, remove unwanted elements by clicking them, export a clean PDF |
+| **Web → Markdown** | `/web-to-markdown` | Convert a web page into clean, portable Markdown |
+| **Web → Screenshot** | `/web-to-screenshot` | Export any webpage to a high-resolution PNG image |
 | **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
 | **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
 | **Images** | `/images` | Client-side canvas image editor with adjustments, filters, white-balance correction, and super-resolution |
@@ -16,7 +18,7 @@ A unified platform for working with web content. Four tools, one account, one cr
 ```
 frontend/          React 19 + Vite 8 SPA (single build for all tools)
   src/
-    App.tsx        Router — /pdf /study /notes /images + layout
+    App.tsx        Router — /web-to-pdf /web-to-markdown /web-to-screenshot /study /notes /images + layout
     components/    AppNav, UserHeader (auth + buy-credits modal)
     pages/         PdfTool, ToolPlaceholder
     context/       AuthContext (shared JWT)

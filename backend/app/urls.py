@@ -6,6 +6,7 @@ from .views import (
     CreatePaymentView,
     ExportMarkdownView,
     ExportPdfView,
+    ExportScreenshotView,
     ForgotPasswordView,
     GoogleAuthView,
     LoginView,
@@ -21,6 +22,7 @@ from .views import (
 urlpatterns = [
     path("export/", ExportPdfView.as_view(), name="export-pdf"),
     path("export-markdown/", ExportMarkdownView.as_view(), name="export-markdown"),
+    path("export-screenshot/", ExportScreenshotView.as_view(), name="export-screenshot"),
     path("preview/", PreviewPageView.as_view(), name="preview-page"),
     # Auth
     path("auth/register/", RegisterView.as_view(), name="auth-register"),

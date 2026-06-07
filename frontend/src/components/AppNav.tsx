@@ -2,16 +2,17 @@ import { NavLink } from "react-router-dom";
 import { UserHeader } from "./UserHeader";
 
 const ALL_TOOLS = [
-  { to: "/pdf", label: "Web → PDF" },
-  { to: "/markdown", label: "Web → Markdown" },
-  { to: "/screenshots", label: "Web → Screenshot" },
+  { to: "/web-to-pdf", label: "Web → PDF" },
+  { to: "/web-to-markdown", label: "Web → Markdown" },
+  { to: "/web-to-screenshot", label: "Web → Screenshot" },
   { to: "/study", label: "PDF → Study" },
   { to: "/notes", label: "NoteMD" },
   { to: "/images", label: "Image Tools" },
 ];
 
+const WEB_TOOLS = ["/web-to-pdf", "/web-to-markdown", "/web-to-screenshot"];
 const TOOLS = import.meta.env.PROD
-  ? ALL_TOOLS.filter((t) => t.to === "/pdf")
+  ? ALL_TOOLS.filter((t) => WEB_TOOLS.includes(t.to))
   : ALL_TOOLS;
 
 export function AppNav() {

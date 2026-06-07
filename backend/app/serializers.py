@@ -54,6 +54,28 @@ class ExportRequestSerializer(serializers.Serializer):
         return attrs
 
 
+class ExportScreenshotSerializer(serializers.Serializer):
+    url = serializers.URLField(required=True)
+    html_snapshot = serializers.CharField(required=False, allow_blank=True)
+    base_url = serializers.URLField(required=False)
+    selectors = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+        allow_empty=True,
+    )
+    width = serializers.IntegerField(required=False, default=1440, min_value=320, max_value=3840)
+
+    def validate(self, attrs):
+        html_snapshot = attrs.get("html_snapshot")
+        base_url = attrs.get("base_url")
+        if html_snapshot and not base_url:
+            raise serializers.ValidationError(
+                "base_url is required when html_snapshot is provided."
+            )
+        return attrs
+
+
 # ---------------------------------------------------------------------------
 # Auth serializers
 # ---------------------------------------------------------------------------
