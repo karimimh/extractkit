@@ -1,311 +1,193 @@
-# Web2TailoredPDF
+# DistillPage
 
-## Overview
+A unified platform for working with web content. Four tools, one account, one credits balance.
 
-**Web2TailoredPDF** is a web-based tool that lets users generate a tailored PDF from any webpage by visually selecting which elements to keep or remove — directly inside a live preview of the page.
-
-### Product Vision
-
-The original idea was to automatically strip ads, popups, and navbars using readability heuristics. We pivoted to a better approach: **let the user decide**. Instead of guessing which elements are unwanted, the tool renders the target page inside an interactive iframe preview. The user clicks on individual UI sections (ads, navbars, cookie banners, sidebars, etc.) to mark them for removal or inclusion, then exports the result as a high-fidelity PDF.
-
-**User flow:**
-
-1. User enters a URL.
-2. Backend fetches the page and returns the full HTML with a resolved `base_url`.
-3. Frontend renders the page in a sandboxed iframe with an element-picker overlay injected via `<script>`.
-4. User clicks elements to toggle their selection (hover = teal dashed outline; selected = solid orange outline).
-5. User clicks elements to mark them for removal (hover = teal dashed outline; selected = solid orange outline).
-6. Frontend sends the HTML snapshot, `base_url`, and CSS selectors to the export endpoint.
-7. Backend applies selector-based DOM manipulation and generates a PDF via WeasyPrint or Playwright.
-8. User downloads the PDF.
+| Tool | Route | Description |
+|------|-------|-------------|
+| **Web → PDF** | `/pdf` | Render any URL in a live interactive preview, remove unwanted elements by clicking them, export a clean PDF |
+| **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
+| **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
+| **Images** | `/images` | Client-side canvas image editor with adjustments, filters, white-balance correction, and super-resolution |
 
 ---
 
 ## Architecture
 
 ```
-frontend/          React + Vite SPA
+frontend/          React 19 + Vite 8 SPA (single build for all tools)
   src/
-    App.tsx        Main UI: URL input, iframe preview, picker controls, export button
+    App.tsx        Router — /pdf /study /notes /images + layout
+    components/    AppNav, UserHeader (auth + buy-credits modal)
+    pages/         PdfTool, ToolPlaceholder
+    context/       AuthContext (shared JWT)
+    tools/
+      study/       Readeb UI (ported from Next.js)
+      notes/       Note-cards UI (Vite/React)
+      images/      Picnice canvas UI (Vite/React)
 
-backend/           Django + DRF API
-  app/
-    views.py       PreviewView, ExportPdfView
-    serializers.py PreviewRequestSerializer, ExportRequestSerializer
-    services/
-      extractor.py    Fetches URL, returns full HTML + base_url
-      cleaner.py      DOM manipulation: removes selected elements by CSS selector
-      pdf_generator.py  WeasyPrint/Playwright PDF rendering
+backend/           Django 5 + DRF (single project, all tools as apps)
+  app/             Core: auth, payments, PDF export, credits ledger
+  study/           PDF → study materials (quiz, flashcards, summary)
+  notes/           Notes CRUD + AI endpoints (Gemini)
+  customer_support/ Support tickets
+  project/         Image project management
+  vision/          CV backend (brightness, white-balance, super-resolution)
   backend/
-    settings.py    Django config (DB, CORS, installed apps)
-    urls.py        Routes /api/ to app.urls, /api/docs/ for Swagger UI
+    settings.py    Single settings module
+    urls.py        /api/ /api/study/ /api/notes/ /api/images/ /api/support/
 ```
 
 ---
 
-## Core Features
+## Auth & Billing
 
-### 1. Live Interactive Preview (Browse & Interact)
+**Authentication** is shared across all tools — one account, one session.
 
-This is a key differentiator. Rather than a static screenshot, the page is rendered in a fully functional sandboxed iframe:
+- `POST /api/auth/register/` — email + password → JWT pair
+- `POST /api/auth/login/` — email + password → JWT pair
+- `POST /api/auth/google/` — Google ID token → JWT pair
+- `POST /api/auth/refresh/` — rotate access token
+- `GET  /api/auth/me/` — current user + credit balance
 
-- Backend fetches the page and returns the raw HTML and resolved `base_url`.
-- Frontend injects a `<base href="...">` tag and a picker script into the document.
-- **The user can interact with the page in real time** — click expand/collapse buttons, open dropdowns, navigate tabs, scroll to lazy-loaded content — exactly as they would in a normal browser.
-- The resulting DOM state (with all user interactions applied) is captured as an HTML snapshot and sent to the backend for PDF rendering, so the exported PDF reflects what the user actually saw and configured on screen.
-- Two interaction modes:
-  - **Cursor mode** — normal browsing inside the iframe (scroll, click, interact).
-  - **Select (Remove) mode** — hover highlights elements with a dashed teal outline; click locks the removal with a solid orange outline.
+**Credits** are the single billing currency (NOWPayments, 100+ cryptos). 1 credit = 1 action.
 
-### 2. Element Removal (Custom PDF)
+| Action | Cost |
+|--------|------|
+| Web → PDF export | 1 credit |
+| Notes AI: generate / summarise / translate / assistant | 1 credit each |
+| Anonymous PDF export | 1 free (per IP) |
 
-This is the other core differentiator. Instead of exporting the full page, the user can surgically remove any unwanted element:
+Credit costs are tunable in `settings.CREDIT_COSTS` without migrations.
 
-- In **Select mode**, clicking any element (ad, cookie banner, navbar, sidebar, footer, paywall overlay, etc.) marks it for removal.
-- CSS selectors for each marked element are captured in the frontend.
-- Before PDF generation the backend applies selector-based DOM removal using BeautifulSoup, stripping exactly those elements from the HTML snapshot.
-- The result is a clean, distraction-free PDF that contains only the content the user cares about.
+**Packages** (5 credits/$1, minimum $2):
 
-### 3. Render Mode
-
-- **Screen CSS** (default): renders the page as seen in the browser.
-- **Print CSS**: applies the page's `@media print` stylesheet for a print-optimised layout.
-
-### 4. High-Fidelity PDF Generation
-
-- Backend receives the HTML snapshot + `base_url` + selectors + mode.
-- Applies DOM mutations (remove/keep elements) using BeautifulSoup.
-- Renders the final HTML to PDF with WeasyPrint (primary) or Playwright (fallback).
-- Returns the PDF file; frontend triggers a browser download.
-
-### 5. REST API + Swagger UI
-
-- `POST /api/preview/` — fetch and prepare page HTML for the preview iframe.
-- `POST /api/export/` — apply selections and generate PDF (gated by download limits).
-- `POST /api/auth/register/` — register with email + password, returns JWT pair.
-- `POST /api/auth/login/` — sign in with email + password, returns JWT pair.
-- `POST /api/auth/google/` — sign in with a Google ID token, returns JWT pair.
-- `POST /api/auth/refresh/` — exchange refresh token for a new access token.
-- `GET  /api/auth/me/` — get current user info + credit balance (requires auth).
-- `POST /api/payments/create/` — create a NOWPayments invoice (requires auth).
-- `POST /api/payments/webhook/` — IPN callback from NOWPayments to credit accounts.
-- `GET /api/docs/` — interactive Swagger UI (drf-spectacular / OpenAPI 3).
-
----
-
-## Authentication
-
-Users can sign in with:
-- **Email + password** — `POST /api/auth/register/` to create an account; `POST /api/auth/login/` to sign in.
-- **Google** — frontend uses `@react-oauth/google` to obtain a Google ID token, which is verified server-side by `google.oauth2.id_token.verify_oauth2_token`.
-
-JWTs are returned on sign-in: `access` token (15-minute lifetime) and `refresh` token (7-day lifetime). The frontend stores both in `localStorage`.
-
-The `Authorization: Bearer <access_token>` header is sent with export requests.
-
----
-
-## Download Limits
-
-| User type | Limit |
-|-----------|-------|
-| Anonymous (not signed in) | **1 free download per IP address** |
-| Signed-in user, 0 credits | Blocked (HTTP 402) with a "Buy Credits" prompt |
-| Signed-in user, credits > 0 | Allowed; 1 credit deducted per successful export |
-
-Credits are deducted **after** a PDF is successfully generated (no charge for failed exports).
-
----
-
-## Credit Packages & Pricing
-
-5 downloads per $1. Minimum purchase: $2 (10 downloads). Credits never expire.
-
-| Package | Downloads | Price |
-|---------|-----------|-------|
+| Package | Credits | Price |
+|---------|---------|-------|
 | Starter | 10 | $2 |
 | Basic | 25 | $5 |
 | Standard | 50 | $10 |
 | Pro | 100 | $20 |
 | Business | 500 | $100 |
 | Enterprise | 1,000 | $200 |
-| Unlimited | 10,000 | $2,000 |
 
 ---
 
-## Crypto Payments (NOWPayments)
+## Web → PDF tool
 
-Payments are processed via [NOWPayments](https://nowpayments.io/) (100+ cryptocurrencies supported).
-
-**Flow:**
-1. Signed-in user opens the "Buy Credits" modal and selects a package.
-2. Frontend calls `POST /api/payments/create/` → backend creates a NOWPayments invoice and stores a pending `CryptoPayment` record.
-3. User is redirected to the NOWPayments hosted checkout page.
-4. After payment, NOWPayments sends an IPN webhook to `POST /api/payments/webhook/`.
-5. Backend verifies the HMAC-SHA512 signature, updates the `CryptoPayment` status, and adds credits to the user's `UserProfile`.
-6. User is redirected back to the app (`?payment=success`); frontend calls `/api/auth/me/` to refresh the credit balance.
-
-**NOWPayments sandbox testing:**
-
-1. Register a separate account at [sandbox.nowpayments.io](https://sandbox.nowpayments.io) and generate a sandbox API key + IPN secret.
-2. Set in `.env`:
-   ```ini
-   NOWPAYMENTS_SANDBOX=true
-   NOWPAYMENTS_API_KEY=<sandbox-api-key>
-   NOWPAYMENTS_IPN_SECRET=<sandbox-ipn-secret>
-   NOWPAYMENTS_IPN_CALLBACK_URL=https://<ngrok-subdomain>.ngrok.io/api/payments/webhook/
-   ```
-3. Expose the local backend with `ngrok http 8000` and copy the HTTPS URL into `NOWPAYMENTS_IPN_CALLBACK_URL`.
-4. Select a package in the UI → complete the checkout using a test coin (e.g. **BTCTEST** or **USDTTEST**).
-5. Verify credits were added via Django admin → **Crypto Payments** (status should become `finished`).
+1. User enters a URL.
+2. Backend fetches the page and returns full HTML + `base_url`.
+3. Frontend renders the page in a sandboxed iframe with an element-picker overlay.
+4. **Cursor mode** — interact with the live page normally (scroll, click, expand).
+5. **Select mode** — click any element to mark it for removal (teal hover → orange selected).
+6. DOM snapshot + selectors sent to `POST /api/export/`.
+7. Backend strips selected elements (BeautifulSoup) and renders PDF (WeasyPrint / Playwright).
+8. Browser downloads the file.
 
 ---
 
-## API Reference
+## Study tool
 
-### `POST /api/preview/`
+1. Upload a PDF (up to 50 MB by default).
+2. Backend extracts text and runs it through the LLM pipeline (`study_assistant`).
+3. Returns: chapter summary, multiple-choice quiz, and flashcard deck.
+4. Results are cached on disk (`LLM_CACHE_DIR`) to avoid redundant API calls.
 
-**Request body:**
+LLM provider is configurable via `LLM_PROVIDER` (openai / gemini) and `USE_REAL_LLM`. Falls back to a deterministic offline generator when disabled.
 
-| Field           | Type    | Required | Description                             |
-|-----------------|---------|----------|-----------------------------------------|
-| `url`           | string  | Yes      | Full URL of the page to preview         |
-| `use_print_css` | boolean | No       | Use print stylesheet (default: `false`) |
+---
 
-**Response:**
+## Notes tool
 
-```json
-{
-  "title": "Page Title",
-  "html": "<html>...</html>",
-  "base_url": "https://example.com/"
-}
+Full-featured markdown note editor:
+
+- CRUD with labels, pinning, bulk reorder, version history
+- Download notes as PDF / Markdown
+- AI actions (each costs 1 credit): generate from prompt, summarise, translate, free-form assistant
+- Support ticket system
+
+---
+
+## Images tool
+
+Client-side canvas editor (no server round-trips for most operations):
+
+- Layers, selections, transform
+- Adjustments, colour filters, white-balance correction
+- AI super-resolution and auto-brightness via backend vision endpoints (`/api/images/`)
+
+---
+
+## API
+
+Interactive docs at `GET /api/docs/` (Swagger UI, drf-spectacular).
+
+Core endpoints:
+
+```
+POST /api/preview/                     Fetch URL for iframe preview
+POST /api/export/                      Generate PDF
+POST /api/auth/register/               Create account
+POST /api/auth/login/                  Sign in
+POST /api/auth/google/                 Google sign-in
+POST /api/auth/refresh/                Refresh JWT
+GET  /api/auth/me/                     Current user + credits
+POST /api/auth/change-password/        Change password
+POST /api/payments/create/             Create NOWPayments invoice
+POST /api/payments/webhook/            NOWPayments IPN callback
+
+GET  /api/study/documents/             List uploaded PDFs
+POST /api/study/documents/             Upload PDF
+GET  /api/study/documents/{id}/        Document + generated materials
+
+GET  /api/notes/                       List notes
+POST /api/notes/                       Create note
+POST /api/notes/generate/              AI: generate note
+POST /api/notes/{id}/summarize/        AI: summarise
+POST /api/notes/{id}/translate/        AI: translate
+POST /api/notes/assistant/             AI: free-form assistant
+GET  /api/notes/labels/                Labels CRUD
+
+GET  /api/images/auto-brightness/      Auto-brightness
+GET  /api/images/auto-white-balance/   White-balance correction
+GET  /api/images/super-resolution/     Super-resolution (Real-ESRGAN)
 ```
 
 ---
 
-### `POST /api/export/`
+## Local development
 
-**Request body:**
-
-| Field           | Type            | Required | Description                                              |
-|-----------------|-----------------|----------|----------------------------------------------------------|
-| `url`           | string          | Yes      | Original page URL (used if no snapshot provided)         |
-| `html_snapshot` | string          | No       | Full HTML string captured from the preview (preferred)   |
-| `base_url`      | string          | No*      | Required when `html_snapshot` is provided                |
-| `selectors`     | array of string | No       | CSS selectors of the targeted elements (will be removed)  |
-| `use_print_css` | boolean         | No       | Apply `@media print` styles (default: `false`)           |
-
-> `base_url` is required when `html_snapshot` is provided.
-
-**Response:** PDF file (binary, `Content-Type: application/pdf`)
-
----
-
-## Tech Stack
-
-| Layer      | Technology                                      |
-|------------|-------------------------------------------------|
-| Frontend   | React 18, TypeScript, Vite, Lucide icons        |
-| Backend    | Python, Django 4, Django REST Framework         |
-| PDF Engine | WeasyPrint (primary), Playwright (fallback)     |
-| API Docs   | drf-spectacular (OpenAPI 3 / Swagger UI)        |
-| Database   | PostgreSQL                                      |
-
----
-
-## Setup
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL running locally (or override via environment variables)
-
-### Backend
+**Backend:**
 
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install Python dependencies
+cd /path/to/distillpage
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt
-
-# Install Playwright browser binaries (for Playwright PDF fallback)
-python -m playwright install chromium
-
-# Configure database — set env vars to override defaults:
-#   POSTGRES_DB       (default: web_to_pdf)
-#   POSTGRES_USER     (default: postgres)
-#   POSTGRES_PASSWORD (default: postgres)
-#   POSTGRES_HOST     (default: localhost)
-#   POSTGRES_PORT     (default: 5432)
-
+cp .env.example .env    # fill in required keys
 cd backend
 python manage.py migrate
 python manage.py runserver
 ```
 
-> **macOS note:** WeasyPrint requires native libraries. Install via Homebrew:
-> ```bash
-> brew install pango cairo gdk-pixbuf libffi
-> ```
-> The API returns a clear error at runtime if these are missing.
+Required `.env` keys for full functionality — see DEPLOY.md for the complete list.
 
-### Frontend
+**Frontend:**
 
 ```bash
 cd frontend
 npm install
-npm run dev
+VITE_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 ```
 
-To point the frontend at a non-default backend, create `frontend/.env`:
+**Type-check (app shell only, excludes vendored tools):**
 
-```
-VITE_API_BASE_URL=http://127.0.0.1:8000
-VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
-```
-
-### Backend environment variables
-
-Create `.env` in the project root (next to `backend/`):
-
-```
-# Database
-POSTGRES_DB=web_to_pdf
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-
-# Google OAuth (get from Google Cloud Console → Credentials → OAuth 2.0 Client IDs)
-GOOGLE_CLIENT_ID=your-google-oauth-client-id
-
-# NOWPayments (get from https://nowpayments.io → API Keys)
-NOWPAYMENTS_API_KEY=your-nowpayments-api-key
-NOWPAYMENTS_IPN_SECRET=your-ipn-secret
-NOWPAYMENTS_SANDBOX=true                       # set to false in production
-NOWPAYMENTS_IPN_CALLBACK_URL=https://your-public-domain/api/payments/webhook/
-NOWPAYMENTS_SUCCESS_URL=https://your-frontend-domain?payment=success
-NOWPAYMENTS_CANCEL_URL=https://your-frontend-domain
+```bash
+cd frontend && npx tsc -b
 ```
 
-### API Docs
+**Production build:**
 
-Open [http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/) for the interactive Swagger UI.
+```bash
+cd frontend && npm run build   # outputs to frontend/dist/
+```
 
----
 
-## Future Enhancements
-
-- Undo / redo for element selections in the preview
-- Save and reuse selection profiles per domain
-- Batch URL processing
-- Developer API access with API keys
-- Browser extension for one-click export from any tab
-- Admin dashboard for monitoring payments and user credits
-- Fiat payment option (Stripe) in addition to crypto
-
----

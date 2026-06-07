@@ -80,6 +80,12 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'drf_spectacular',
     'app',
+    # Tools
+    'study',
+    'project',
+    'vision',
+    'notes',
+    'customer_support',
 ]
 
 MIDDLEWARE = [
@@ -119,7 +125,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': _env('POSTGRES_DB', 'web_to_pdf', aliases=('DB_NAME',)),
+        'NAME': _env('POSTGRES_DB', 'distillpage', aliases=('DB_NAME',)),
         'USER': _env('POSTGRES_USER', 'postgres', aliases=('DB_USER',)),
         'PASSWORD': _env('POSTGRES_PASSWORD', 'postgres', aliases=('DB_PASSWORD',)),
         'HOST': _env('POSTGRES_HOST', 'localhost', aliases=('DB_HOST',)),
@@ -171,8 +177,8 @@ STATIC_ROOT = 'staticfiles/'
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://web2tailoredpdf.com',
-    'https://www.web2tailoredpdf.com',
+    'https://distillpage.com',
+    'https://www.distillpage.com',
 ]
 
 if not DEBUG:
@@ -195,6 +201,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 from datetime import timedelta  # noqa: E402
@@ -224,9 +232,33 @@ CREDIT_PACKAGES = [
 ]
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Web to PDF API',
-    'DESCRIPTION': 'API for exporting cleaned webpage content to PDF.',
+    'TITLE': 'DistillPage API',
+    'DESCRIPTION': 'Unified API for DistillPage tools: web-to-PDF, study materials, notes, and image processing.',
     'VERSION': '1.0.0',
+}
+
+# ── Study tool (PDF → study materials) ──────────────────────────────────────
+# Editable prompt templates and on-disk LLM response cache, vendored alongside
+# the study_assistant pipeline package.
+PROMPTS_DIR = Path(_env('STUDY_PROMPTS_DIR', str(BASE_DIR / 'study_prompts')))
+LLM_CACHE_DIR = Path(_env('LLM_CACHE_DIR', str(BASE_DIR / '.llm_cache')))
+# Max upload size for PDFs (bytes). Default 50 MB.
+MAX_PDF_UPLOAD_BYTES = int(_env('MAX_PDF_UPLOAD_BYTES', str(50 * 1024 * 1024)))
+# LLM provider for study generation; falls back to an offline deterministic
+# generator when USE_REAL_LLM is false or no API key is configured.
+LLM_PROVIDER = _env('LLM_PROVIDER', 'openai')
+USE_REAL_LLM = _env('USE_REAL_LLM', 'false').lower() in ('true', '1', 'yes')
+
+# Credit cost per metered action. Tune without migrations.
+CREDIT_COSTS = {
+    'pdf.export': 1,
+    'markdown.export': 1,
+    'screenshot.export': 1,
+    'notes.ai_generate': 1,
+    'notes.ai_summarize': 1,
+    'notes.ai_translate': 1,
+    'notes.ai_assistant': 1,
+    # study.* and image.* added later
 }
 
 # Logging — payments log goes to both console and a file for debugging

@@ -40,3 +40,29 @@ class CryptoPayment(models.Model):
 
     def __str__(self):
         return f"{self.user.email} — {self.download_credits} credits — {self.status}"
+
+
+class CreditTransaction(models.Model):
+    SPEND = "spend"
+    GRANT = "grant"
+    REFUND = "refund"
+    KIND_CHOICES = [
+        (SPEND, "Spend"),
+        (GRANT, "Grant"),
+        (REFUND, "Refund"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="credit_transactions")
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    action = models.CharField(max_length=64, blank=True)
+    amount = models.IntegerField(help_text="Negative for spend, positive for grant/refund")
+    balance_after = models.PositiveIntegerField()
+    reference = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "-created_at"])]
+
+    def __str__(self):
+        return f"{self.user.email} — {self.kind} {self.amount} ({self.balance_after} left)"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT=/srv/web-to-pdf
+PROJECT=/srv/distillpage
 
 cd "$PROJECT"
 git fetch origin
@@ -21,7 +21,7 @@ VITE_API_BASE_URL='' npm run build
 cd ..
 
 sudo chown -R www-data:www-data "$PROJECT"
-sudo systemctl restart webtopdf
+sudo systemctl restart distillpage
 sudo systemctl reload nginx
 
 echo "Update complete."

@@ -26,6 +26,7 @@ from .serializers import (
     RegisterSerializer,
 )
 from .services.cleaner import clean_html
+from .services.credits import InsufficientCredits, charge, get_balance, grant
 from .services.extractor import ContentExtractionError, extract_main_content
 from .services.pdf_generator import (
     PdfGenerationError,
@@ -103,6 +104,64 @@ class UserMeView(APIView):
         })
 
 
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=["Auth"])
+    def post(self, request):
+        current = request.data.get("current_password", "")
+        new = request.data.get("new_password", "")
+        if not current or not new:
+            return Response({"message": "current_password and new_password are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not request.user.check_password(current):
+            return Response({"message": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+        request.user.set_password(new)
+        request.user.save()
+        return Response({"success": True, "message": "Password changed successfully."})
+
+
+class ForgotPasswordView(APIView):
+    @extend_schema(tags=["Auth"])
+    def post(self, request):
+        email = request.data.get("email", "").lower().strip()
+        if not email:
+            return Response({"message": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            from django.contrib.auth.forms import PasswordResetForm
+            from django.http import HttpRequest as DjangoRequest
+            form = PasswordResetForm({"email": email})
+            if form.is_valid():
+                req = DjangoRequest()
+                req.META["SERVER_NAME"] = request.META.get("HTTP_HOST", "distillpage.com")
+                req.META["SERVER_PORT"] = "443"
+                form.save(request=req, use_https=True, email_template_name="registration/password_reset_email.html")
+        except Exception:
+            pass
+        return Response({"success": True, "message": "If an account with that email exists, a reset link has been sent."})
+
+
+class ResetPasswordView(APIView):
+    @extend_schema(tags=["Auth"])
+    def post(self, request):
+        uid = request.data.get("uid", "")
+        token = request.data.get("code", "")
+        new_password = request.data.get("new_password", "")
+        if not uid or not token or not new_password:
+            return Response({"message": "uid, code, and new_password are required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            from django.contrib.auth.tokens import default_token_generator
+            from django.utils.http import urlsafe_base64_decode
+            user_pk = urlsafe_base64_decode(uid).decode()
+            user = User.objects.get(pk=user_pk)
+            if not default_token_generator.check_token(user, token):
+                return Response({"message": "Invalid or expired reset token."}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(new_password)
+            user.save()
+            return Response({"success": True, "message": "Password reset successfully."})
+        except Exception:
+            return Response({"message": "Invalid reset link."}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # ---------------------------------------------------------------------------
 # Export & preview views
 # ---------------------------------------------------------------------------
@@ -137,8 +196,7 @@ class ExportPdfView(APIView):
     def post(self, request):
         # --- Access control ---
         if request.user.is_authenticated:
-            profile, _ = UserProfile.objects.get_or_create(user=request.user)
-            if profile.download_credits <= 0:
+            if get_balance(request.user) < 1:
                 return Response(
                     {"detail": "No download credits remaining. Please purchase more."},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
@@ -189,8 +247,13 @@ class ExportPdfView(APIView):
 
         # --- Record usage after successful generation ---
         if request.user.is_authenticated:
-            profile.download_credits -= 1
-            profile.save()
+            try:
+                charge(request.user, "pdf.export")
+            except InsufficientCredits:
+                return Response(
+                    {"detail": "No download credits remaining. Please purchase more."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
         else:
             AnonymousDownload.objects.create(ip_address=ip)
 
@@ -421,14 +484,17 @@ class PaymentWebhookView(APIView):
             payment.confirmed_at = timezone.now()
             payment.save()
 
-            profile, _ = UserProfile.objects.get_or_create(user=payment.user)
-            profile.download_credits += payment.download_credits
-            profile.save()
+            new_balance = grant(
+                payment.user,
+                payment.download_credits,
+                action="topup",
+                reference=str(payment.nowpayments_payment_id),
+            )
             logger.info(
                 "Credits APPLIED — %s credits added to user %s (total now: %s)",
                 payment.download_credits,
                 payment.user.email,
-                profile.download_credits,
+                new_balance,
             )
         elif payment_status in ("finished", "confirmed"):
             logger.info(

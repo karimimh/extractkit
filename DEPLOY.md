@@ -1,12 +1,12 @@
 # Deployment Guide — Ubuntu Server + HTTPS
 
-> Prerequisites: Ubuntu 22.04+, a user with `sudo`, Python 3.11+, Node 20+, domain `web2tailoredpdf.com` pointed at the server.
+> Prerequisites: Ubuntu 22.04+, a user with `sudo`, Python 3.11+, Node 20+, domain `distillpage.com` pointed at the server.
 
 ---
 
 ## 1. Namecheap DNS
 
-In the **Namecheap Advanced DNS** panel for `web2tailoredpdf.com`, add (or update) these records:
+In the **Namecheap Advanced DNS** panel for `distillpage.com`, add (or update) these records:
 
 | Type | Host | Value | TTL |
 |------|------|-------|-----|
@@ -36,8 +36,8 @@ sudo apt update && sudo apt install -y \
 
 ```bash
 sudo -u postgres psql <<'SQL'
-CREATE USER webtopdf WITH PASSWORD 'changeme';
-CREATE DATABASE web_to_pdf OWNER webtopdf;
+CREATE USER distillpage WITH PASSWORD 'changeme';
+CREATE DATABASE distillpage OWNER distillpage;
 SQL
 ```
 
@@ -47,32 +47,45 @@ SQL
 
 ```bash
 cd /srv
-sudo git clone https://github.com/karimimh/web-to-pdf.git web-to-pdf
-sudo chown -R $USER:$USER /srv/web-to-pdf
-cd /srv/web-to-pdf
+sudo git clone https://github.com/karimimh/distillpage.git distillpage
+sudo chown -R $USER:$USER /srv/distillpage
+cd /srv/distillpage
 ```
 
-Create `/srv/web-to-pdf/.env`:
+Create `/srv/distillpage/.env`:
 
 ```ini
 SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(50))">
 DEBUG=False
-ALLOWED_HOSTS=web2tailoredpdf.com,www.web2tailoredpdf.com
+ALLOWED_HOSTS=distillpage.com,www.distillpage.com
 
-POSTGRES_DB=web_to_pdf
-POSTGRES_USER=webtopdf
+POSTGRES_DB=distillpage
+POSTGRES_USER=distillpage
 POSTGRES_PASSWORD=changeme
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 
+# Auth
 GOOGLE_CLIENT_ID=<your-google-client-id>
 
+# NOWPayments (crypto billing)
 NOWPAYMENTS_API_KEY=<key>
 NOWPAYMENTS_IPN_SECRET=<secret>
 NOWPAYMENTS_SANDBOX=false
-NOWPAYMENTS_IPN_CALLBACK_URL=https://web2tailoredpdf.com/api/payments/ipn/
-NOWPAYMENTS_SUCCESS_URL=https://web2tailoredpdf.com?payment=success
-NOWPAYMENTS_CANCEL_URL=https://web2tailoredpdf.com?payment=cancelled
+NOWPAYMENTS_IPN_CALLBACK_URL=https://distillpage.com/api/payments/ipn/
+NOWPAYMENTS_SUCCESS_URL=https://distillpage.com?payment=success
+NOWPAYMENTS_CANCEL_URL=https://distillpage.com?payment=cancelled
+
+# Notes tool — AI features (Gemini)
+GEMINI_API_KEY=<your-gemini-api-key>
+
+# Study tool — LLM pipeline
+# Set USE_REAL_LLM=true and supply an API key to enable real LLM generation.
+# When false, a deterministic offline generator is used instead.
+USE_REAL_LLM=false
+LLM_PROVIDER=openai          # openai | gemini
+# OPENAI_API_KEY=<key>        # required when LLM_PROVIDER=openai and USE_REAL_LLM=true
+# MAX_PDF_UPLOAD_BYTES=52428800   # optional; default 50 MB
 ```
 
 ---
@@ -80,11 +93,11 @@ NOWPAYMENTS_CANCEL_URL=https://web2tailoredpdf.com?payment=cancelled
 ## 5. Backend
 
 ```bash
-cd /srv/web-to-pdf
+cd /srv/distillpage
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
-PLAYWRIGHT_BROWSERS_PATH=/srv/web-to-pdf/.playwright playwright install chromium --with-deps
+PLAYWRIGHT_BROWSERS_PATH=/srv/distillpage/.playwright playwright install chromium --with-deps
 
 cd backend
 python manage.py migrate
@@ -97,20 +110,20 @@ python manage.py collectstatic --no-input
 
 ## 6. Gunicorn systemd service
 
-Create `/etc/systemd/system/webtopdf.service`:
+Create `/etc/systemd/system/distillpage.service`:
 
 ```ini
 [Unit]
-Description=web-to-pdf Django
+Description=distillpage Django
 After=network.target postgresql.service
 
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/srv/web-to-pdf/backend
-EnvironmentFile=/srv/web-to-pdf/.env
-Environment=PLAYWRIGHT_BROWSERS_PATH=/srv/web-to-pdf/.playwright
-ExecStart=/srv/web-to-pdf/.venv/bin/gunicorn \
+WorkingDirectory=/srv/distillpage/backend
+EnvironmentFile=/srv/distillpage/.env
+Environment=PLAYWRIGHT_BROWSERS_PATH=/srv/distillpage/.playwright
+ExecStart=/srv/distillpage/.venv/bin/gunicorn \
     --workers 3 \
     --bind 127.0.0.1:8000 \
     backend.wsgi:application
@@ -121,10 +134,10 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo chown -R www-data:www-data /srv/web-to-pdf
+sudo chown -R www-data:www-data /srv/distillpage
 sudo chown www-data:www-data /var/www          # needed for gunicorn control socket
 sudo systemctl daemon-reload
-sudo systemctl enable --now webtopdf
+sudo systemctl enable --now distillpage
 ```
 
 ---
@@ -132,18 +145,18 @@ sudo systemctl enable --now webtopdf
 ## 7. Frontend build
 
 ```bash
-cd /srv/web-to-pdf/frontend
+cd /srv/distillpage/frontend
 npm ci
 VITE_API_BASE_URL='' npm run build   # empty = relative paths, Nginx handles proxying
 ```
 
-> **Why empty?** The API calls become `/api/...` (relative), which Nginx proxies to Gunicorn. This means the same build works regardless of the server IP or domain.
+> **Why empty?** All API calls become `/api/...` (relative), which Nginx proxies to Gunicorn. The same build works for all four tools regardless of the server IP or domain.
 
 ---
 
 ## 8. Nginx
 
-Create `/etc/nginx/sites-available/webtopdf` (HTTP only at this stage — Certbot will add HTTPS in step 9).
+Create `/etc/nginx/sites-available/distillpage` (HTTP only at this stage — Certbot will add HTTPS in step 9).
 
 > **Important:** Use two separate server blocks so `www` is a pure redirect and never serves content. This prevents Google Search Console from flagging `www` pages as "Alternate page with proper canonical tag".
 
@@ -151,17 +164,17 @@ Create `/etc/nginx/sites-available/webtopdf` (HTTP only at this stage — Certbo
 # Redirect www → non-www (Certbot will upgrade this to HTTPS in step 9)
 server {
     listen 80;
-    server_name www.web2tailoredpdf.com;
-    return 301 http://web2tailoredpdf.com$request_uri;
+    server_name www.distillpage.com;
+    return 301 http://distillpage.com$request_uri;
 }
 
 # Main site
 server {
     listen 80;
-    server_name web2tailoredpdf.com;
+    server_name distillpage.com;
 
     # Frontend static files
-    root /srv/web-to-pdf/frontend/dist;
+    root /srv/distillpage/frontend/dist;
     index index.html;
 
     location / {
@@ -185,17 +198,17 @@ server {
     }
 
     location /static/ {
-        alias /srv/web-to-pdf/backend/staticfiles/;
+        alias /srv/distillpage/backend/staticfiles/;
     }
 
     location /media/ {
-        alias /srv/web-to-pdf/backend/media/;
+        alias /srv/distillpage/backend/media/;
     }
 }
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/webtopdf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/distillpage /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -207,12 +220,12 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d web2tailoredpdf.com -d www.web2tailoredpdf.com
+sudo certbot --nginx -d distillpage.com -d www.distillpage.com
 ```
 
 Certbot will:
 - Obtain a free TLS certificate from Let's Encrypt
-- Edit `/etc/nginx/sites-available/webtopdf` to add SSL and HTTP→HTTPS redirects
+- Edit `/etc/nginx/sites-available/distillpage` to add SSL and HTTP→HTTPS redirects
 - Install a systemd timer for automatic renewal (verify with `sudo systemctl status certbot.timer`)
 
 After Certbot runs, verify the www block still redirects to the non-www URL (not to `https://www.`). The www server block should look like this:
@@ -220,22 +233,22 @@ After Certbot runs, verify the www block still redirects to the non-www URL (not
 ```nginx
 server {
     listen 443 ssl;
-    server_name www.web2tailoredpdf.com;
-    ssl_certificate /etc/letsencrypt/live/web2tailoredpdf.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/web2tailoredpdf.com/privkey.pem;
+    server_name www.distillpage.com;
+    ssl_certificate /etc/letsencrypt/live/distillpage.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/distillpage.com/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    return 301 https://web2tailoredpdf.com$request_uri;
+    return 301 https://distillpage.com$request_uri;
 }
 ```
 
 If Certbot changed the redirect target to `https://$host$request_uri` inside the www block, fix it manually:
 
 ```bash
-sudo nano /etc/nginx/sites-available/webtopdf
+sudo nano /etc/nginx/sites-available/distillpage
 # Change:  return 301 https://$host$request_uri;
-# To:      return 301 https://web2tailoredpdf.com$request_uri;
-# (only inside the www.web2tailoredpdf.com server blocks)
+# To:      return 301 https://distillpage.com$request_uri;
+# (only inside the www.distillpage.com server blocks)
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -253,28 +266,28 @@ If the site is already live and Google Search Console reports **"Alternate page 
 
 ```bash
 # View the current config to understand what Certbot generated
-sudo cat /etc/nginx/sites-available/webtopdf
+sudo cat /etc/nginx/sites-available/distillpage
 ```
 
-Replace any `server_name www.web2tailoredpdf.com` block (both port 80 and port 443) so they only redirect:
+Replace any `server_name www.distillpage.com` block (both port 80 and port 443) so they only redirect:
 
 ```nginx
 # HTTP www → HTTPS non-www
 server {
     listen 80;
-    server_name www.web2tailoredpdf.com;
-    return 301 https://web2tailoredpdf.com$request_uri;
+    server_name www.distillpage.com;
+    return 301 https://distillpage.com$request_uri;
 }
 
 # HTTPS www → HTTPS non-www
 server {
     listen 443 ssl;
-    server_name www.web2tailoredpdf.com;
-    ssl_certificate /etc/letsencrypt/live/web2tailoredpdf.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/web2tailoredpdf.com/privkey.pem;
+    server_name www.distillpage.com;
+    ssl_certificate /etc/letsencrypt/live/distillpage.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/distillpage.com/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    return 301 https://web2tailoredpdf.com$request_uri;
+    return 301 https://distillpage.com$request_uri;
 }
 ```
 
@@ -283,13 +296,13 @@ Apply and verify:
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
 
-# Confirm: www redirects to non-www (expect: Location: https://web2tailoredpdf.com/)
-curl -I https://www.web2tailoredpdf.com/
-# Confirm: HTTP redirects to HTTPS non-www (expect: Location: https://web2tailoredpdf.com/)
-curl -I http://web2tailoredpdf.com/
+# Confirm: www redirects to non-www (expect: Location: https://distillpage.com/)
+curl -I https://www.distillpage.com/
+# Confirm: HTTP redirects to HTTPS non-www (expect: Location: https://distillpage.com/)
+curl -I http://distillpage.com/
 ```
 
-After applying, go to Google Search Console → **Sitemaps** → resubmit the sitemap, then use **URL Inspection** on `https://web2tailoredpdf.com/` and request reindexing.
+After applying, go to Google Search Console → **Sitemaps** → resubmit the sitemap, then use **URL Inspection** on `https://distillpage.com/` and request reindexing.
 
 ---
 
@@ -306,11 +319,11 @@ sudo ufw enable
 ## 11. Verify
 
 ```bash
-curl https://web2tailoredpdf.com/api/docs/      # Swagger UI
-curl https://web2tailoredpdf.com/               # Frontend
-curl -I http://web2tailoredpdf.com/             # Should return 301 redirect to HTTPS
-sudo systemctl status webtopdf                  # Gunicorn logs
-sudo journalctl -u webtopdf -f                  # Live logs
+curl https://distillpage.com/api/docs/      # Swagger UI
+curl https://distillpage.com/               # Frontend
+curl -I http://distillpage.com/             # Should return 301 redirect to HTTPS
+sudo systemctl status distillpage                  # Gunicorn logs
+sudo journalctl -u distillpage -f                  # Live logs
 ```
 
 ---
@@ -318,12 +331,12 @@ sudo journalctl -u webtopdf -f                  # Live logs
 ## 12. Create a superuser
 
 ```bash
-cd /srv/web-to-pdf/backend
-source /srv/web-to-pdf/.venv/bin/activate
+cd /srv/distillpage/backend
+source /srv/distillpage/.venv/bin/activate
 python manage.py createsuperuser
 ```
 
-Follow the prompts to set a username, email, and password. The Django admin panel will then be accessible at `https://web2tailoredpdf.com/admin/`.
+Follow the prompts to set a username, email, and password. The Django admin panel will then be accessible at `https://distillpage.com/admin/`.
 
 ---
 
@@ -332,14 +345,14 @@ Follow the prompts to set a username, email, and password. The Django admin pane
 An `update.sh` script is included in the repo root. After the first deploy, just run:
 
 ```bash
-sudo bash /srv/web-to-pdf/update.sh
+sudo bash /srv/distillpage/update.sh
 ```
 
 This pulls the latest commits, installs any new dependencies, runs migrations, rebuilds the frontend, and restarts all services.
 
 > If only backend code changed (no new dependencies, no new migrations, no frontend changes), you can skip the full script and just restart Gunicorn:
 > ```bash
-> sudo systemctl restart webtopdf
+> sudo systemctl restart distillpage
 > ```
 
 ---
@@ -348,11 +361,11 @@ This pulls the latest commits, installs any new dependencies, runs migrations, r
 
 | Service   | Command                                   |
 |-----------|-------------------------------------------|
-| Restart backend | `sudo systemctl restart webtopdf`   |
-| Stop backend    | `sudo systemctl stop webtopdf`      |
-| Start backend   | `sudo systemctl start webtopdf`     |
-| Rebuild frontend | `cd /srv/web-to-pdf/frontend && VITE_API_BASE_URL='' npm run build` |
-| Run migrations   | `cd /srv/web-to-pdf/backend && /srv/web-to-pdf/.venv/bin/python manage.py migrate` |
+| Restart backend | `sudo systemctl restart distillpage`   |
+| Stop backend    | `sudo systemctl stop distillpage`      |
+| Start backend   | `sudo systemctl start distillpage`     |
+| Rebuild frontend | `cd /srv/distillpage/frontend && VITE_API_BASE_URL='' npm run build` |
+| Run migrations   | `cd /srv/distillpage/backend && /srv/distillpage/.venv/bin/python manage.py migrate` |
 | Nginx reload     | `sudo systemctl reload nginx`        |
-| Create superuser | `cd /srv/web-to-pdf/backend && source /srv/web-to-pdf/.venv/bin/activate && python manage.py createsuperuser` |
-| Update project   | `sudo bash /srv/web-to-pdf/update.sh` |
+| Create superuser | `cd /srv/distillpage/backend && source /srv/distillpage/.venv/bin/activate && python manage.py createsuperuser` |
+| Update project   | `sudo bash /srv/distillpage/update.sh` |

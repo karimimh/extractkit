@@ -986,3 +986,120 @@ h2.subtitle {
 	animation: spin 0.8s linear infinite;
 }
 
+
+/* -------------------------------------------------------------------------
+   Unified app shell navigation
+   ------------------------------------------------------------------------- */
+.app-shell {
+	min-height: 100vh;
+}
+
+.app-nav {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	backdrop-filter: blur(12px);
+	background: rgba(255, 255, 255, 0.7);
+	border-bottom: 1px solid #ffffff8f;
+}
+
+.app-nav-inner {
+	width: min(1200px, 96vw);
+	margin: 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 1.2rem;
+	padding: 0.7rem 1rem;
+	flex-wrap: wrap;
+}
+
+.app-nav-brand {
+	font-family: "Syne", sans-serif;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	font-size: 1.1rem;
+	color: var(--accent);
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.app-nav-links {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	flex-wrap: wrap;
+	flex: 1;
+}
+
+.app-nav-link {
+	font-family: "Syne", sans-serif;
+	font-size: 0.86rem;
+	color: var(--text-subtle);
+	text-decoration: none;
+	padding: 0.4rem 0.8rem;
+	border-radius: 999px;
+	transition: background 150ms, color 150ms;
+	white-space: nowrap;
+}
+
+.app-nav-link:hover {
+	color: var(--accent);
+	background: rgba(15, 118, 110, 0.08);
+}
+
+.app-nav-link.active {
+	color: #fff;
+	background: linear-gradient(110deg, var(--accent), var(--accent-2));
+}
+
+.app-nav-user {
+	margin-left: auto;
+}
+
+@media (max-width: 640px) {
+	.app-nav-user {
+		margin-left: 0;
+		width: 100%;
+	}
+}
+
+/* -------------------------------------------------------------------------
+   Images tool (picnice) — Tailwind v3 config translated to v4 @theme tokens
+   ------------------------------------------------------------------------- */
+@theme {
+	--color-alice-blue: #F0F8FF;
+	--color-azure-blue: #007FFF;
+	--color-crayola-blue: #1F75FE;
+	--color-dark-blue: #00008B;
+	--color-dodger-blue: #1E90FF;
+	--color-electric-indigo: #6F00FF;
+	--color-facebook-blue: #3B5998;
+	--color-indigo: #4B0082;
+	--color-neon-blue: #4D4DFF;
+	--color-persian-blue: #1C39BB;
+	--color-periwinkle: #CCCCFF;
+	--color-twitter-blue: #1DA1F2;
+	--color-ucla-blue: #2774AE;
+	--color-ultramarine: #120A8F;
+	--color-vivid-sky-blue: #00CCFF;
+	--color-gold: #FFD700;
+	--color-real-madrid-gold: #FEBE10;
+	--color-emerald-green: #50C878;
+	--color-mint-green: #3EB489;
+	--color-screamin-green: #76FF7A;
+	--color-lawn-green: #7CFC00;
+	--color-persian-green: #00A693;
+	--font-leckerlyone: "LeckerlyOne", sans-serif;
+	--animate-popover-appear-bottom: popover-show-bottom 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+	--animate-popover-disappear-bottom: popover-hide-bottom 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes popover-show-bottom {
+	0% { opacity: 0; transform: scale(0.95); }
+	100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes popover-hide-bottom {
+	0% { opacity: 1; transform: scale(1); }
+	100% { opacity: 0; transform: scale(0.95); }
+}
