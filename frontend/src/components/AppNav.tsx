@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { UserHeader } from "./UserHeader";
 
-const TOOLS = [
+const ALL_TOOLS = [
   { to: "/pdf", label: "PDF" },
   { to: "/markdown", label: "Markdown" },
   { to: "/screenshots", label: "Screenshots" },
@@ -9,6 +9,10 @@ const TOOLS = [
   { to: "/notes", label: "Notes" },
   { to: "/images", label: "Images" },
 ];
+
+const TOOLS = import.meta.env.PROD
+  ? ALL_TOOLS.filter((t) => t.to === "/pdf")
+  : ALL_TOOLS;
 
 export function AppNav() {
   return (

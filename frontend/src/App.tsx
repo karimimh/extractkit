@@ -21,36 +21,31 @@ function App() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/pdf" replace />} />
         <Route path="/pdf" element={<PdfTool />} />
-        <Route
-          path="/markdown"
-          element={
-            <ToolPlaceholder
-              title="Export Any Webpage to Markdown"
-              description="Convert a web page into clean, portable Markdown."
+        {!import.meta.env.PROD && (
+          <>
+            <Route
+              path="/markdown"
+              element={
+                <ToolPlaceholder
+                  title="Export Any Webpage to Markdown"
+                  description="Convert a web page into clean, portable Markdown."
+                />
+              }
             />
-          }
-        />
-        <Route
-          path="/screenshots"
-          element={
-            <ToolPlaceholder
-              title="Capture Webpage Screenshots"
-              description="Generate full-page or sectioned screenshots from any URL."
+            <Route
+              path="/screenshots"
+              element={
+                <ToolPlaceholder
+                  title="Capture Webpage Screenshots"
+                  description="Generate full-page or sectioned screenshots from any URL."
+                />
+              }
             />
-          }
-        />
-        <Route
-          path="/study/*"
-          element={<StudyTool />}
-        />
-        <Route
-          path="/notes/*"
-          element={<NotesTool />}
-        />
-        <Route
-          path="/images"
-          element={<ImagesTool />}
-        />
+            <Route path="/study/*" element={<StudyTool />} />
+            <Route path="/notes/*" element={<NotesTool />} />
+            <Route path="/images" element={<ImagesTool />} />
+          </>
+        )}
         <Route path="*" element={<Navigate to="/pdf" replace />} />
       </Route>
     </Routes>
