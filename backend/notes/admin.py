@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django.utils.html import format_html
 from .models import Label, Note, NoteImage, UserStorageStats
+from app.models import CreditTransaction, UserProfile
 
 
 @admin.register(Label)
@@ -130,8 +131,38 @@ class UserStorageStatsInline(admin.StackedInline):
         return False
 
 
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = "Credits"
+    fields = ("download_credits",)
+
+
 class CustomUserAdmin(BaseUserAdmin):
-    inlines = [UserStorageStatsInline, NoteInline]
+    inlines = [UserProfileInline, UserStorageStatsInline, NoteInline]
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if isinstance(instance, UserProfile) and instance.pk:
+                try:
+                    old = UserProfile.objects.get(pk=instance.pk)
+                    delta = instance.download_credits - old.download_credits
+                except UserProfile.DoesNotExist:
+                    delta = 0
+                instance.save()
+                if delta != 0:
+                    CreditTransaction.objects.create(
+                        user=instance.user,
+                        kind=CreditTransaction.GRANT if delta > 0 else CreditTransaction.SPEND,
+                        action="admin_adjustment",
+                        amount=delta,
+                        balance_after=instance.download_credits,
+                        reference=f"Admin adjustment by {request.user.get_username()}",
+                    )
+            else:
+                instance.save()
+        formset.save_m2m()
 
 
 # Unregister the default User admin and register our custom one
