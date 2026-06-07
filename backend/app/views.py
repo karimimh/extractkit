@@ -253,6 +253,15 @@ class ExportPdfView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+        # --- Validate PDF was created successfully ---
+        from pathlib import Path
+        pdf_file_path = Path(settings.MEDIA_ROOT) / generated.relative_path
+        if not pdf_file_path.exists() or pdf_file_path.stat().st_size == 0:
+            return Response(
+                {"detail": "PDF generation completed but file is invalid. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         # --- Record usage after successful generation ---
         if request.user.is_authenticated:
             try:

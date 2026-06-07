@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
 from bs4 import BeautifulSoup
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 PDF_BASE_STYLE = """
@@ -155,7 +158,12 @@ def generate_pdf_from_url(
       browser = playwright.chromium.launch(headless=True)
       context = browser.new_context(ignore_https_errors=True)
       page = context.new_page()
-      response = page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+      
+      try:
+        response = page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+      except Exception as e:
+        logger.error(f"Failed to load URL {url}: {e}")
+        raise PdfGenerationError(f"Failed to load URL: {str(e)}") from e
 
       if response is not None and response.status >= 400:
         raise PdfGenerationError(f"Failed to load URL (status {response.status})")
@@ -165,18 +173,38 @@ def generate_pdf_from_url(
       _apply_selections(page, selectors)
 
       title = page.title().strip() or "Exported Website"
-      page.pdf(
-        path=str(output_path),
-        format="A4",
-        print_background=True,
-        prefer_css_page_size=True,
-      )
+      
+      try:
+        page.pdf(
+          path=str(output_path),
+          format="A4",
+          print_background=True,
+          prefer_css_page_size=True,
+        )
+      except Exception as e:
+        logger.error(f"Failed to generate PDF: {e}")
+        raise PdfGenerationError(f"PDF generation failed: {str(e)}") from e
 
       context.close()
       browser.close()
+      
+      # Verify PDF was created and is not empty
+      if not output_path.exists():
+        logger.error(f"PDF file not created at {output_path}")
+        raise PdfGenerationError("PDF file was not created")
+      
+      file_size = output_path.stat().st_size
+      if file_size == 0:
+        logger.error(f"PDF file is empty at {output_path}")
+        output_path.unlink()  # Delete empty file
+        raise PdfGenerationError("PDF file is empty")
+      
+      logger.info(f"PDF generated successfully: {filename} ({file_size} bytes)")
+      
   except PdfGenerationError:
     raise
   except Exception as exc:
+    logger.error(f"Unexpected error during PDF generation: {exc}", exc_info=True)
     raise PdfGenerationError("Failed to render full page PDF") from exc
 
   return GeneratedPdf(title=title, relative_path=f"exports/{filename}")
@@ -208,24 +236,49 @@ def generate_pdf_from_snapshot(
       browser = playwright.chromium.launch(headless=True)
       context = browser.new_context(ignore_https_errors=True)
       page = context.new_page()
-      page.set_content(html_with_base, wait_until="load", timeout=timeout_ms)
+      
+      try:
+        page.set_content(html_with_base, wait_until="load", timeout=timeout_ms)
+      except Exception as e:
+        logger.error(f"Failed to set page content: {e}")
+        raise PdfGenerationError(f"Failed to load HTML content: {str(e)}") from e
 
       page.emulate_media(media="print" if use_print_css else "screen")
       _apply_selections(page, selectors)
 
       title = page.title().strip() or "Exported Website"
-      page.pdf(
-        path=str(output_path),
-        format="A4",
-        print_background=True,
-        prefer_css_page_size=True,
-      )
+      
+      try:
+        page.pdf(
+          path=str(output_path),
+          format="A4",
+          print_background=True,
+          prefer_css_page_size=True,
+        )
+      except Exception as e:
+        logger.error(f"Failed to generate PDF: {e}")
+        raise PdfGenerationError(f"PDF generation failed: {str(e)}") from e
 
       context.close()
       browser.close()
+      
+      # Verify PDF was created and is not empty
+      if not output_path.exists():
+        logger.error(f"PDF file not created at {output_path}")
+        raise PdfGenerationError("PDF file was not created")
+      
+      file_size = output_path.stat().st_size
+      if file_size == 0:
+        logger.error(f"PDF file is empty at {output_path}")
+        output_path.unlink()  # Delete empty file
+        raise PdfGenerationError("PDF file is empty")
+      
+      logger.info(f"PDF generated successfully: {filename} ({file_size} bytes)")
+      
   except PdfGenerationError:
     raise
   except Exception as exc:
+    logger.error(f"Unexpected error during PDF generation: {exc}", exc_info=True)
     raise PdfGenerationError("Failed to render preview PDF") from exc
 
   return GeneratedPdf(title=title, relative_path=f"exports/{filename}")

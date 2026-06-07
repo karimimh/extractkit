@@ -443,22 +443,20 @@ function PdfTool() {
         use_print_css: renderMode === "print",
       };
 
-      if (previewSnapshot && previewBaseUrl) {
-        let finalSnapshot = previewSnapshot;
-        if (iframeRef.current?.contentDocument) {
-          const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
-          docCopy.getElementById("pdf-picker-style")?.remove();
-          docCopy.getElementById("pdf-picker-script")?.remove();
+      if (previewSnapshot && previewBaseUrl && iframeRef.current?.contentDocument) {
+        // Use the live iframe DOM. This is accessible when the iframe is still on the
+        // original blob URL (user has not clicked any navigation links).
+        // If the user clicked a link and the iframe navigated to a cross-origin URL,
+        // contentDocument becomes null — in that case we skip the snapshot entirely
+        // and let the backend generate a fresh PDF from the original URL via Playwright.
+        const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
+        docCopy.getElementById("pdf-picker-style")?.remove();
+        docCopy.getElementById("pdf-picker-script")?.remove();
+        // Strip scripts so JS frameworks (Next.js, React, etc.) don't attempt to
+        // re-hydrate the static DOM inside Playwright and crash the page.
+        Array.from(docCopy.getElementsByTagName("script")).forEach(script => script.remove());
 
-          // Remove all script tags from the snapshot before sending it to the PDF renderer.
-          // This prevents client-side frameworks (like Next.js/React) from attempting to 
-          // rehydrate on the static DOM within Playwright and crashing the page.
-          Array.from(docCopy.getElementsByTagName("script")).forEach(script => script.remove());
-
-          finalSnapshot = docCopy.documentElement.outerHTML;
-        }
-
-        exportPayload.html_snapshot = finalSnapshot;
+        exportPayload.html_snapshot = docCopy.documentElement.outerHTML;
         exportPayload.base_url = previewBaseUrl;
       }
 
