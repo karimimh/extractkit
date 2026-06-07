@@ -72,7 +72,7 @@ GOOGLE_CLIENT_ID=<your-google-client-id>
 NOWPAYMENTS_API_KEY=<key>
 NOWPAYMENTS_IPN_SECRET=<secret>
 NOWPAYMENTS_SANDBOX=false
-NOWPAYMENTS_IPN_CALLBACK_URL=https://distillpage.com/api/payments/ipn/
+NOWPAYMENTS_IPN_CALLBACK_URL=https://distillpage.com/api/payments/webhook/
 NOWPAYMENTS_SUCCESS_URL=https://distillpage.com?payment=success
 NOWPAYMENTS_CANCEL_URL=https://distillpage.com?payment=cancelled
 

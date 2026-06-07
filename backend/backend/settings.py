@@ -191,7 +191,7 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     # Exempt the NOWPayments IPN callback from SSL redirect so the POST body
     # is not lost when NOWPayments calls http:// instead of https://
-    SECURE_REDIRECT_EXEMPT = [r'^api/payments/webhook/$']
+    SECURE_REDIRECT_EXEMPT = [r'^api/payments/webhook/$', r'^api/payments/ipn/$']
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
