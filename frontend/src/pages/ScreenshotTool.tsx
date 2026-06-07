@@ -4,6 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { AuthModal } from "../components/AuthModal";
 import { PaymentModal } from "../components/PaymentModal";
+import { usePageSeo } from "../hooks/usePageSeo";
+
+const SS_TOOL_SEO = {
+  title: "Web to Screenshot – DistillPage",
+  description:
+    "Capture clean, full-page screenshots of any website. Remove ads, popups, and clutter before shooting — choose mobile, tablet, or desktop viewport. Free to try.",
+  canonical: "https://distillpage.com/web-to-screenshot",
+  jsonLd: {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Web to Screenshot – DistillPage",
+    url: "https://distillpage.com/web-to-screenshot",
+    description:
+      "Capture clean, full-page screenshots of any website. Remove ads and clutter, choose your viewport size, and export a high-fidelity image in seconds.",
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  },
+};
 
 type ExportResult = {
   title: string;
@@ -185,6 +204,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 }
 
 function ScreenshotTool() {
+  usePageSeo(SS_TOOL_SEO);
   const { token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);

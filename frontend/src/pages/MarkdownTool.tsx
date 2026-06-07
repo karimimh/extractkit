@@ -6,6 +6,25 @@ import { AuthModal } from "../components/AuthModal";
 import { PaymentModal } from "../components/PaymentModal";
 import { ThemeProvider } from "../tools/notes/context/ThemeContext";
 import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
+import { usePageSeo } from "../hooks/usePageSeo";
+
+const MD_TOOL_SEO = {
+  title: "Web to Markdown Converter – DistillPage",
+  description:
+    "Convert any website to clean, readable Markdown in seconds. Remove unwanted elements and export distilled content ready for docs, notes, or LLMs. Free to try.",
+  canonical: "https://distillpage.com/web-to-markdown",
+  jsonLd: {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Web to Markdown Converter – DistillPage",
+    url: "https://distillpage.com/web-to-markdown",
+    description:
+      "Convert any website to clean, readable Markdown. Remove ads and clutter, then export distilled content ready for docs, notes, or LLM input.",
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  },
+};
 
 type ExportResult = {
   title: string;
@@ -181,6 +200,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 }
 
 function MarkdownTool() {
+  usePageSeo(MD_TOOL_SEO);
   const { token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);

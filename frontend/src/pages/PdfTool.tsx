@@ -4,6 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { AuthModal } from "../components/AuthModal";
 import { PaymentModal } from "../components/PaymentModal";
+import { usePageSeo } from "../hooks/usePageSeo";
+
+const PDF_TOOL_SEO = {
+  title: "Web to PDF Converter – DistillPage",
+  description:
+    "Convert any website to a clean, high-fidelity PDF in seconds. Visually remove ads, navbars, and cookie banners before exporting. Free to try.",
+  canonical: "https://distillpage.com/web-to-pdf",
+  jsonLd: {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Web to PDF Converter – DistillPage",
+    url: "https://distillpage.com/web-to-pdf",
+    description:
+      "Convert any website to a clean, high-fidelity PDF. Visually remove ads, navbars, and cookie banners, then export a polished PDF in seconds.",
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  },
+};
 
 type ExportResult = {
   title: string;
@@ -228,6 +247,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 }
 
 function PdfTool() {
+  usePageSeo(PDF_TOOL_SEO);
   const { token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
