@@ -1,13 +1,15 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { Menu, X } from "lucide-react";
 import { UserHeader } from "./UserHeader";
 
 const ALL_TOOLS = [
   { to: "/web-to-pdf", label: "Web → PDF" },
   { to: "/web-to-markdown", label: "Web → Markdown" },
   { to: "/web-to-screenshot", label: "Web → Screenshot" },
-  { to: "/study", label: "PDF → Study" },
-  { to: "/notes", label: "NoteMD" },
-  { to: "/images", label: "Image Tools" },
+  // { to: "/study", label: "PDF → Study" },
+  // { to: "/notes", label: "NoteMD" },
+  // { to: "/images", label: "Image Tools" },
 ];
 
 const WEB_TOOLS = ["/web-to-pdf", "/web-to-markdown", "/web-to-screenshot"];
@@ -16,6 +18,8 @@ const TOOLS = import.meta.env.PROD
   : ALL_TOOLS;
 
 export function AppNav() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <>
       <svg className="app-nav-zigzag-defs" aria-hidden="true">
@@ -57,11 +61,37 @@ export function AppNav() {
               </NavLink>
             ))}
           </div>
-          <div className="app-nav-user">
-            <UserHeader />
+          <div className="app-nav-right">
+            <div className="app-nav-user">
+              <UserHeader />
+            </div>
+            <button
+              type="button"
+              className="app-nav-hamburger"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMobileMenuOpen((v) => !v)}
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
       </nav>
+      {mobileMenuOpen && (
+        <div className="app-nav-mobile-drawer">
+          {TOOLS.map((tool) => (
+            <NavLink
+              key={tool.to}
+              to={tool.to}
+              className={({ isActive }) =>
+                isActive ? "app-nav-link active" : "app-nav-link"
+              }
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {tool.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
       </div>
     </>
   );

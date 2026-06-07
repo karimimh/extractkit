@@ -383,6 +383,7 @@ function MarkdownTool() {
       }
 
       setResult(payload as ExportResult);
+      void refreshUser();
     } catch {
       setError("Unable to reach backend. Ensure Django server is running.");
     } finally {
@@ -514,7 +515,7 @@ function MarkdownTool() {
             </div>
 
             <div className="export-actions">
-              <button type="button" onClick={onSubmit} disabled={isLoading}>
+              <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
                 {isLoading ? "Converting to Markdown..." : "Export Markdown"}
               </button>
             </div>

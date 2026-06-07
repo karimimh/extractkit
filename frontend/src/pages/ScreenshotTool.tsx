@@ -389,6 +389,7 @@ function ScreenshotTool() {
       }
 
       setResult(payload as ExportResult);
+      void refreshUser();
     } catch {
       setError("Unable to reach backend. Ensure Django server is running.");
     } finally {
@@ -533,7 +534,7 @@ function ScreenshotTool() {
             </div>
 
             <div className="export-actions">
-              <button type="button" onClick={onSubmit} disabled={isLoading}>
+              <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
                 {isLoading ? "Capturing screenshot..." : "Capture Screenshot"}
               </button>
             </div>
