@@ -40,10 +40,19 @@ export function AppNav() {
               1,0
             " />
           </clipPath>
+          <clipPath id="app-nav-zigzag-mobile" clipPathUnits="objectBoundingBox">
+            <polygon points="
+              0,0 0,0.88
+              0.0625,1 0.125,0.88 0.1875,1 0.25,0.88 0.3125,1 0.375,0.88
+              0.4375,1 0.5,0.88 0.5625,1 0.625,0.88 0.6875,1 0.75,0.88
+              0.8125,1 0.875,0.88 0.9375,1 1,0.88
+              1,0
+            " />
+          </clipPath>
         </defs>
       </svg>
       <div className="app-nav-shadow-wrapper">
-      <nav className="app-nav" style={{ clipPath: "url(#app-nav-zigzag)" }}>
+      <nav className="app-nav">
         <div className="app-nav-inner">
           <NavLink to="/" className="app-nav-brand">
             DistillPage
