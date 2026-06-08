@@ -141,7 +141,3 @@ Users can:
 - Search everything
 
 This is much more valuable than a collection of unrelated converters.
-
-## PROMPTS
-
-I want a new feature to be added to our export tools (pdf, markdown, screenshot): the bulk url feature. The user can enter multiple urls of websites and get a clean

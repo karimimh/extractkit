@@ -2,6 +2,9 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
+    BulkExportMarkdownView,
+    BulkExportPdfView,
+    BulkExportScreenshotView,
     ChangePasswordView,
     CreatePaymentView,
     ExportMarkdownView,
@@ -23,6 +26,9 @@ urlpatterns = [
     path("export/", ExportPdfView.as_view(), name="export-pdf"),
     path("export-markdown/", ExportMarkdownView.as_view(), name="export-markdown"),
     path("export-screenshot/", ExportScreenshotView.as_view(), name="export-screenshot"),
+    path("export/bulk-pdf/", BulkExportPdfView.as_view(), name="bulk-export-pdf"),
+    path("export/bulk-markdown/", BulkExportMarkdownView.as_view(), name="bulk-export-markdown"),
+    path("export/bulk-screenshot/", BulkExportScreenshotView.as_view(), name="bulk-export-screenshot"),
     path("preview/", PreviewPageView.as_view(), name="preview-page"),
     # Auth
     path("auth/register/", RegisterView.as_view(), name="auth-register"),

@@ -1,9 +1,10 @@
-import { Minus, MousePointer } from "lucide-react";
+import { Layers, Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { AuthModal } from "../components/AuthModal";
 import { PaymentModal } from "../components/PaymentModal";
+import { BulkUrlInput } from "../components/BulkUrlInput";
 import { ThemeProvider } from "../tools/notes/context/ThemeContext";
 import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
 import { usePageSeo } from "../hooks/usePageSeo";
@@ -31,6 +32,12 @@ type ExportResult = {
   content: string;
 };
 
+type BulkExportResult = {
+  title: string;
+  file_url: string;
+  file_ext: string;
+};
+
 type PreviewResponse = {
   title: string;
   html: string;
@@ -42,6 +49,8 @@ type ErrorPayload = {
 };
 
 type InteractionMode = "cursor" | "select";
+type ToolMode = "single" | "bulk";
+type BulkOutputMode = "zip" | "combined";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "md-picker-select";
@@ -201,9 +210,12 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 
 function MarkdownTool() {
   usePageSeo(MD_TOOL_SEO);
-  const { token, refreshUser } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // --- Mode ---
+  const [toolMode, setToolMode] = useState<ToolMode>("single");
+  // --- Single URL state ---
   const [url, setUrl] = useState("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSnapshot, setPreviewSnapshot] = useState<string | null>(null);
@@ -219,6 +231,10 @@ function MarkdownTool() {
   const [isLoading, setIsLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewRequestIdRef = useRef(0);
+  // --- Bulk state ---
+  const [bulkUrls, setBulkUrls] = useState<string>("");
+  const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
+  const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -427,6 +443,62 @@ function MarkdownTool() {
     URL.revokeObjectURL(href);
   };
 
+  const onBulkSubmit = async () => {
+    setError(null);
+    setErrorType(null);
+    setBulkResult(null);
+
+    const validUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
+    if (validUrls.length === 0) {
+      setError("Please enter at least one URL.");
+      return;
+    }
+
+    if (!token) {
+      setErrorType("anon_limit");
+      setError("Sign in to use bulk export.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/export/bulk-markdown/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ urls: validUrls, output_mode: bulkOutputMode }),
+      });
+
+      const payload = (await response.json()) as BulkExportResult | ErrorPayload;
+
+      if (!response.ok) {
+        const detail = (payload as ErrorPayload).detail;
+        if (response.status === 402) {
+          setErrorType("no_credits");
+          setError(detail ?? "Not enough credits.");
+        } else if (response.status === 403) {
+          setErrorType("anon_limit");
+          setError(detail ?? "Sign in to use bulk export.");
+        } else {
+          setErrorType("generic");
+          setError(detail ?? "Failed to generate bulk Markdown.");
+        }
+        return;
+      }
+
+      setBulkResult(payload as BulkExportResult);
+      void refreshUser();
+    } catch {
+      setError("Unable to reach backend. Ensure Django server is running.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const creditCostPerUrl = 1;
+  const validBulkUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
+  const totalCreditCost = validBulkUrls.length * creditCostPerUrl;
+  const hasEnoughCredits = !user || user.download_credits >= totalCreditCost;
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -445,6 +517,31 @@ function MarkdownTool() {
 
         <div className="card-grid" style={{ marginTop: "1.9rem" }}>
           <div className="control-stack">
+
+            {/* Mode toggle */}
+            <div className="toggle-group">
+              <span>Export mode</span>
+              <div className="toggle-buttons">
+                <button
+                  type="button"
+                  className={toolMode === "single" ? "active" : ""}
+                  onClick={() => { setToolMode("single"); setError(null); setBulkResult(null); }}
+                >
+                  Single URL
+                </button>
+                <button
+                  type="button"
+                  className={toolMode === "bulk" ? "active flex-button" : "flex-button"}
+                  onClick={() => { setToolMode("bulk"); setError(null); setResult(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <Layers size={14} /> Bulk URLs
+                </button>
+              </div>
+            </div>
+
+            {toolMode === "single" ? (
+              <>
             <form onSubmit={handlePreview} className="export-form">
               <label htmlFor="url">Website URL</label>
               <div className="url-row">
@@ -582,6 +679,87 @@ function MarkdownTool() {
                   </ThemeProvider>
                 </div>
               </div>
+            )}
+            </>
+            ) : (
+              /* ── Bulk mode ── */
+              <>
+                <div className="export-form">
+                  <label>Website URLs</label>
+                  <BulkUrlInput value={bulkUrls} onChange={setBulkUrls} maxUrls={50} validCount={validBulkUrls.length} />
+                </div>
+
+                <div className="toggle-group">
+                  <span>Output format</span>
+                  <div className="toggle-buttons">
+                    <button
+                      type="button"
+                      className={bulkOutputMode === "zip" ? "active" : ""}
+                      onClick={() => setBulkOutputMode("zip")}
+                    >
+                      ZIP (one .md per URL)
+                    </button>
+                    <button
+                      type="button"
+                      className={bulkOutputMode === "combined" ? "active" : ""}
+                      onClick={() => setBulkOutputMode("combined")}
+                    >
+                      Combined Markdown
+                    </button>
+                  </div>
+                </div>
+
+                {validBulkUrls.length > 0 && (
+                  <div className={`credit-cost-info ${!hasEnoughCredits ? "insufficient" : ""}`}>
+                    <span>
+                      This will use <strong>{totalCreditCost} credit{totalCreditCost !== 1 ? "s" : ""}</strong>
+                      {user ? ` (you have ${user.download_credits})` : ""}
+                    </span>
+                    {!hasEnoughCredits && (
+                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                        Buy Credits
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="export-actions">
+                  <button
+                    type="button"
+                    onClick={onBulkSubmit}
+                    disabled={isLoading || !hasEnoughCredits || validBulkUrls.length === 0}
+                    className={isLoading ? "export-loading" : ""}
+                  >
+                    {isLoading ? "Converting to Markdown..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to Markdown`}
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="message error">
+                    <span>{error}</span>
+                    {errorType === "no_credits" && (
+                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                        Buy Credits
+                      </button>
+                    )}
+                    {errorType === "anon_limit" && (
+                      <button type="button" className="inline-action" onClick={() => setShowAuthModal(true)}>
+                        Sign In
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {bulkResult && (
+                  <div className="result-panel">
+                    <h2>{bulkResult.title}</h2>
+                    <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined Markdown file"} is ready.</p>
+                    <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
+                      Download .{bulkResult.file_ext}
+                    </a>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

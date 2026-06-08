@@ -9,6 +9,38 @@ class PreviewRequestSerializer(serializers.Serializer):
     use_print_css = serializers.BooleanField(required=False, default=False)
 
 
+# ---------------------------------------------------------------------------
+# Bulk export serializers
+# ---------------------------------------------------------------------------
+
+class BulkExportPdfSerializer(serializers.Serializer):
+    urls = serializers.ListField(
+        child=serializers.URLField(),
+        min_length=1,
+        max_length=50,
+    )
+    output_mode = serializers.ChoiceField(choices=["zip", "combined"], default="zip")
+    use_print_css = serializers.BooleanField(required=False, default=False)
+
+
+class BulkExportMarkdownSerializer(serializers.Serializer):
+    urls = serializers.ListField(
+        child=serializers.URLField(),
+        min_length=1,
+        max_length=50,
+    )
+    output_mode = serializers.ChoiceField(choices=["zip", "combined"], default="zip")
+
+
+class BulkExportScreenshotSerializer(serializers.Serializer):
+    urls = serializers.ListField(
+        child=serializers.URLField(),
+        min_length=1,
+        max_length=50,
+    )
+    width = serializers.IntegerField(required=False, default=1440, min_value=320, max_value=3840)
+
+
 class ExportMarkdownSerializer(serializers.Serializer):
     url = serializers.URLField(required=True)
     html_snapshot = serializers.CharField(required=False, allow_blank=True)

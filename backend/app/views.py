@@ -18,6 +18,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import AnonymousDownload, CryptoPayment, UserProfile
 from .serializers import (
+    BulkExportMarkdownSerializer,
+    BulkExportPdfSerializer,
+    BulkExportScreenshotSerializer,
     CreatePaymentSerializer,
     ExportMarkdownSerializer,
     ExportRequestSerializer,
@@ -31,13 +34,20 @@ from .services.cleaner import clean_html
 from .services.credits import InsufficientCredits, charge, get_balance, grant
 from .services.extractor import ContentExtractionError, extract_main_content
 from .services.markdown_generator import MarkdownGenerationError, html_to_markdown
+from .services.markdown_generator import (
+    generate_bulk_markdown_zip,
+    generate_combined_markdown,
+)
 from .services.screenshot_generator import (
     ScreenshotGenerationError,
+    generate_bulk_screenshots_zip,
     generate_screenshot_from_snapshot,
     generate_screenshot_from_url,
 )
 from .services.pdf_generator import (
     PdfGenerationError,
+    generate_bulk_pdfs_zip,
+    generate_combined_pdf,
     generate_pdf_from_snapshot,
     generate_pdf_from_url,
     render_html_snapshot,
@@ -523,6 +533,168 @@ class ExportScreenshotView(APIView):
                 "title": generated.title,
                 "image_url": image_url,
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Bulk export views
+# ---------------------------------------------------------------------------
+
+class BulkExportPdfView(APIView):
+    @extend_schema(tags=["Export"])
+    def post(self, request):
+        # Bulk export requires authentication — no anonymous bulk exports
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Sign in to use bulk export."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = BulkExportPdfSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        urls = serializer.validated_data["urls"]
+        output_mode = serializer.validated_data["output_mode"]
+        use_print_css = serializer.validated_data.get("use_print_css", False)
+        n = len(urls)
+
+        # Check credits upfront
+        from .services.credits import credit_cost, has_credits
+        cost_per = credit_cost("pdf.export")
+        total_cost = cost_per * n
+        if get_balance(request.user) < total_cost:
+            return Response(
+                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        try:
+            if output_mode == "combined":
+                title, relative_path = generate_combined_pdf(urls, use_print_css=use_print_css)
+                file_ext = "pdf"
+            else:
+                _titles, relative_path = generate_bulk_pdfs_zip(urls, use_print_css=use_print_css)
+                title = "Bulk PDF Export"
+                file_ext = "zip"
+        except PdfGenerationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"detail": "Failed to generate bulk PDFs"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Charge for successfully generated URLs only (charge n credits)
+        try:
+            charge(request.user, "pdf.export", units=n)
+        except InsufficientCredits:
+            return Response(
+                {"detail": "No download credits remaining. Please purchase more."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        file_url = request.build_absolute_uri(f"/media/{relative_path}")
+        return Response(
+            {"title": title, "file_url": file_url, "file_ext": file_ext},
+            status=status.HTTP_200_OK,
+        )
+
+
+class BulkExportMarkdownView(APIView):
+    @extend_schema(tags=["Export"])
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Sign in to use bulk export."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = BulkExportMarkdownSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        urls = serializer.validated_data["urls"]
+        output_mode = serializer.validated_data["output_mode"]
+        n = len(urls)
+
+        from .services.credits import credit_cost, has_credits
+        cost_per = credit_cost("markdown.export")
+        total_cost = cost_per * n
+        if get_balance(request.user) < total_cost:
+            return Response(
+                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        try:
+            from .services.markdown_generator import MarkdownGenerationError
+            if output_mode == "combined":
+                title, relative_path = generate_combined_markdown(urls)
+                file_ext = "md"
+            else:
+                _titles, relative_path = generate_bulk_markdown_zip(urls)
+                title = "Bulk Markdown Export"
+                file_ext = "zip"
+        except MarkdownGenerationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"detail": "Failed to generate bulk Markdown"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            charge(request.user, "markdown.export", units=n)
+        except InsufficientCredits:
+            return Response(
+                {"detail": "No download credits remaining. Please purchase more."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        file_url = request.build_absolute_uri(f"/media/{relative_path}")
+        return Response(
+            {"title": title, "file_url": file_url, "file_ext": file_ext},
+            status=status.HTTP_200_OK,
+        )
+
+
+class BulkExportScreenshotView(APIView):
+    @extend_schema(tags=["Export"])
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Sign in to use bulk export."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = BulkExportScreenshotSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        urls = serializer.validated_data["urls"]
+        width = serializer.validated_data.get("width", 1440)
+        n = len(urls)
+
+        from .services.credits import credit_cost
+        cost_per = credit_cost("screenshot.export")
+        total_cost = cost_per * n
+        if get_balance(request.user) < total_cost:
+            return Response(
+                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        try:
+            _titles, relative_path = generate_bulk_screenshots_zip(urls, width=width)
+        except ScreenshotGenerationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"detail": "Failed to generate bulk screenshots"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            charge(request.user, "screenshot.export", units=n)
+        except InsufficientCredits:
+            return Response(
+                {"detail": "No download credits remaining. Please purchase more."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        file_url = request.build_absolute_uri(f"/media/{relative_path}")
+        return Response(
+            {"title": "Bulk Screenshot Export", "file_url": file_url, "file_ext": "zip"},
             status=status.HTTP_200_OK,
         )
 

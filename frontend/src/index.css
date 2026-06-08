@@ -1262,3 +1262,63 @@ h2.subtitle {
 	0% { opacity: 1; transform: scale(1); }
 	100% { opacity: 0; transform: scale(0.95); }
 }
+
+/* ── Bulk URL Input ───────────────────────────────────────────────────── */
+
+.bulk-url-input {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.bulk-url-textarea {
+	width: 100%;
+	min-height: 140px;
+	padding: 0.65rem 0.85rem;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	font-size: 0.88rem;
+	font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+	line-height: 1.7;
+	color: var(--text-main);
+	background: #fff;
+	resize: vertical;
+	transition: border-color 150ms, box-shadow 150ms;
+}
+
+.bulk-url-textarea:focus {
+	outline: none;
+	border-color: var(--accent);
+	box-shadow: 0 0 0 2px #0f766e22;
+}
+
+.bulk-url-textarea::placeholder {
+	color: #94a3b8;
+}
+
+.bulk-url-hint {
+	font-size: 0.78rem;
+	color: #94a3b8;
+	margin: 0;
+}
+
+/* ── Credit cost banner ──────────────────────────────────────────────── */
+
+.credit-cost-info {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.6rem 1rem;
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	border-radius: 8px;
+	font-size: 0.88rem;
+	color: #166534;
+}
+
+.credit-cost-info.insufficient {
+	background: #fff7ed;
+	border-color: #fed7aa;
+	color: #9a3412;
+}

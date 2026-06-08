@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -122,3 +124,37 @@ def generate_screenshot_from_snapshot(
         raise ScreenshotGenerationError("Failed to capture screenshot from snapshot") from exc
 
     return GeneratedScreenshot(title=title, relative_path=f"exports/{filename}")
+
+
+# ---------------------------------------------------------------------------
+# Bulk export helper
+# ---------------------------------------------------------------------------
+
+def generate_bulk_screenshots_zip(
+    urls: list[str],
+    width: int = 1440,
+) -> tuple[list[str], str]:
+    """Generate screenshots for each URL and bundle them into a ZIP archive.
+
+    Returns (titles, zip_relative_path).
+    """
+    exports_dir = Path(settings.MEDIA_ROOT) / "exports"
+    exports_dir.mkdir(parents=True, exist_ok=True)
+
+    zip_filename = f"bulk_ss_{uuid4().hex}.zip"
+    zip_path = exports_dir / zip_filename
+    titles: list[str] = []
+
+    with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
+        for i, url in enumerate(urls, 1):
+            try:
+                generated = generate_screenshot_from_url(url, width=width)
+                titles.append(generated.title)
+                img_path = Path(settings.MEDIA_ROOT) / generated.relative_path
+                sanitized = re.sub(r"[^\w\- ]", "", generated.title)[:80].strip() or f"page_{i}"
+                zf.write(str(img_path), f"{i:02d}_{sanitized}.png")
+                img_path.unlink(missing_ok=True)
+            except ScreenshotGenerationError:
+                titles.append(f"Page {i} (failed)")
+
+    return titles, f"exports/{zip_filename}"
