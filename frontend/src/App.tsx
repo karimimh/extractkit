@@ -1,12 +1,11 @@
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { AppNav } from "./components/AppNav";
-import PdfTool from "./pages/PdfTool";
-import MarkdownTool from "./pages/MarkdownTool";
-import ScreenshotTool from "./pages/ScreenshotTool";
-import { ToolPlaceholder } from "./pages/ToolPlaceholder";
-import StudyTool from "./tools/study/StudyTool";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { AppNav } from "./components/app-nav";
+import WebsiteToMarkdown from "./pages/website-to-markdown";
+import WebsiteToScreenshot from "./pages/website-to-screenshot";
+import WebsiteToPdf from "./pages/website-to-pdf";
 import ImagesTool from "./tools/images/ImagesTool";
 import NotesTool from "./tools/notes/NotesTool";
+import StudyTool from "./tools/study/StudyTool";
 
 function Layout() {
   return (
@@ -22,9 +21,9 @@ function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/web-to-pdf" replace />} />
-        <Route path="/web-to-pdf" element={<PdfTool />} />
-        <Route path="/web-to-markdown" element={<MarkdownTool />} />
-        <Route path="/web-to-screenshot" element={<ScreenshotTool />} />
+        <Route path="/web-to-pdf" element={<WebsiteToPdf />} />
+        <Route path="/web-to-markdown" element={<WebsiteToMarkdown />} />
+        <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
         {!import.meta.env.PROD && (
           <>
             <Route path="/study/*" element={<StudyTool />} />

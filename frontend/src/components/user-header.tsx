@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useAuth } from "../context/AuthContext";
-import { AuthModal } from "./AuthModal";
-import { PaymentModal } from "./PaymentModal";
+import { useAuth } from "../context/auth-context";
+import { AuthModal } from "./auth-modal";
+import { PaymentModal } from "./payment-modal";
 import { User } from "lucide-react";
 
 export function UserHeader() {

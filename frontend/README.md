@@ -10,7 +10,7 @@ src/
   main.tsx         Entry point (BrowserRouter, AuthProvider, GoogleOAuthProvider)
   components/      AppNav, UserHeader
   context/         Shared AuthContext (JWT, auto-refresh)
-  pages/           PdfTool, ToolPlaceholder
+  pages/           WebsiteToPdf
   tools/
     study/         Study tool (ported from readeb / Next.js)
     notes/         Notes tool (ported from note-cards)
@@ -39,8 +39,7 @@ npx tsc -b
 
 ## Env vars
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_API_BASE_URL` | `window.location.origin` | Base URL for the distillpage backend |
-| `VITE_GOOGLE_CLIENT_ID` | — | Google OAuth client ID |
-
+| Variable                | Default                  | Description                          |
+| ----------------------- | ------------------------ | ------------------------------------ |
+| `VITE_API_BASE_URL`     | `window.location.origin` | Base URL for the distillpage backend |
+| `VITE_GOOGLE_CLIENT_ID` | —                        | Google OAuth client ID               |

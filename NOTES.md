@@ -61,19 +61,11 @@ Produce:
 - Flashcards
 - Cheat sheet
 
-8. **Bulk URL Archiver**
-
-Upload hundreds of URLs and export:
-
-- PDFs
-- Markdown
-- Screenshots
-
-9. **Web → Blog Post**
+8. **Web → Blog Post**
 
 Rewrite an article into a new blog post.
 
-10. **Web → Social Posts**
+9. **Web → Social Posts**
 
 Generate:
 
@@ -81,15 +73,15 @@ Generate:
 - LinkedIn posts
 - Reddit summaries
 
-11. **Web → Newsletter**
+10. **Web → Newsletter**
 
 Turn articles into newsletter content.
 
-12. **Web → FAQ**
+11. **Web → FAQ**
 
 Automatically generate FAQs from a webpage.
 
-13. **Metadata Extractor**
+12. **Metadata Extractor**
 
 Extract:
 
@@ -98,9 +90,15 @@ Extract:
 - Canonicals
 - Structured data
 
-14. **Readability Cleaner**
+13. **Readability Cleaner**
 
 Remove ads, popups, navigation, and keep only content.
+
+14. **Text to Image**
+
+given a text, create an image with that text inside it. may be good for social media posts.
+
+maybe `web to image` can be a different tool from `web to screenshot`. here we use AI to summarize website's content and download this text as images
 
 ## VISION
 

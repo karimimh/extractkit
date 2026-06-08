@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { UserHeader } from "./UserHeader";
+import { UserHeader } from "./user-header";
 
 const ALL_TOOLS = [
   { to: "/web-to-pdf", label: "Web → PDF" },

@@ -1,24 +1,24 @@
 import { Layers, Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { AuthModal } from "../components/AuthModal";
-import { PaymentModal } from "../components/PaymentModal";
-import { BulkUrlInput } from "../components/BulkUrlInput";
-import { usePageSeo } from "../hooks/usePageSeo";
+import { useAuth } from "../context/auth-context";
+import { AuthModal } from "../components/auth-modal";
+import { PaymentModal } from "../components/payment-modal";
+import { BulkUrlInput } from "../components/bulk-url-input";
+import { usePageSeo } from "../hooks/use-page-seo";
 
-const PDF_TOOL_SEO = {
-  title: "Web to PDF Converter – DistillPage",
+const SS_TOOL_SEO = {
+  title: "Web to Screenshot – DistillPage",
   description:
-    "Convert any website to a clean, high-fidelity PDF in seconds. Visually remove ads, navbars, and cookie banners before exporting. Free to try.",
-  canonical: "https://distillpage.com/web-to-pdf",
+    "Capture clean, full-page screenshots of any website. Remove ads, popups, and clutter before shooting — choose mobile, tablet, or desktop viewport. Free to try.",
+  canonical: "https://distillpage.com/web-to-screenshot",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Web to PDF Converter – DistillPage",
-    url: "https://distillpage.com/web-to-pdf",
+    name: "Web to Screenshot – DistillPage",
+    url: "https://distillpage.com/web-to-screenshot",
     description:
-      "Convert any website to a clean, high-fidelity PDF. Visually remove ads, navbars, and cookie banners, then export a polished PDF in seconds.",
+      "Capture clean, full-page screenshots of any website. Remove ads and clutter, choose your viewport size, and export a high-fidelity image in seconds.",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -27,7 +27,7 @@ const PDF_TOOL_SEO = {
 
 type ExportResult = {
   title: string;
-  pdf_url: string;
+  image_url: string;
 };
 
 type BulkExportResult = {
@@ -47,14 +47,20 @@ type ErrorPayload = {
 };
 
 type InteractionMode = "cursor" | "select";
-type RenderMode = "screen" | "print";
+type ViewportWidth = 375 | 768 | 1280 | 1440;
 type ToolMode = "single" | "bulk";
-type BulkOutputMode = "zip" | "combined";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-const SELECT_MESSAGE = "pdf-picker-select";
-const CLEAR_MESSAGE = "pdf-picker-clear";
-const MODE_MESSAGE = "pdf-picker-set-mode";
+const SELECT_MESSAGE = "ss-picker-select";
+const CLEAR_MESSAGE = "ss-picker-clear";
+const MODE_MESSAGE = "ss-picker-set-mode";
+
+const VIEWPORT_OPTIONS: { label: string; value: ViewportWidth }[] = [
+  { label: "Mobile (375px)", value: 375 },
+  { label: "Tablet (768px)", value: 768 },
+  { label: "Desktop (1280px)", value: 1280 },
+  { label: "Wide (1440px)", value: 1440 },
+];
 
 function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode: InteractionMode) {
   const parser = new DOMParser();
@@ -66,14 +72,14 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   head.prepend(baseTag);
 
   const style = documentNode.createElement("style");
-  style.id = "pdf-picker-style";
+  style.id = "ss-picker-style";
   style.textContent = `
-    .pdf-picker-hover {
+    .ss-picker-hover {
       outline: 2px dashed #0f766e !important;
       outline-offset: 2px;
       cursor: crosshair !important;
     }
-    .pdf-picker-selected {
+    .ss-picker-selected {
       outline: 2px solid #f97316 !important;
       outline-offset: 2px;
       background: rgba(249, 115, 22, 0.12) !important;
@@ -82,11 +88,9 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   head.appendChild(style);
 
   const script = documentNode.createElement("script");
-  script.id = "pdf-picker-script";
+  script.id = "ss-picker-script";
   script.textContent = `
     (() => {
-      // Patch URL constructor for frameworks (like Next.js) that calculate using window.location.href
-      // which fails when the iframe is hosted via a blob: or about:srcdoc URL.
       const OriginalURL = window.URL;
       window.URL = function URL(url, base) {
         let activeBase = base;
@@ -98,43 +102,25 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
         try {
           return new OriginalURL(url, activeBase);
         } catch (e) {
-          // Fallback to document.baseURI if no base was provided and original threw
-          if (!base && document.baseURI) {
-            return new OriginalURL(url, document.baseURI);
-          }
+          if (!base && document.baseURI) return new OriginalURL(url, document.baseURI);
           throw e;
         }
       };
-      
-      // Preserve static methods
       window.URL.createObjectURL = OriginalURL.createObjectURL;
       window.URL.revokeObjectURL = OriginalURL.revokeObjectURL;
-
       window.URL.canParse = OriginalURL.canParse;
 
-      // Patch history.pushState and history.replaceState to prevent cross-origin errors
-      // when SPA frameworks try to navigate within the blob: iframe.
       const originalPushState = window.history.pushState;
       const originalReplaceState = window.history.replaceState;
-      
       window.history.pushState = function() {
-        try {
-          return originalPushState.apply(this, arguments);
-        } catch (e) {
-          console.warn("Ignored pushState error in iframe", e);
-        }
+        try { return originalPushState.apply(this, arguments); } catch (e) {}
       };
-      
       window.history.replaceState = function() {
-        try {
-          return originalReplaceState.apply(this, arguments);
-        } catch (e) {
-          console.warn("Ignored replaceState error in iframe", e);
-        }
+        try { return originalReplaceState.apply(this, arguments); } catch (e) {}
       };
 
-      const HOVER = "pdf-picker-hover";
-      const SELECTED = "pdf-picker-selected";
+      const HOVER = "ss-picker-hover";
+      const SELECTED = "ss-picker-selected";
       let isSelectMode = ${interactionMode === "select" ? "true" : "false"};
 
       const isSelectable = (element) => {
@@ -145,23 +131,16 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 
       const cssPath = (element) => {
         if (!element || !(element instanceof Element)) return "";
-        if (element.id) {
-          return "#" + CSS.escape(element.id);
-        }
-
+        if (element.id) return "#" + CSS.escape(element.id);
         const segments = [];
         let current = element;
         while (current && current !== document.body) {
           const tag = current.tagName.toLowerCase();
           let segment = tag;
           const classList = Array.from(current.classList)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((name) => "." + CSS.escape(name))
-            .join("");
-          if (classList) {
-            segment += classList;
-          }
+            .filter(Boolean).slice(0, 2)
+            .map((name) => "." + CSS.escape(name)).join("");
+          if (classList) segment += classList;
           const parent = current.parentElement;
           if (parent) {
             const siblings = Array.from(parent.children).filter(
@@ -178,85 +157,62 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
       };
 
       const send = (selector, selected) => {
-        window.parent.postMessage(
-          { type: "${SELECT_MESSAGE}", selector, selected },
-          "*"
-        );
+        window.parent.postMessage({ type: "${SELECT_MESSAGE}", selector, selected }, "*");
       };
 
-      document.addEventListener(
-        "mouseover",
-        (event) => {
-          if (!isSelectMode) return;
-          const target = event.target;
-          if (!isSelectable(target)) return;
-          target.classList.add(HOVER);
-        },
-        true
-      );
+      document.addEventListener("mouseover", (event) => {
+        if (!isSelectMode) return;
+        const target = event.target;
+        if (!isSelectable(target)) return;
+        target.classList.add(HOVER);
+      }, true);
 
-      document.addEventListener(
-        "mouseout",
-        (event) => {
-          if (!isSelectMode) return;
-          const target = event.target;
-          if (!isSelectable(target)) return;
-          target.classList.remove(HOVER);
-        },
-        true
-      );
+      document.addEventListener("mouseout", (event) => {
+        if (!isSelectMode) return;
+        const target = event.target;
+        if (!isSelectable(target)) return;
+        target.classList.remove(HOVER);
+      }, true);
 
-      document.addEventListener(
-        "click",
-        (event) => {
-          if (!isSelectMode) return;
-          const target = event.target;
-          if (!isSelectable(target)) return;
-          event.preventDefault();
-          event.stopPropagation();
-          const selector = cssPath(target);
-          if (!selector) return;
-          const selected = target.classList.toggle(SELECTED);
-          target.dataset.pdfSelector = selector;
-          send(selector, selected);
-        },
-        true
-      );
+      document.addEventListener("click", (event) => {
+        if (!isSelectMode) return;
+        const target = event.target;
+        if (!isSelectable(target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const selector = cssPath(target);
+        if (!selector) return;
+        const selected = target.classList.toggle(SELECTED);
+        send(selector, selected);
+      }, true);
 
       window.addEventListener("message", (event) => {
         if (!event.data) return;
         if (event.data.type === "${CLEAR_MESSAGE}") {
-          document.querySelectorAll("." + SELECTED).forEach((element) => {
-            element.classList.remove(SELECTED);
-          });
+          document.querySelectorAll("." + SELECTED).forEach((el) => el.classList.remove(SELECTED));
         }
         if (event.data.type === "${MODE_MESSAGE}") {
           isSelectMode = event.data.mode === "select";
           if (!isSelectMode) {
-            document.querySelectorAll("." + HOVER).forEach((element) => {
-              element.classList.remove(HOVER);
-            });
+            document.querySelectorAll("." + HOVER).forEach((el) => el.classList.remove(HOVER));
           }
         }
       });
     })();
   `;
-  // Prepend our script so it executes before any of the original website's scripts
   if (head.firstChild) {
     head.insertBefore(script, head.firstChild);
   } else {
     head.appendChild(script);
   }
-
   if (!documentNode.head) {
     documentNode.documentElement.prepend(head);
   }
-
   return documentNode.documentElement.outerHTML;
 }
 
-function PdfTool() {
-  usePageSeo(PDF_TOOL_SEO);
+function WebsiteToScreenshot() {
+  usePageSeo(SS_TOOL_SEO);
   const { user, token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -272,7 +228,7 @@ function PdfTool() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
-  const [renderMode, setRenderMode] = useState<RenderMode>("print");
+  const [viewportWidth, setViewportWidth] = useState<ViewportWidth>(1440);
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<"generic" | "no_credits" | "anon_limit" | null>(null);
@@ -281,28 +237,20 @@ function PdfTool() {
   const previewRequestIdRef = useRef(0);
   // --- Bulk state ---
   const [bulkUrls, setBulkUrls] = useState<string>("");
-  const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const payload = event.data as { type?: string; selector?: string; selected?: boolean };
-      if (!payload || payload.type !== SELECT_MESSAGE || !payload.selector) {
-        return;
-      }
-
+      if (!payload || payload.type !== SELECT_MESSAGE || !payload.selector) return;
       setSelections((current) => {
         if (payload.selected) {
-          if (current.includes(payload.selector!)) {
-            return current;
-          }
+          if (current.includes(payload.selector!)) return current;
           return [...current, payload.selector!];
         }
-
-        return current.filter((selector) => selector !== payload.selector);
+        return current.filter((s) => s !== payload.selector);
       });
     };
-
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
@@ -312,18 +260,15 @@ function PdfTool() {
   useEffect(() => {
     if (previewHtml) {
       const blob = new Blob([previewHtml], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      setPreviewBlobUrl(url);
-      return () => URL.revokeObjectURL(url);
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewBlobUrl(blobUrl);
+      return () => URL.revokeObjectURL(blobUrl);
     } else {
       setPreviewBlobUrl(null);
     }
   }, [previewHtml]);
 
-  const loadPreview = async (
-    previewUrl: string,
-    requestId = ++previewRequestIdRef.current,
-  ) => {
+  const loadPreview = async (previewUrl: string, requestId = ++previewRequestIdRef.current) => {
     setPreviewError(null);
     setError(null);
     setResult(null);
@@ -332,24 +277,16 @@ function PdfTool() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/preview/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: previewUrl,
-          use_print_css: false,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: previewUrl, use_print_css: false }),
       });
 
       const payload = (await response.json()) as PreviewResponse | ErrorPayload;
 
-      if (requestId !== previewRequestIdRef.current) {
-        return;
-      }
+      if (requestId !== previewRequestIdRef.current) return;
 
       if (!response.ok) {
-        const detail = (payload as ErrorPayload).detail;
-        setPreviewError(detail ?? "Failed to load preview.");
+        setPreviewError((payload as ErrorPayload).detail ?? "Failed to load preview.");
         return;
       }
 
@@ -372,7 +309,6 @@ function PdfTool() {
 
   useEffect(() => {
     const trimmedUrl = url.trim();
-
     if (!trimmedUrl) {
       previewRequestIdRef.current += 1;
       setPreviewError(null);
@@ -384,24 +320,17 @@ function PdfTool() {
       setSelections([]);
       return;
     }
-
-    const timeoutId = window.setTimeout(() => {
-      void loadPreview(trimmedUrl);
-    }, 300);
-
+    const timeoutId = window.setTimeout(() => void loadPreview(trimmedUrl), 300);
     return () => window.clearTimeout(timeoutId);
   }, [url]);
 
   const handlePreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     const trimmedUrl = url.trim();
-
     if (!trimmedUrl) {
       setPreviewError("Please enter a URL.");
       return;
     }
-
     void loadPreview(trimmedUrl);
   };
 
@@ -421,11 +350,6 @@ function PdfTool() {
     iframeRef.current?.contentWindow?.postMessage({ type: MODE_MESSAGE, mode: nextMode }, "*");
   };
 
-  const handleRenderModeChange = (nextMode: RenderMode) => {
-    setRenderMode(nextMode);
-  };
-
-  // Handle ?payment=success redirect from NOWPayments
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
@@ -450,36 +374,32 @@ function PdfTool() {
       const exportPayload: {
         url: string;
         selectors: string[];
+        width: number;
         html_snapshot?: string;
         base_url?: string;
-        use_print_css: boolean;
       } = {
         url: url.trim(),
         selectors: selections,
-        use_print_css: renderMode === "print",
+        width: viewportWidth,
       };
 
-      if (previewSnapshot && previewBaseUrl && iframeRef.current?.contentDocument) {
-        // Use the live iframe DOM. This is accessible when the iframe is still on the
-        // original blob URL (user has not clicked any navigation links).
-        // If the user clicked a link and the iframe navigated to a cross-origin URL,
-        // contentDocument becomes null — in that case we skip the snapshot entirely
-        // and let the backend generate a fresh PDF from the original URL via Playwright.
-        const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
-        docCopy.getElementById("pdf-picker-style")?.remove();
-        docCopy.getElementById("pdf-picker-script")?.remove();
-        // Strip scripts so JS frameworks (Next.js, React, etc.) don't attempt to
-        // re-hydrate the static DOM inside Playwright and crash the page.
-        Array.from(docCopy.getElementsByTagName("script")).forEach(script => script.remove());
-
-        exportPayload.html_snapshot = docCopy.documentElement.outerHTML;
+      if (previewSnapshot && previewBaseUrl) {
+        let finalSnapshot = previewSnapshot;
+        if (iframeRef.current?.contentDocument) {
+          const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
+          docCopy.getElementById("ss-picker-style")?.remove();
+          docCopy.getElementById("ss-picker-script")?.remove();
+          Array.from(docCopy.getElementsByTagName("script")).forEach((s) => s.remove());
+          finalSnapshot = docCopy.documentElement.outerHTML;
+        }
+        exportPayload.html_snapshot = finalSnapshot;
         exportPayload.base_url = previewBaseUrl;
       }
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const response = await fetch(`${API_BASE_URL}/api/export/`, {
+      const response = await fetch(`${API_BASE_URL}/api/export-screenshot/`, {
         method: "POST",
         headers,
         body: JSON.stringify(exportPayload),
@@ -497,7 +417,7 @@ function PdfTool() {
           setError(detail ?? "Free download limit reached.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to export PDF.");
+          setError(detail ?? "Failed to capture screenshot.");
         }
         return;
       }
@@ -509,6 +429,19 @@ function PdfTool() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const downloadImage = () => {
+    if (!result) return;
+    const link = document.createElement("a");
+    link.href = result.image_url;
+    const filename = result.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80) || "screenshot";
+    link.download = `${filename}.png`;
+    link.click();
   };
 
   const onBulkSubmit = async () => {
@@ -530,19 +463,10 @@ function PdfTool() {
 
     setIsLoading(true);
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-pdf/`, {
+      const response = await fetch(`${API_BASE_URL}/api/export/bulk-screenshot/`, {
         method: "POST",
-        headers,
-        body: JSON.stringify({
-          urls: validUrls,
-          output_mode: bulkOutputMode,
-          use_print_css: renderMode === "print",
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ urls: validUrls, width: viewportWidth }),
       });
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
@@ -557,7 +481,7 @@ function PdfTool() {
           setError(detail ?? "Sign in to use bulk export.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to generate bulk PDF.");
+          setError(detail ?? "Failed to generate bulk screenshots.");
         }
         return;
       }
@@ -580,15 +504,15 @@ function PdfTool() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to a Custom PDF</h1>
-          <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
+          <h1>Export Any Webpage to an Image</h1>
+          <h2 className="subtitle">Generate pixel-perfect full-page screenshots from any URL</h2>
           <div className="seo-tags">
-            {["custom pdf from webpage", "remove elements from pdf", "clean webpage to pdf", "export website without ads", "web to pdf converter", "html to pdf", "save webpage as pdf"].map((tag) => (
+            {["full page screenshot", "webpage to image", "website screenshot tool", "capture website png", "web screenshot generator", "screenshot any url"].map((tag) => (
               <span className="seo-tag" key={tag}>{tag}</span>
             ))}
           </div>
           <p className="subtitle">
-            Paste a URL and get a live, interactive preview of the page. Click buttons, expand sections, and navigate — just like a real browser. Then switch to Remove mode and click any element (ads, cookie banners, sidebars, headers) to strip it out. Export the final result as a pixel-perfect PDF.
+            Paste a URL and get a live preview. Remove elements you don't want — ads, banners, cookie notices — then capture the whole page as a high-resolution PNG image.
           </p>
         </header>
 
@@ -625,7 +549,7 @@ function PdfTool() {
                 <input
                   id="url"
                   type="url"
-                  placeholder="https://example.com/pricing"
+                  placeholder="https://example.com"
                   value={url}
                   onChange={(event) => handleUrlChange(event.target.value)}
                   required
@@ -700,9 +624,7 @@ function PdfTool() {
               {selections.length ? (
                 <div className="chips">
                   {selections.map((selector) => (
-                    <span className="chip" key={selector}>
-                      {selector}
-                    </span>
+                    <span className="chip" key={selector}>{selector}</span>
                   ))}
                 </div>
               ) : (
@@ -711,28 +633,24 @@ function PdfTool() {
             </div>
 
             <div className="toggle-group">
-              <span>Layout mode</span>
+              <span>Viewport width</span>
               <div className="toggle-buttons">
-                <button
-                  type="button"
-                  className={renderMode === "screen" ? "active" : ""}
-                  onClick={() => handleRenderModeChange("screen")}
-                >
-                  Screen
-                </button>
-                <button
-                  type="button"
-                  className={renderMode === "print" ? "active" : ""}
-                  onClick={() => handleRenderModeChange("print")}
-                >
-                  Print
-                </button>
+                {VIEWPORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={viewportWidth === opt.value ? "active" : ""}
+                    onClick={() => setViewportWidth(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             <div className="export-actions">
               <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
-                {isLoading ? "Generating PDF..." : "Export PDF"}
+                {isLoading ? "Capturing screenshot..." : "Capture Screenshot"}
               </button>
             </div>
 
@@ -754,11 +672,28 @@ function PdfTool() {
 
             {result && (
               <div className="result-panel">
-                <h2>{result.title}</h2>
-                <p>Your PDF is ready.</p>
-                <a href={result.pdf_url} target="_blank" rel="noreferrer">
-                  Download PDF
-                </a>
+                <div
+                  className="result-panel-header"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}
+                >
+                  <h2>{result.title}</h2>
+                  <button type="button" onClick={downloadImage}>
+                    Download PNG
+                  </button>
+                </div>
+                <p>Your screenshot is ready.</p>
+                <div style={{ marginTop: "1rem" }}>
+                  <img
+                    src={result.image_url}
+                    alt={result.title}
+                    style={{
+                      width: "100%",
+                      borderRadius: "0.5rem",
+                      border: "1px solid #e2e8f0",
+                      display: "block",
+                    }}
+                  />
+                </div>
               </div>
             )}
             </>
@@ -771,42 +706,18 @@ function PdfTool() {
                 </div>
 
                 <div className="toggle-group">
-                  <span>Output format</span>
+                  <span>Viewport width</span>
                   <div className="toggle-buttons">
-                    <button
-                      type="button"
-                      className={bulkOutputMode === "zip" ? "active" : ""}
-                      onClick={() => setBulkOutputMode("zip")}
-                    >
-                      ZIP (one PDF per URL)
-                    </button>
-                    <button
-                      type="button"
-                      className={bulkOutputMode === "combined" ? "active" : ""}
-                      onClick={() => setBulkOutputMode("combined")}
-                    >
-                      Combined PDF
-                    </button>
-                  </div>
-                </div>
-
-                <div className="toggle-group">
-                  <span>Layout mode</span>
-                  <div className="toggle-buttons">
-                    <button
-                      type="button"
-                      className={renderMode === "screen" ? "active" : ""}
-                      onClick={() => handleRenderModeChange("screen")}
-                    >
-                      Screen
-                    </button>
-                    <button
-                      type="button"
-                      className={renderMode === "print" ? "active" : ""}
-                      onClick={() => handleRenderModeChange("print")}
-                    >
-                      Print
-                    </button>
+                    {VIEWPORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={viewportWidth === opt.value ? "active" : ""}
+                        onClick={() => setViewportWidth(opt.value)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -831,7 +742,7 @@ function PdfTool() {
                     disabled={isLoading || !hasEnoughCredits || validBulkUrls.length === 0}
                     className={isLoading ? "export-loading" : ""}
                   >
-                    {isLoading ? "Generating PDFs..." : `Export ${validBulkUrls.length || ""} PDF${validBulkUrls.length !== 1 ? "s" : ""}`}
+                    {isLoading ? "Capturing screenshots..." : `Capture ${validBulkUrls.length || ""} screenshot${validBulkUrls.length !== 1 ? "s" : ""}`}
                   </button>
                 </div>
 
@@ -854,18 +765,15 @@ function PdfTool() {
                 {bulkResult && (
                   <div className="result-panel">
                     <h2>{bulkResult.title}</h2>
-                    <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined PDF"} is ready.</p>
+                    <p>Your ZIP archive of screenshots is ready.</p>
                     <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
-                      Download .{bulkResult.file_ext}
+                      Download .zip
                     </a>
                   </div>
                 )}
               </>
             )}
-
           </div>
-
-
         </div>
 
         <footer className="support-footer">
@@ -880,4 +788,4 @@ function PdfTool() {
   );
 }
 
-export default PdfTool;
+export default WebsiteToScreenshot;

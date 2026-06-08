@@ -1,24 +1,26 @@
 import { Layers, Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { AuthModal } from "../components/AuthModal";
-import { PaymentModal } from "../components/PaymentModal";
-import { BulkUrlInput } from "../components/BulkUrlInput";
-import { usePageSeo } from "../hooks/usePageSeo";
+import { useAuth } from "../context/auth-context";
+import { AuthModal } from "../components/auth-modal";
+import { PaymentModal } from "../components/payment-modal";
+import { BulkUrlInput } from "../components/bulk-url-input";
+import { ThemeProvider } from "../tools/notes/context/ThemeContext";
+import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
+import { usePageSeo } from "../hooks/use-page-seo";
 
-const SS_TOOL_SEO = {
-  title: "Web to Screenshot – DistillPage",
+const MD_TOOL_SEO = {
+  title: "Web to Markdown Converter – DistillPage",
   description:
-    "Capture clean, full-page screenshots of any website. Remove ads, popups, and clutter before shooting — choose mobile, tablet, or desktop viewport. Free to try.",
-  canonical: "https://distillpage.com/web-to-screenshot",
+    "Convert any website to clean, readable Markdown in seconds. Remove unwanted elements and export distilled content ready for docs, notes, or LLMs. Free to try.",
+  canonical: "https://distillpage.com/web-to-markdown",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Web to Screenshot – DistillPage",
-    url: "https://distillpage.com/web-to-screenshot",
+    name: "Web to Markdown Converter – DistillPage",
+    url: "https://distillpage.com/web-to-markdown",
     description:
-      "Capture clean, full-page screenshots of any website. Remove ads and clutter, choose your viewport size, and export a high-fidelity image in seconds.",
+      "Convert any website to clean, readable Markdown. Remove ads and clutter, then export distilled content ready for docs, notes, or LLM input.",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -27,7 +29,7 @@ const SS_TOOL_SEO = {
 
 type ExportResult = {
   title: string;
-  image_url: string;
+  content: string;
 };
 
 type BulkExportResult = {
@@ -47,20 +49,13 @@ type ErrorPayload = {
 };
 
 type InteractionMode = "cursor" | "select";
-type ViewportWidth = 375 | 768 | 1280 | 1440;
 type ToolMode = "single" | "bulk";
+type BulkOutputMode = "zip" | "combined";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-const SELECT_MESSAGE = "ss-picker-select";
-const CLEAR_MESSAGE = "ss-picker-clear";
-const MODE_MESSAGE = "ss-picker-set-mode";
-
-const VIEWPORT_OPTIONS: { label: string; value: ViewportWidth }[] = [
-  { label: "Mobile (375px)", value: 375 },
-  { label: "Tablet (768px)", value: 768 },
-  { label: "Desktop (1280px)", value: 1280 },
-  { label: "Wide (1440px)", value: 1440 },
-];
+const SELECT_MESSAGE = "md-picker-select";
+const CLEAR_MESSAGE = "md-picker-clear";
+const MODE_MESSAGE = "md-picker-set-mode";
 
 function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode: InteractionMode) {
   const parser = new DOMParser();
@@ -72,14 +67,14 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   head.prepend(baseTag);
 
   const style = documentNode.createElement("style");
-  style.id = "ss-picker-style";
+  style.id = "md-picker-style";
   style.textContent = `
-    .ss-picker-hover {
+    .md-picker-hover {
       outline: 2px dashed #0f766e !important;
       outline-offset: 2px;
       cursor: crosshair !important;
     }
-    .ss-picker-selected {
+    .md-picker-selected {
       outline: 2px solid #f97316 !important;
       outline-offset: 2px;
       background: rgba(249, 115, 22, 0.12) !important;
@@ -88,7 +83,7 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   head.appendChild(style);
 
   const script = documentNode.createElement("script");
-  script.id = "ss-picker-script";
+  script.id = "md-picker-script";
   script.textContent = `
     (() => {
       const OriginalURL = window.URL;
@@ -102,7 +97,9 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
         try {
           return new OriginalURL(url, activeBase);
         } catch (e) {
-          if (!base && document.baseURI) return new OriginalURL(url, document.baseURI);
+          if (!base && document.baseURI) {
+            return new OriginalURL(url, document.baseURI);
+          }
           throw e;
         }
       };
@@ -119,8 +116,8 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
         try { return originalReplaceState.apply(this, arguments); } catch (e) {}
       };
 
-      const HOVER = "ss-picker-hover";
-      const SELECTED = "ss-picker-selected";
+      const HOVER = "md-picker-hover";
+      const SELECTED = "md-picker-selected";
       let isSelectMode = ${interactionMode === "select" ? "true" : "false"};
 
       const isSelectable = (element) => {
@@ -211,8 +208,8 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   return documentNode.documentElement.outerHTML;
 }
 
-function ScreenshotTool() {
-  usePageSeo(SS_TOOL_SEO);
+function WebsiteToMarkdown() {
+  usePageSeo(MD_TOOL_SEO);
   const { user, token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -228,7 +225,6 @@ function ScreenshotTool() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
-  const [viewportWidth, setViewportWidth] = useState<ViewportWidth>(1440);
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<"generic" | "no_credits" | "anon_limit" | null>(null);
@@ -237,6 +233,7 @@ function ScreenshotTool() {
   const previewRequestIdRef = useRef(0);
   // --- Bulk state ---
   const [bulkUrls, setBulkUrls] = useState<string>("");
+  const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
 
   useEffect(() => {
@@ -286,7 +283,8 @@ function ScreenshotTool() {
       if (requestId !== previewRequestIdRef.current) return;
 
       if (!response.ok) {
-        setPreviewError((payload as ErrorPayload).detail ?? "Failed to load preview.");
+        const detail = (payload as ErrorPayload).detail;
+        setPreviewError(detail ?? "Failed to load preview.");
         return;
       }
 
@@ -374,21 +372,19 @@ function ScreenshotTool() {
       const exportPayload: {
         url: string;
         selectors: string[];
-        width: number;
         html_snapshot?: string;
         base_url?: string;
       } = {
         url: url.trim(),
         selectors: selections,
-        width: viewportWidth,
       };
 
       if (previewSnapshot && previewBaseUrl) {
         let finalSnapshot = previewSnapshot;
         if (iframeRef.current?.contentDocument) {
           const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
-          docCopy.getElementById("ss-picker-style")?.remove();
-          docCopy.getElementById("ss-picker-script")?.remove();
+          docCopy.getElementById("md-picker-style")?.remove();
+          docCopy.getElementById("md-picker-script")?.remove();
           Array.from(docCopy.getElementsByTagName("script")).forEach((s) => s.remove());
           finalSnapshot = docCopy.documentElement.outerHTML;
         }
@@ -399,7 +395,7 @@ function ScreenshotTool() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const response = await fetch(`${API_BASE_URL}/api/export-screenshot/`, {
+      const response = await fetch(`${API_BASE_URL}/api/export-markdown/`, {
         method: "POST",
         headers,
         body: JSON.stringify(exportPayload),
@@ -417,7 +413,7 @@ function ScreenshotTool() {
           setError(detail ?? "Free download limit reached.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to capture screenshot.");
+          setError(detail ?? "Failed to export Markdown.");
         }
         return;
       }
@@ -431,17 +427,20 @@ function ScreenshotTool() {
     }
   };
 
-  const downloadImage = () => {
+  const downloadMarkdown = () => {
     if (!result) return;
+    const blob = new Blob([result.content], { type: "text/markdown" });
+    const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = result.image_url;
+    link.href = href;
     const filename = result.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
-      .slice(0, 80) || "screenshot";
-    link.download = `${filename}.png`;
+      .slice(0, 80) || "export";
+    link.download = `${filename}.md`;
     link.click();
+    URL.revokeObjectURL(href);
   };
 
   const onBulkSubmit = async () => {
@@ -463,10 +462,10 @@ function ScreenshotTool() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-screenshot/`, {
+      const response = await fetch(`${API_BASE_URL}/api/export/bulk-markdown/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validUrls, width: viewportWidth }),
+        body: JSON.stringify({ urls: validUrls, output_mode: bulkOutputMode }),
       });
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
@@ -481,7 +480,7 @@ function ScreenshotTool() {
           setError(detail ?? "Sign in to use bulk export.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to generate bulk screenshots.");
+          setError(detail ?? "Failed to generate bulk Markdown.");
         }
         return;
       }
@@ -504,15 +503,15 @@ function ScreenshotTool() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to an Image</h1>
-          <h2 className="subtitle">Generate pixel-perfect full-page screenshots from any URL</h2>
+          <h1>Export Any Webpage to Markdown</h1>
+          <h2 className="subtitle">Convert a web page into clean, portable Markdown</h2>
           <div className="seo-tags">
-            {["full page screenshot", "webpage to image", "website screenshot tool", "capture website png", "web screenshot generator", "screenshot any url"].map((tag) => (
+            {["webpage to markdown", "html to markdown", "website to md", "clean markdown export", "web scraper markdown", "convert page markdown"].map((tag) => (
               <span className="seo-tag" key={tag}>{tag}</span>
             ))}
           </div>
           <p className="subtitle">
-            Paste a URL and get a live preview. Remove elements you don't want — ads, banners, cookie notices — then capture the whole page as a high-resolution PNG image.
+            Paste a URL and preview the page. Switch to Remove mode to click away ads, banners, and sidebars, then export the clean result as a Markdown file.
           </p>
         </header>
 
@@ -543,160 +542,145 @@ function ScreenshotTool() {
 
             {toolMode === "single" ? (
               <>
-            <form onSubmit={handlePreview} className="export-form">
-              <label htmlFor="url">Website URL</label>
-              <div className="url-row">
-                <input
-                  id="url"
-                  type="url"
-                  placeholder="https://example.com"
-                  value={url}
-                  onChange={(event) => handleUrlChange(event.target.value)}
-                  required
-                />
-              </div>
-            </form>
+                <form onSubmit={handlePreview} className="export-form">
+                  <label htmlFor="url">Website URL</label>
+                  <div className="url-row">
+                    <input
+                      id="url"
+                      type="url"
+                      placeholder="https://example.com/article"
+                      value={url}
+                      onChange={(event) => handleUrlChange(event.target.value)}
+                      required
+                    />
+                  </div>
+                </form>
 
-            {previewError && <p className="message error">{previewError}</p>}
+                {previewError && <p className="message error">{previewError}</p>}
 
-            <div className="preview-shell">
-              {previewBlobUrl ? (
-                <div className="preview-panel">
-                  <div className="preview-head">
-                    <div className="preview-head-left">
-                      <h2>{previewTitle ?? "Preview"}</h2>
-                      <p>Click to remove elements.</p>
+                <div className="preview-shell">
+                  {previewBlobUrl ? (
+                    <div className="preview-panel">
+                      <div className="preview-head">
+                        <div className="preview-head-left">
+                          <h2>{previewTitle ?? "Preview"}</h2>
+                          <p>Click to remove elements.</p>
+                        </div>
+                        <div className="toggle-buttons">
+                          <button
+                            type="button"
+                            className={interactionMode === "select" ? "active flex-button" : "flex-button"}
+                            onClick={() => handleInteractionModeChange("select")}
+                            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                          >
+                            <Minus size={16} /> Remove elements
+                          </button>
+                          <button
+                            type="button"
+                            className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
+                            onClick={() => handleInteractionModeChange("cursor")}
+                            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                          >
+                            <MousePointer size={16} /> Browse page
+                          </button>
+                        </div>
+                      </div>
+                      <iframe
+                        ref={iframeRef}
+                        title="Preview"
+                        className="preview-frame"
+                        src={previewBlobUrl}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                      />
                     </div>
-                    <div className="toggle-buttons">
-                      <button
-                        type="button"
-                        className={interactionMode === "select" ? "active flex-button" : "flex-button"}
-                        onClick={() => handleInteractionModeChange("select")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                      >
-                        <Minus size={16} /> Remove elements
-                      </button>
-                      <button
-                        type="button"
-                        className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
-                        onClick={() => handleInteractionModeChange("cursor")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                      >
-                        <MousePointer size={16} /> Browse page
+                  ) : isPreviewLoading ? (
+                    <div className="preview-panel">
+                      <div className="loading-container">
+                        <div className="loading-spinner" />
+                        <div className="loading-text">
+                          <h3>Loading Preview</h3>
+                          <p>Fetching and processing your page...</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="preview-empty">
+                      <p>Load a page to start interacting or remove elements from the webpage.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="selection-list">
+                  <div className="flex items-center justify-between">
+                    <div>Removed elements</div>
+                    <div className="selection-info">
+                      <div>{selections.length} removed</div>
+                      <button type="button" className="ghost" onClick={clearSelections}>
+                        Clear
                       </button>
                     </div>
                   </div>
-                  <iframe
-                    ref={iframeRef}
-                    title="Preview"
-                    className="preview-frame"
-                    src={previewBlobUrl}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  />
+                  {selections.length ? (
+                    <div className="chips">
+                      {selections.map((selector) => (
+                        <span className="chip" key={selector}>{selector}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="empty">No selections yet.</span>
+                  )}
                 </div>
-              ) : isPreviewLoading ? (
-                <div className="preview-panel">
-                  <div className="loading-container">
-                    <div className="loading-spinner" />
-                    <div className="loading-text">
-                      <h3>Loading Preview</h3>
-                      <p>Fetching and processing your page...</p>
+
+                <div className="export-actions">
+                  <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
+                    {isLoading ? "Converting to Markdown..." : "Export Markdown"}
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="message error">
+                    <span>{error}</span>
+                    {errorType === "no_credits" && (
+                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                        Buy Credits
+                      </button>
+                    )}
+                    {errorType === "anon_limit" && (
+                      <button type="button" className="inline-action" onClick={() => setShowAuthModal(true)}>
+                        Sign In
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {result && (
+                  <div className="result-panel">
+                    <div className="result-panel-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                      <h2>{result.title}</h2>
+                      <button type="button" onClick={downloadMarkdown}>
+                        Download .md
+                      </button>
+                    </div>
+                    <p>Your Markdown is ready. Preview below:</p>
+                    <div
+                      className="markdown-preview-wrapper"
+                      style={{
+                        marginTop: "1rem",
+                        padding: "1.25rem 1.5rem",
+                        background: "#fff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "0.5rem",
+                        maxHeight: "600px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      <ThemeProvider>
+                        <MarkdownRenderer content={result.content} disableSyntaxHighlighting={false} />
+                      </ThemeProvider>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="preview-empty">
-                  <p>Load a page to start interacting or remove elements from the webpage.</p>
-                </div>
-              )}
-            </div>
-
-            <div className="selection-list">
-              <div className="flex items-center justify-between">
-                <div>Removed elements</div>
-                <div className="selection-info">
-                  <div>{selections.length} removed</div>
-                  <button type="button" className="ghost" onClick={clearSelections}>
-                    Clear
-                  </button>
-                </div>
-              </div>
-              {selections.length ? (
-                <div className="chips">
-                  {selections.map((selector) => (
-                    <span className="chip" key={selector}>{selector}</span>
-                  ))}
-                </div>
-              ) : (
-                <span className="empty">No selections yet.</span>
-              )}
-            </div>
-
-            <div className="toggle-group">
-              <span>Viewport width</span>
-              <div className="toggle-buttons">
-                {VIEWPORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={viewportWidth === opt.value ? "active" : ""}
-                    onClick={() => setViewportWidth(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="export-actions">
-              <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
-                {isLoading ? "Capturing screenshot..." : "Capture Screenshot"}
-              </button>
-            </div>
-
-            {error && (
-              <div className="message error">
-                <span>{error}</span>
-                {errorType === "no_credits" && (
-                  <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                    Buy Credits
-                  </button>
                 )}
-                {errorType === "anon_limit" && (
-                  <button type="button" className="inline-action" onClick={() => setShowAuthModal(true)}>
-                    Sign In
-                  </button>
-                )}
-              </div>
-            )}
-
-            {result && (
-              <div className="result-panel">
-                <div
-                  className="result-panel-header"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}
-                >
-                  <h2>{result.title}</h2>
-                  <button type="button" onClick={downloadImage}>
-                    Download PNG
-                  </button>
-                </div>
-                <p>Your screenshot is ready.</p>
-                <div style={{ marginTop: "1rem" }}>
-                  <img
-                    src={result.image_url}
-                    alt={result.title}
-                    style={{
-                      width: "100%",
-                      borderRadius: "0.5rem",
-                      border: "1px solid #e2e8f0",
-                      display: "block",
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            </>
+              </>
             ) : (
               /* ── Bulk mode ── */
               <>
@@ -706,18 +690,22 @@ function ScreenshotTool() {
                 </div>
 
                 <div className="toggle-group">
-                  <span>Viewport width</span>
+                  <span>Output format</span>
                   <div className="toggle-buttons">
-                    {VIEWPORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        className={viewportWidth === opt.value ? "active" : ""}
-                        onClick={() => setViewportWidth(opt.value)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                    <button
+                      type="button"
+                      className={bulkOutputMode === "zip" ? "active" : ""}
+                      onClick={() => setBulkOutputMode("zip")}
+                    >
+                      ZIP (one .md per URL)
+                    </button>
+                    <button
+                      type="button"
+                      className={bulkOutputMode === "combined" ? "active" : ""}
+                      onClick={() => setBulkOutputMode("combined")}
+                    >
+                      Combined Markdown
+                    </button>
                   </div>
                 </div>
 
@@ -742,7 +730,7 @@ function ScreenshotTool() {
                     disabled={isLoading || !hasEnoughCredits || validBulkUrls.length === 0}
                     className={isLoading ? "export-loading" : ""}
                   >
-                    {isLoading ? "Capturing screenshots..." : `Capture ${validBulkUrls.length || ""} screenshot${validBulkUrls.length !== 1 ? "s" : ""}`}
+                    {isLoading ? "Converting to Markdown..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to Markdown`}
                   </button>
                 </div>
 
@@ -765,9 +753,9 @@ function ScreenshotTool() {
                 {bulkResult && (
                   <div className="result-panel">
                     <h2>{bulkResult.title}</h2>
-                    <p>Your ZIP archive of screenshots is ready.</p>
+                    <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined Markdown file"} is ready.</p>
                     <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
-                      Download .zip
+                      Download .{bulkResult.file_ext}
                     </a>
                   </div>
                 )}
@@ -788,4 +776,4 @@ function ScreenshotTool() {
   );
 }
 
-export default ScreenshotTool;
+export default WebsiteToMarkdown;

@@ -20,7 +20,7 @@ frontend/          React 19 + Vite 8 SPA (single build for all tools)
   src/
     App.tsx        Router — /web-to-pdf /web-to-markdown /web-to-screenshot /study /notes /images + layout
     components/    AppNav, UserHeader (auth + buy-credits modal)
-    pages/         PdfTool, ToolPlaceholder
+    pages/         WebsiteToPdf
     context/       AuthContext (shared JWT)
     tools/
       study/       Readeb UI (ported from Next.js)

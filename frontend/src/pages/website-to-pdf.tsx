@@ -1,26 +1,24 @@
 import { Layers, Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { AuthModal } from "../components/AuthModal";
-import { PaymentModal } from "../components/PaymentModal";
-import { BulkUrlInput } from "../components/BulkUrlInput";
-import { ThemeProvider } from "../tools/notes/context/ThemeContext";
-import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
-import { usePageSeo } from "../hooks/usePageSeo";
+import { useAuth } from "../context/auth-context";
+import { AuthModal } from "../components/auth-modal";
+import { PaymentModal } from "../components/payment-modal";
+import { BulkUrlInput } from "../components/bulk-url-input";
+import { usePageSeo } from "../hooks/use-page-seo";
 
-const MD_TOOL_SEO = {
-  title: "Web to Markdown Converter – DistillPage",
+const PDF_TOOL_SEO = {
+  title: "Web to PDF Converter – DistillPage",
   description:
-    "Convert any website to clean, readable Markdown in seconds. Remove unwanted elements and export distilled content ready for docs, notes, or LLMs. Free to try.",
-  canonical: "https://distillpage.com/web-to-markdown",
+    "Convert any website to a clean, high-fidelity PDF in seconds. Visually remove ads, navbars, and cookie banners before exporting. Free to try.",
+  canonical: "https://distillpage.com/web-to-pdf",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Web to Markdown Converter – DistillPage",
-    url: "https://distillpage.com/web-to-markdown",
+    name: "Web to PDF Converter – DistillPage",
+    url: "https://distillpage.com/web-to-pdf",
     description:
-      "Convert any website to clean, readable Markdown. Remove ads and clutter, then export distilled content ready for docs, notes, or LLM input.",
+      "Convert any website to a clean, high-fidelity PDF. Visually remove ads, navbars, and cookie banners, then export a polished PDF in seconds.",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -29,7 +27,7 @@ const MD_TOOL_SEO = {
 
 type ExportResult = {
   title: string;
-  content: string;
+  pdf_url: string;
 };
 
 type BulkExportResult = {
@@ -49,13 +47,14 @@ type ErrorPayload = {
 };
 
 type InteractionMode = "cursor" | "select";
+type RenderMode = "screen" | "print";
 type ToolMode = "single" | "bulk";
 type BulkOutputMode = "zip" | "combined";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-const SELECT_MESSAGE = "md-picker-select";
-const CLEAR_MESSAGE = "md-picker-clear";
-const MODE_MESSAGE = "md-picker-set-mode";
+const SELECT_MESSAGE = "pdf-picker-select";
+const CLEAR_MESSAGE = "pdf-picker-clear";
+const MODE_MESSAGE = "pdf-picker-set-mode";
 
 function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode: InteractionMode) {
   const parser = new DOMParser();
@@ -67,14 +66,14 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   head.prepend(baseTag);
 
   const style = documentNode.createElement("style");
-  style.id = "md-picker-style";
+  style.id = "pdf-picker-style";
   style.textContent = `
-    .md-picker-hover {
+    .pdf-picker-hover {
       outline: 2px dashed #0f766e !important;
       outline-offset: 2px;
       cursor: crosshair !important;
     }
-    .md-picker-selected {
+    .pdf-picker-selected {
       outline: 2px solid #f97316 !important;
       outline-offset: 2px;
       background: rgba(249, 115, 22, 0.12) !important;
@@ -83,9 +82,11 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
   head.appendChild(style);
 
   const script = documentNode.createElement("script");
-  script.id = "md-picker-script";
+  script.id = "pdf-picker-script";
   script.textContent = `
     (() => {
+      // Patch URL constructor for frameworks (like Next.js) that calculate using window.location.href
+      // which fails when the iframe is hosted via a blob: or about:srcdoc URL.
       const OriginalURL = window.URL;
       window.URL = function URL(url, base) {
         let activeBase = base;
@@ -97,27 +98,43 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
         try {
           return new OriginalURL(url, activeBase);
         } catch (e) {
+          // Fallback to document.baseURI if no base was provided and original threw
           if (!base && document.baseURI) {
             return new OriginalURL(url, document.baseURI);
           }
           throw e;
         }
       };
+      
+      // Preserve static methods
       window.URL.createObjectURL = OriginalURL.createObjectURL;
       window.URL.revokeObjectURL = OriginalURL.revokeObjectURL;
+
       window.URL.canParse = OriginalURL.canParse;
 
+      // Patch history.pushState and history.replaceState to prevent cross-origin errors
+      // when SPA frameworks try to navigate within the blob: iframe.
       const originalPushState = window.history.pushState;
       const originalReplaceState = window.history.replaceState;
+      
       window.history.pushState = function() {
-        try { return originalPushState.apply(this, arguments); } catch (e) {}
+        try {
+          return originalPushState.apply(this, arguments);
+        } catch (e) {
+          console.warn("Ignored pushState error in iframe", e);
+        }
       };
+      
       window.history.replaceState = function() {
-        try { return originalReplaceState.apply(this, arguments); } catch (e) {}
+        try {
+          return originalReplaceState.apply(this, arguments);
+        } catch (e) {
+          console.warn("Ignored replaceState error in iframe", e);
+        }
       };
 
-      const HOVER = "md-picker-hover";
-      const SELECTED = "md-picker-selected";
+      const HOVER = "pdf-picker-hover";
+      const SELECTED = "pdf-picker-selected";
       let isSelectMode = ${interactionMode === "select" ? "true" : "false"};
 
       const isSelectable = (element) => {
@@ -128,16 +145,23 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
 
       const cssPath = (element) => {
         if (!element || !(element instanceof Element)) return "";
-        if (element.id) return "#" + CSS.escape(element.id);
+        if (element.id) {
+          return "#" + CSS.escape(element.id);
+        }
+
         const segments = [];
         let current = element;
         while (current && current !== document.body) {
           const tag = current.tagName.toLowerCase();
           let segment = tag;
           const classList = Array.from(current.classList)
-            .filter(Boolean).slice(0, 2)
-            .map((name) => "." + CSS.escape(name)).join("");
-          if (classList) segment += classList;
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((name) => "." + CSS.escape(name))
+            .join("");
+          if (classList) {
+            segment += classList;
+          }
           const parent = current.parentElement;
           if (parent) {
             const siblings = Array.from(parent.children).filter(
@@ -154,62 +178,85 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
       };
 
       const send = (selector, selected) => {
-        window.parent.postMessage({ type: "${SELECT_MESSAGE}", selector, selected }, "*");
+        window.parent.postMessage(
+          { type: "${SELECT_MESSAGE}", selector, selected },
+          "*"
+        );
       };
 
-      document.addEventListener("mouseover", (event) => {
-        if (!isSelectMode) return;
-        const target = event.target;
-        if (!isSelectable(target)) return;
-        target.classList.add(HOVER);
-      }, true);
+      document.addEventListener(
+        "mouseover",
+        (event) => {
+          if (!isSelectMode) return;
+          const target = event.target;
+          if (!isSelectable(target)) return;
+          target.classList.add(HOVER);
+        },
+        true
+      );
 
-      document.addEventListener("mouseout", (event) => {
-        if (!isSelectMode) return;
-        const target = event.target;
-        if (!isSelectable(target)) return;
-        target.classList.remove(HOVER);
-      }, true);
+      document.addEventListener(
+        "mouseout",
+        (event) => {
+          if (!isSelectMode) return;
+          const target = event.target;
+          if (!isSelectable(target)) return;
+          target.classList.remove(HOVER);
+        },
+        true
+      );
 
-      document.addEventListener("click", (event) => {
-        if (!isSelectMode) return;
-        const target = event.target;
-        if (!isSelectable(target)) return;
-        event.preventDefault();
-        event.stopPropagation();
-        const selector = cssPath(target);
-        if (!selector) return;
-        const selected = target.classList.toggle(SELECTED);
-        send(selector, selected);
-      }, true);
+      document.addEventListener(
+        "click",
+        (event) => {
+          if (!isSelectMode) return;
+          const target = event.target;
+          if (!isSelectable(target)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const selector = cssPath(target);
+          if (!selector) return;
+          const selected = target.classList.toggle(SELECTED);
+          target.dataset.pdfSelector = selector;
+          send(selector, selected);
+        },
+        true
+      );
 
       window.addEventListener("message", (event) => {
         if (!event.data) return;
         if (event.data.type === "${CLEAR_MESSAGE}") {
-          document.querySelectorAll("." + SELECTED).forEach((el) => el.classList.remove(SELECTED));
+          document.querySelectorAll("." + SELECTED).forEach((element) => {
+            element.classList.remove(SELECTED);
+          });
         }
         if (event.data.type === "${MODE_MESSAGE}") {
           isSelectMode = event.data.mode === "select";
           if (!isSelectMode) {
-            document.querySelectorAll("." + HOVER).forEach((el) => el.classList.remove(HOVER));
+            document.querySelectorAll("." + HOVER).forEach((element) => {
+              element.classList.remove(HOVER);
+            });
           }
         }
       });
     })();
   `;
+  // Prepend our script so it executes before any of the original website's scripts
   if (head.firstChild) {
     head.insertBefore(script, head.firstChild);
   } else {
     head.appendChild(script);
   }
+
   if (!documentNode.head) {
     documentNode.documentElement.prepend(head);
   }
+
   return documentNode.documentElement.outerHTML;
 }
 
-function MarkdownTool() {
-  usePageSeo(MD_TOOL_SEO);
+function WebsiteToPdf() {
+  usePageSeo(PDF_TOOL_SEO);
   const { user, token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -225,6 +272,7 @@ function MarkdownTool() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
+  const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<"generic" | "no_credits" | "anon_limit" | null>(null);
@@ -239,15 +287,22 @@ function MarkdownTool() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const payload = event.data as { type?: string; selector?: string; selected?: boolean };
-      if (!payload || payload.type !== SELECT_MESSAGE || !payload.selector) return;
+      if (!payload || payload.type !== SELECT_MESSAGE || !payload.selector) {
+        return;
+      }
+
       setSelections((current) => {
         if (payload.selected) {
-          if (current.includes(payload.selector!)) return current;
+          if (current.includes(payload.selector!)) {
+            return current;
+          }
           return [...current, payload.selector!];
         }
-        return current.filter((s) => s !== payload.selector);
+
+        return current.filter((selector) => selector !== payload.selector);
       });
     };
+
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
@@ -257,15 +312,18 @@ function MarkdownTool() {
   useEffect(() => {
     if (previewHtml) {
       const blob = new Blob([previewHtml], { type: "text/html" });
-      const blobUrl = URL.createObjectURL(blob);
-      setPreviewBlobUrl(blobUrl);
-      return () => URL.revokeObjectURL(blobUrl);
+      const url = URL.createObjectURL(blob);
+      setPreviewBlobUrl(url);
+      return () => URL.revokeObjectURL(url);
     } else {
       setPreviewBlobUrl(null);
     }
   }, [previewHtml]);
 
-  const loadPreview = async (previewUrl: string, requestId = ++previewRequestIdRef.current) => {
+  const loadPreview = async (
+    previewUrl: string,
+    requestId = ++previewRequestIdRef.current,
+  ) => {
     setPreviewError(null);
     setError(null);
     setResult(null);
@@ -274,13 +332,20 @@ function MarkdownTool() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/preview/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: previewUrl, use_print_css: false }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: previewUrl,
+          use_print_css: false,
+        }),
       });
 
       const payload = (await response.json()) as PreviewResponse | ErrorPayload;
 
-      if (requestId !== previewRequestIdRef.current) return;
+      if (requestId !== previewRequestIdRef.current) {
+        return;
+      }
 
       if (!response.ok) {
         const detail = (payload as ErrorPayload).detail;
@@ -307,6 +372,7 @@ function MarkdownTool() {
 
   useEffect(() => {
     const trimmedUrl = url.trim();
+
     if (!trimmedUrl) {
       previewRequestIdRef.current += 1;
       setPreviewError(null);
@@ -318,17 +384,24 @@ function MarkdownTool() {
       setSelections([]);
       return;
     }
-    const timeoutId = window.setTimeout(() => void loadPreview(trimmedUrl), 300);
+
+    const timeoutId = window.setTimeout(() => {
+      void loadPreview(trimmedUrl);
+    }, 300);
+
     return () => window.clearTimeout(timeoutId);
   }, [url]);
 
   const handlePreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     const trimmedUrl = url.trim();
+
     if (!trimmedUrl) {
       setPreviewError("Please enter a URL.");
       return;
     }
+
     void loadPreview(trimmedUrl);
   };
 
@@ -348,6 +421,11 @@ function MarkdownTool() {
     iframeRef.current?.contentWindow?.postMessage({ type: MODE_MESSAGE, mode: nextMode }, "*");
   };
 
+  const handleRenderModeChange = (nextMode: RenderMode) => {
+    setRenderMode(nextMode);
+  };
+
+  // Handle ?payment=success redirect from NOWPayments
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
@@ -374,28 +452,34 @@ function MarkdownTool() {
         selectors: string[];
         html_snapshot?: string;
         base_url?: string;
+        use_print_css: boolean;
       } = {
         url: url.trim(),
         selectors: selections,
+        use_print_css: renderMode === "print",
       };
 
-      if (previewSnapshot && previewBaseUrl) {
-        let finalSnapshot = previewSnapshot;
-        if (iframeRef.current?.contentDocument) {
-          const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
-          docCopy.getElementById("md-picker-style")?.remove();
-          docCopy.getElementById("md-picker-script")?.remove();
-          Array.from(docCopy.getElementsByTagName("script")).forEach((s) => s.remove());
-          finalSnapshot = docCopy.documentElement.outerHTML;
-        }
-        exportPayload.html_snapshot = finalSnapshot;
+      if (previewSnapshot && previewBaseUrl && iframeRef.current?.contentDocument) {
+        // Use the live iframe DOM. This is accessible when the iframe is still on the
+        // original blob URL (user has not clicked any navigation links).
+        // If the user clicked a link and the iframe navigated to a cross-origin URL,
+        // contentDocument becomes null — in that case we skip the snapshot entirely
+        // and let the backend generate a fresh PDF from the original URL via Playwright.
+        const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
+        docCopy.getElementById("pdf-picker-style")?.remove();
+        docCopy.getElementById("pdf-picker-script")?.remove();
+        // Strip scripts so JS frameworks (Next.js, React, etc.) don't attempt to
+        // re-hydrate the static DOM inside Playwright and crash the page.
+        Array.from(docCopy.getElementsByTagName("script")).forEach(script => script.remove());
+
+        exportPayload.html_snapshot = docCopy.documentElement.outerHTML;
         exportPayload.base_url = previewBaseUrl;
       }
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const response = await fetch(`${API_BASE_URL}/api/export-markdown/`, {
+      const response = await fetch(`${API_BASE_URL}/api/export/`, {
         method: "POST",
         headers,
         body: JSON.stringify(exportPayload),
@@ -413,7 +497,7 @@ function MarkdownTool() {
           setError(detail ?? "Free download limit reached.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to export Markdown.");
+          setError(detail ?? "Failed to export PDF.");
         }
         return;
       }
@@ -425,22 +509,6 @@ function MarkdownTool() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const downloadMarkdown = () => {
-    if (!result) return;
-    const blob = new Blob([result.content], { type: "text/markdown" });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = href;
-    const filename = result.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 80) || "export";
-    link.download = `${filename}.md`;
-    link.click();
-    URL.revokeObjectURL(href);
   };
 
   const onBulkSubmit = async () => {
@@ -462,10 +530,19 @@ function MarkdownTool() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-markdown/`, {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/export/bulk-pdf/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validUrls, output_mode: bulkOutputMode }),
+        headers,
+        body: JSON.stringify({
+          urls: validUrls,
+          output_mode: bulkOutputMode,
+          use_print_css: renderMode === "print",
+        }),
       });
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
@@ -480,7 +557,7 @@ function MarkdownTool() {
           setError(detail ?? "Sign in to use bulk export.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to generate bulk Markdown.");
+          setError(detail ?? "Failed to generate bulk PDF.");
         }
         return;
       }
@@ -503,15 +580,15 @@ function MarkdownTool() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to Markdown</h1>
-          <h2 className="subtitle">Convert a web page into clean, portable Markdown</h2>
+          <h1>Export Any Webpage to a Custom PDF</h1>
+          <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
           <div className="seo-tags">
-            {["webpage to markdown", "html to markdown", "website to md", "clean markdown export", "web scraper markdown", "convert page markdown"].map((tag) => (
+            {["custom pdf from webpage", "remove elements from pdf", "clean webpage to pdf", "export website without ads", "web to pdf converter", "html to pdf", "save webpage as pdf"].map((tag) => (
               <span className="seo-tag" key={tag}>{tag}</span>
             ))}
           </div>
           <p className="subtitle">
-            Paste a URL and preview the page. Switch to Remove mode to click away ads, banners, and sidebars, then export the clean result as a Markdown file.
+            Paste a URL and get a live, interactive preview of the page. Click buttons, expand sections, and navigate — just like a real browser. Then switch to Remove mode and click any element (ads, cookie banners, sidebars, headers) to strip it out. Export the final result as a pixel-perfect PDF.
           </p>
         </header>
 
@@ -542,145 +619,149 @@ function MarkdownTool() {
 
             {toolMode === "single" ? (
               <>
-            <form onSubmit={handlePreview} className="export-form">
-              <label htmlFor="url">Website URL</label>
-              <div className="url-row">
-                <input
-                  id="url"
-                  type="url"
-                  placeholder="https://example.com/article"
-                  value={url}
-                  onChange={(event) => handleUrlChange(event.target.value)}
-                  required
-                />
-              </div>
-            </form>
+                <form onSubmit={handlePreview} className="export-form">
+                  <label htmlFor="url">Website URL</label>
+                  <div className="url-row">
+                    <input
+                      id="url"
+                      type="url"
+                      placeholder="https://example.com/pricing"
+                      value={url}
+                      onChange={(event) => handleUrlChange(event.target.value)}
+                      required
+                    />
+                  </div>
+                </form>
 
-            {previewError && <p className="message error">{previewError}</p>}
+                {previewError && <p className="message error">{previewError}</p>}
 
-            <div className="preview-shell">
-              {previewBlobUrl ? (
-                <div className="preview-panel">
-                  <div className="preview-head">
-                    <div className="preview-head-left">
-                      <h2>{previewTitle ?? "Preview"}</h2>
-                      <p>Click to remove elements.</p>
+                <div className="preview-shell">
+                  {previewBlobUrl ? (
+                    <div className="preview-panel">
+                      <div className="preview-head">
+                        <div className="preview-head-left">
+                          <h2>{previewTitle ?? "Preview"}</h2>
+                          <p>Click to remove elements.</p>
+                        </div>
+                        <div className="toggle-buttons">
+                          <button
+                            type="button"
+                            className={interactionMode === "select" ? "active flex-button" : "flex-button"}
+                            onClick={() => handleInteractionModeChange("select")}
+                            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                          >
+                            <Minus size={16} /> Remove elements
+                          </button>
+                          <button
+                            type="button"
+                            className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
+                            onClick={() => handleInteractionModeChange("cursor")}
+                            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                          >
+                            <MousePointer size={16} /> Browse page
+                          </button>
+                        </div>
+                      </div>
+                      <iframe
+                        ref={iframeRef}
+                        title="Preview"
+                        className="preview-frame"
+                        src={previewBlobUrl}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                      />
                     </div>
-                    <div className="toggle-buttons">
-                      <button
-                        type="button"
-                        className={interactionMode === "select" ? "active flex-button" : "flex-button"}
-                        onClick={() => handleInteractionModeChange("select")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                      >
-                        <Minus size={16} /> Remove elements
-                      </button>
-                      <button
-                        type="button"
-                        className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
-                        onClick={() => handleInteractionModeChange("cursor")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                      >
-                        <MousePointer size={16} /> Browse page
+                  ) : isPreviewLoading ? (
+                    <div className="preview-panel">
+                      <div className="loading-container">
+                        <div className="loading-spinner" />
+                        <div className="loading-text">
+                          <h3>Loading Preview</h3>
+                          <p>Fetching and processing your page...</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="preview-empty">
+                      <p>Load a page to start interacting or remove elements from the webpage.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="selection-list">
+                  <div className="flex items-center justify-between">
+                    <div>Removed elements</div>
+                    <div className="selection-info">
+                      <div>{selections.length} removed</div>
+                      <button type="button" className="ghost" onClick={clearSelections}>
+                        Clear
                       </button>
                     </div>
                   </div>
-                  <iframe
-                    ref={iframeRef}
-                    title="Preview"
-                    className="preview-frame"
-                    src={previewBlobUrl}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  />
-                </div>
-              ) : isPreviewLoading ? (
-                <div className="preview-panel">
-                  <div className="loading-container">
-                    <div className="loading-spinner" />
-                    <div className="loading-text">
-                      <h3>Loading Preview</h3>
-                      <p>Fetching and processing your page...</p>
+                  {selections.length ? (
+                    <div className="chips">
+                      {selections.map((selector) => (
+                        <span className="chip" key={selector}>
+                          {selector}
+                        </span>
+                      ))}
                     </div>
+                  ) : (
+                    <span className="empty">No selections yet.</span>
+                  )}
+                </div>
+
+                <div className="toggle-group">
+                  <span>Layout mode</span>
+                  <div className="toggle-buttons">
+                    <button
+                      type="button"
+                      className={renderMode === "screen" ? "active" : ""}
+                      onClick={() => handleRenderModeChange("screen")}
+                    >
+                      Screen
+                    </button>
+                    <button
+                      type="button"
+                      className={renderMode === "print" ? "active" : ""}
+                      onClick={() => handleRenderModeChange("print")}
+                    >
+                      Print
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="preview-empty">
-                  <p>Load a page to start interacting or remove elements from the webpage.</p>
-                </div>
-              )}
-            </div>
 
-            <div className="selection-list">
-              <div className="flex items-center justify-between">
-                <div>Removed elements</div>
-                <div className="selection-info">
-                  <div>{selections.length} removed</div>
-                  <button type="button" className="ghost" onClick={clearSelections}>
-                    Clear
+                <div className="export-actions">
+                  <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
+                    {isLoading ? "Generating PDF..." : "Export PDF"}
                   </button>
                 </div>
-              </div>
-              {selections.length ? (
-                <div className="chips">
-                  {selections.map((selector) => (
-                    <span className="chip" key={selector}>{selector}</span>
-                  ))}
-                </div>
-              ) : (
-                <span className="empty">No selections yet.</span>
-              )}
-            </div>
 
-            <div className="export-actions">
-              <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
-                {isLoading ? "Converting to Markdown..." : "Export Markdown"}
-              </button>
-            </div>
-
-            {error && (
-              <div className="message error">
-                <span>{error}</span>
-                {errorType === "no_credits" && (
-                  <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                    Buy Credits
-                  </button>
+                {error && (
+                  <div className="message error">
+                    <span>{error}</span>
+                    {errorType === "no_credits" && (
+                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                        Buy Credits
+                      </button>
+                    )}
+                    {errorType === "anon_limit" && (
+                      <button type="button" className="inline-action" onClick={() => setShowAuthModal(true)}>
+                        Sign In
+                      </button>
+                    )}
+                  </div>
                 )}
-                {errorType === "anon_limit" && (
-                  <button type="button" className="inline-action" onClick={() => setShowAuthModal(true)}>
-                    Sign In
-                  </button>
-                )}
-              </div>
-            )}
 
-            {result && (
-              <div className="result-panel">
-                <div className="result-panel-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <h2>{result.title}</h2>
-                  <button type="button" onClick={downloadMarkdown}>
-                    Download .md
-                  </button>
-                </div>
-                <p>Your Markdown is ready. Preview below:</p>
-                <div
-                  className="markdown-preview-wrapper"
-                  style={{
-                    marginTop: "1rem",
-                    padding: "1.25rem 1.5rem",
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "0.5rem",
-                    maxHeight: "600px",
-                    overflowY: "auto",
-                  }}
-                >
-                  <ThemeProvider>
-                    <MarkdownRenderer content={result.content} disableSyntaxHighlighting={false} />
-                  </ThemeProvider>
-                </div>
-              </div>
-            )}
-            </>
+                {result && (
+                  <div className="result-panel">
+                    <h2>{result.title}</h2>
+                    <p>Your PDF is ready.</p>
+                    <a href={result.pdf_url} target="_blank" rel="noreferrer">
+                      Download PDF
+                    </a>
+                  </div>
+                )}
+              </>
             ) : (
               /* ── Bulk mode ── */
               <>
@@ -697,14 +778,34 @@ function MarkdownTool() {
                       className={bulkOutputMode === "zip" ? "active" : ""}
                       onClick={() => setBulkOutputMode("zip")}
                     >
-                      ZIP (one .md per URL)
+                      ZIP (one PDF per URL)
                     </button>
                     <button
                       type="button"
                       className={bulkOutputMode === "combined" ? "active" : ""}
                       onClick={() => setBulkOutputMode("combined")}
                     >
-                      Combined Markdown
+                      Combined PDF
+                    </button>
+                  </div>
+                </div>
+
+                <div className="toggle-group">
+                  <span>Layout mode</span>
+                  <div className="toggle-buttons">
+                    <button
+                      type="button"
+                      className={renderMode === "screen" ? "active" : ""}
+                      onClick={() => handleRenderModeChange("screen")}
+                    >
+                      Screen
+                    </button>
+                    <button
+                      type="button"
+                      className={renderMode === "print" ? "active" : ""}
+                      onClick={() => handleRenderModeChange("print")}
+                    >
+                      Print
                     </button>
                   </div>
                 </div>
@@ -730,7 +831,7 @@ function MarkdownTool() {
                     disabled={isLoading || !hasEnoughCredits || validBulkUrls.length === 0}
                     className={isLoading ? "export-loading" : ""}
                   >
-                    {isLoading ? "Converting to Markdown..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to Markdown`}
+                    {isLoading ? "Generating PDFs..." : `Export ${validBulkUrls.length || ""} PDF${validBulkUrls.length !== 1 ? "s" : ""}`}
                   </button>
                 </div>
 
@@ -753,7 +854,7 @@ function MarkdownTool() {
                 {bulkResult && (
                   <div className="result-panel">
                     <h2>{bulkResult.title}</h2>
-                    <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined Markdown file"} is ready.</p>
+                    <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined PDF"} is ready.</p>
                     <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
                       Download .{bulkResult.file_ext}
                     </a>
@@ -761,7 +862,10 @@ function MarkdownTool() {
                 )}
               </>
             )}
+
           </div>
+
+
         </div>
 
         <footer className="support-footer">
@@ -776,4 +880,4 @@ function MarkdownTool() {
   );
 }
 
-export default MarkdownTool;
+export default WebsiteToPdf;
