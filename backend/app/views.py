@@ -27,6 +27,7 @@ from .serializers import (
     ExportRequestSerializer,
     ExportScreenshotSerializer,
     ExportStructuredJsonSerializer,
+    ExportTabularSerializer,
     GoogleAuthSerializer,
     LoginSerializer,
     PreviewRequestSerializer,
@@ -56,6 +57,7 @@ from .services.structured_json_generator import (
     generate_combined_structured_json,
     html_to_structured_json,
 )
+from .services.tabular_exporter import TabularExportError, write_tabular_export
 from .services.pdf_generator import (
     PdfGenerationError,
     generate_bulk_pdfs_zip,
@@ -583,6 +585,85 @@ class ExportStructuredJsonView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+# ---------------------------------------------------------------------------
+# CSV and Excel export view
+# ---------------------------------------------------------------------------
+
+class ExportTabularView(APIView):
+    @extend_schema(tags=["Export"], request=ExportTabularSerializer)
+    def post(self, request):
+        if request.user.is_authenticated:
+            if get_balance(request.user) < 1:
+                return Response(
+                    {"detail": "No download credits remaining. Please purchase more."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+        else:
+            ip = get_client_ip(request)
+            if AnonymousDownload.objects.filter(ip_address=ip).exists():
+                return Response(
+                    {"detail": "Free download limit reached. Sign in to download more."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        serializer = ExportTabularSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        url = values["url"]
+        html_snapshot = values.get("html_snapshot")
+        base_url = values.get("base_url") or url
+        extraction_mode = values.get("extraction_mode", "standard")
+
+        try:
+            if html_snapshot:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_snapshot, "html.parser")
+                title = soup.title.string.strip() if soup.title and soup.title.string else "Exported Website"
+                source_html = html_snapshot
+            else:
+                extracted = extract_main_content(url)
+                title, source_html = extracted.title, extracted.html
+
+            if extraction_mode == "custom":
+                data = extract_custom_structured_data(
+                    source_html,
+                    values.get("extraction_prompt", ""),
+                    schema=values.get("json_schema"),
+                    selectors=[],
+                    ai_cleanup=False,
+                )
+            else:
+                data = html_to_structured_json(
+                    source_html,
+                    title,
+                    source_url=base_url,
+                    selectors=values.get("selectors") or [],
+                    ai_cleanup=values.get("ai_cleanup", False),
+                ).data
+            relative_path = write_tabular_export(title, data, values["export_format"])
+        except ContentExtractionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except (StructuredJsonGenerationError, CustomStructuredExtractionError, TabularExportError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"detail": "Failed to generate tabular export"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if request.user.is_authenticated:
+            try:
+                charge(request.user, "tabular.export")
+            except InsufficientCredits:
+                return Response({"detail": "No download credits remaining."}, status=status.HTTP_402_PAYMENT_REQUIRED)
+        else:
+            AnonymousDownload.objects.create(ip_address=get_client_ip(request))
+
+        export_format = values["export_format"]
+        return Response({
+            "title": title,
+            "file_url": request.build_absolute_uri(f"/media/{relative_path}"),
+            "file_ext": export_format,
+        })
 
 
 # ---------------------------------------------------------------------------

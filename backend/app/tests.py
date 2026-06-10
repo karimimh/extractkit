@@ -1,5 +1,7 @@
 import json
 import os
+import zipfile
+from io import BytesIO
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -24,6 +26,7 @@ from .services.custom_structured_extractor import (
     validate_json_schema,
 )
 from .services.extractor import ExtractedContent
+from .services.tabular_exporter import build_csv, build_xlsx, records_from_data
 
 
 class AiCleanupTests(TestCase):
@@ -311,3 +314,60 @@ class CustomStructuredExtractionViewTests(DjangoTestCase):
         custom_extract.assert_called_once()
         self.assertEqual(custom_extract.call_args.kwargs["selectors"], [])
         self.assertFalse(custom_extract.call_args.kwargs["ai_cleanup"])
+
+
+class TabularExportTests(TestCase):
+    def test_csv_uses_first_html_table_and_escapes_formulas(self):
+        data = {"tables": [{"headers": ["Name", "Value"], "rows": [["Name", "Value"], ["A", "=1+1"], ["B", "2"]]}]}
+
+        csv_text = build_csv(data).decode("utf-8-sig")
+
+        self.assertIn("Name,Value", csv_text)
+        self.assertIn("A,'=1+1", csv_text)
+        self.assertEqual(csv_text.count("Name,Value"), 1)
+
+    def test_custom_record_array_becomes_rows(self):
+        rows = records_from_data({"products": [{"name": "A", "details": {"price": 10}}, {"name": "B"}]})
+
+        self.assertEqual(rows[0]["details.price"], "10")
+        self.assertEqual(rows[1]["name"], "B")
+
+    def test_excel_contains_rich_standard_sheets(self):
+        payload = build_xlsx({
+            "title": "Page",
+            "metadata": {"description": "Example"},
+            "links": [{"text": "Home", "href": "https://example.com"}],
+            "images": [{"src": "https://example.com/a.png"}],
+            "tables": [{"headers": ["Name"], "rows": [["A"]]}],
+        })
+
+        with zipfile.ZipFile(BytesIO(payload)) as workbook:
+            workbook_xml = workbook.read("xl/workbook.xml").decode()
+            self.assertIn('name="Records"', workbook_xml)
+            self.assertIn('name="Metadata"', workbook_xml)
+            self.assertIn('name="Links"', workbook_xml)
+            self.assertIn('name="Images"', workbook_xml)
+            self.assertIn('name="Tables"', workbook_xml)
+
+
+class TabularExportViewTests(DjangoTestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch("app.views.write_tabular_export", return_value="exports/test.csv")
+    @patch(
+        "app.views.extract_main_content",
+        return_value=ExtractedContent(title="Products", html="<table><tr><th>Name</th></tr><tr><td>A</td></tr></table>"),
+    )
+    def test_csv_endpoint_generates_download(self, _extract_page, write_export):
+        response = self.client.post(
+            "/api/export-tabular/",
+            {"url": "https://example.com/products", "export_format": "csv"},
+            format="json",
+            REMOTE_ADDR="203.0.113.20",
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["file_ext"], "csv")
+        write_export.assert_called_once()

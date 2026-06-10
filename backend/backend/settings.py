@@ -254,6 +254,7 @@ CREDIT_COSTS = {
     'pdf.export': 1,
     'markdown.export': 1,
     'structured_json.export': 1,
+    'tabular.export': 1,
     'screenshot.export': 1,
     'notes.ai_generate': 1,
     'notes.ai_summarize': 1,

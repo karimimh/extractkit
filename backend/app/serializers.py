@@ -128,6 +128,10 @@ class ExportStructuredJsonSerializer(serializers.Serializer):
         return attrs
 
 
+class ExportTabularSerializer(ExportStructuredJsonSerializer):
+    export_format = serializers.ChoiceField(choices=["csv", "xlsx"])
+
+
 class ExportRequestSerializer(serializers.Serializer):
     url = serializers.URLField(required=True)
     html_snapshot = serializers.CharField(required=False, allow_blank=True)

@@ -494,13 +494,20 @@ h2.subtitle {
 }
 
 .result-panel a {
-	display: inline-block;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
 	text-decoration: none;
 	padding: 0.55rem 0.9rem;
 	border-radius: 999px;
 	background: var(--inverse-bg);
 	color: var(--inverse-text);
 	font-family: "Syne", sans-serif;
+}
+
+#tabular-schema {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 0.78rem;
 }
 
 .json-result-header {

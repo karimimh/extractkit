@@ -8,6 +8,8 @@ A unified platform for working with web content. Multiple tools, one account, on
 | **Web → Markdown** | `/web-to-markdown` | Convert a full or AI-cleaned web page into portable Markdown |
 | **Web → JSON** | `/web-to-json` | Extract standard page fields or custom prompt/schema-driven structured data |
 | **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
+| **Web → CSV** | `/web-to-csv` | Export webpage tables, listings, or custom extracted records as CSV |
+| **Web → Excel** | `/web-to-excel` | Export records plus metadata, links, images, and tables as an Excel workbook |
 | **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
 | **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
 | **Images** | `/images` | Client-side canvas image editor with adjustments, filters, white-balance correction, and super-resolution |
@@ -136,6 +138,7 @@ POST /api/preview/                     Fetch URL for iframe preview
 POST /api/export/                      Generate PDF
 POST /api/export-markdown/             Generate Markdown
 POST /api/export-json/                 Generate structured JSON
+POST /api/export-tabular/              Generate CSV or Excel
 POST /api/export-screenshot/           Generate a PNG screenshot
 POST /api/export/bulk-pdf/             Generate bulk PDF output
 POST /api/export/bulk-markdown/        Generate bulk Markdown output

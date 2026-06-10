@@ -12,6 +12,7 @@ from .views import (
     ExportPdfView,
     ExportScreenshotView,
     ExportStructuredJsonView,
+    ExportTabularView,
     ForgotPasswordView,
     GoogleAuthView,
     LoginView,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("export/", ExportPdfView.as_view(), name="export-pdf"),
     path("export-markdown/", ExportMarkdownView.as_view(), name="export-markdown"),
     path("export-json/", ExportStructuredJsonView.as_view(), name="export-structured-json"),
+    path("export-tabular/", ExportTabularView.as_view(), name="export-tabular"),
     path("export-screenshot/", ExportScreenshotView.as_view(), name="export-screenshot"),
     path("export/bulk-pdf/", BulkExportPdfView.as_view(), name="bulk-export-pdf"),
     path("export/bulk-markdown/", BulkExportMarkdownView.as_view(), name="bulk-export-markdown"),
@@ -50,4 +52,3 @@ urlpatterns = [
     path("payments/<str:payment_id>/debug/", PaymentDebugView.as_view(), name="payments-debug"),
     path("payments/<str:payment_id>/force-confirm/", PaymentForceConfirmView.as_view(), name="payments-force-confirm"),
 ]
-
