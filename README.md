@@ -1,11 +1,12 @@
 # DistillPage
 
-A unified platform for working with web content. Four tools, one account, one credits balance.
+A unified platform for working with web content. Multiple tools, one account, one credits balance.
 
 | Tool | Route | Description |
 |------|-------|-------------|
 | **Web → PDF** | `/web-to-pdf` | Render any URL in a live interactive preview, remove unwanted elements by clicking them, export a clean PDF |
 | **Web → Markdown** | `/web-to-markdown` | Convert a web page into clean, portable Markdown |
+| **Web → JSON** | `/web-to-json` | Extract structured webpage data as JSON |
 | **Web → Screenshot** | `/web-to-screenshot` | Export any webpage to a high-resolution PNG image |
 | **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
 | **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
@@ -18,7 +19,7 @@ A unified platform for working with web content. Four tools, one account, one cr
 ```
 frontend/          React 19 + Vite 8 SPA (single build for all tools)
   src/
-    App.tsx        Router — /web-to-pdf /web-to-markdown /web-to-screenshot /study /notes /images + layout
+    App.tsx        Router — /web-to-pdf /web-to-markdown /web-to-json /web-to-screenshot /study /notes /images + layout
     components/    AppNav, UserHeader (auth + buy-credits modal)
     pages/         WebsiteToPdf
     context/       AuthContext (shared JWT)

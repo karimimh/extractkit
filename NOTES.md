@@ -100,6 +100,455 @@ given a text, create an image with that text inside it. may be good for social m
 
 maybe `web to image` can be a different tool from `web to screenshot`. here we use AI to summarize website's content and download this text as images
 
+## IDEAS 2
+
+### 1. Webpage → Structured Data
+
+#### Webpage → JSON
+
+Extract:
+
+- Title
+- Author
+- Date
+- Headings
+- Paragraphs
+- Tables
+- Images
+- Links
+- Metadata
+
+Output:
+
+```json
+{
+  "title": "...",
+  "author": "...",
+  "content": "...",
+  "tables": [...]
+}
+```
+
+Target users:
+
+- AI developers
+- Data engineers
+- Scrapers
+
+---
+
+#### Webpage → CSV
+
+Extract:
+
+- Tables
+- Product listings
+- Search results
+- Job listings
+
+Export:
+
+```csv
+name,price,rating
+```
+
+Very useful for business users.
+
+---
+
+#### Webpage → Excel
+
+Same as CSV but with:
+
+- multiple sheets
+- formatting
+- charts
+
+People pay for this.
+
+---
+
+### 2. AI-Powered Content Extraction
+
+#### Webpage → Summary
+
+User enters URL.
+
+Output:
+
+- 1 minute summary
+- key points
+- action items
+
+Can be sold as credits.
+
+---
+
+#### Webpage → Study Notes
+
+Especially for students.
+
+Outputs:
+
+- summaries
+- definitions
+- key concepts
+- flashcards
+
+---
+
+#### Webpage → FAQ
+
+Generate:
+
+```text
+Q: What is X?
+A: ...
+```
+
+Good for learning and support teams.
+
+---
+
+#### Webpage → Mind Map
+
+Extract hierarchy.
+
+Generate:
+
+```text
+Main Topic
+ ├─ Section A
+ ├─ Section B
+```
+
+Can export to:
+
+- PNG
+- PDF
+- Markdown
+
+---
+
+### 3. Screenshot-Based Tools
+
+You already generate screenshots.
+
+Leverage them.
+
+#### Full Page Screenshot → PDF
+
+Many users want this.
+
+Different from rendering HTML.
+
+---
+
+#### Screenshot → OCR Text
+
+Extract text from screenshot.
+
+Export:
+
+- txt
+- markdown
+
+---
+
+#### Screenshot → Editable HTML
+
+AI reconstructs webpage.
+
+Very attractive.
+
+---
+
+#### Screenshot → Design Tokens
+
+Extract:
+
+- colors
+- typography
+- spacing
+
+Useful for designers.
+
+---
+
+### 4. Website Archiving
+
+#### Website Snapshot
+
+Store:
+
+- HTML
+- CSS
+- Screenshot
+- PDF
+
+User can revisit later.
+
+Like a mini archive service.
+
+---
+
+#### Visual Change Monitoring
+
+User enters URL.
+
+You:
+
+- screenshot daily
+- detect differences
+- send alerts
+
+Good recurring revenue.
+
+Examples:
+
+- competitors
+- pricing pages
+- government sites
+
+---
+
+#### Content Change Monitoring
+
+Monitor:
+
+- text changes
+- product changes
+- documentation changes
+
+Email summaries.
+
+---
+
+### 5. SEO Tools
+
+Very close to your current stack.
+
+#### SEO Audit
+
+Check:
+
+- title
+- meta tags
+- headings
+- links
+- schema
+
+Generate report.
+
+---
+
+#### Extract Internal Links
+
+Output:
+
+```csv
+source,target
+```
+
+SEO agencies need this.
+
+---
+
+#### Sitemap Visualizer
+
+Input:
+
+```xml
+sitemap.xml
+```
+
+Output:
+
+Visual tree.
+
+---
+
+### 6. AI Content Repurposing
+
+This is where AI can shine.
+
+#### Webpage → LinkedIn Post
+
+Turn article into:
+
+- LinkedIn post
+- thread
+- tweet
+
+---
+
+#### Webpage → Newsletter
+
+Convert article into:
+
+- email newsletter
+
+---
+
+#### Webpage → Blog Summary
+
+Short blog version.
+
+---
+
+#### Multiple URLs → Research Report
+
+Input:
+
+```
+url1
+url2
+url3
+url4
+```
+
+Generate:
+
+- combined report
+- comparison
+- summary
+
+This is very valuable.
+
+---
+
+### 7. Developer-Focused Tools
+
+#### URL → Clean Reader View
+
+Like browser reader mode.
+
+Export:
+
+- HTML
+- Markdown
+- PDF
+
+---
+
+#### URL → LLM-Ready Markdown
+
+One of the strongest ideas.
+
+Removes:
+
+- navbars
+- ads
+- footers
+- cookie banners
+
+Produces:
+
+```markdown
+# Title
+
+clean content
+```
+
+Perfect for AI ingestion.
+
+---
+
+#### Bulk URLs → Dataset Builder
+
+Input:
+
+```
+100 URLs
+```
+
+Output:
+
+```json
+[
+ ...
+]
+```
+
+Developers and AI startups love this.
+
+---
+
+### 8. Competitive Intelligence Tools
+
+#### Compare Two URLs
+
+Example:
+
+```
+old page
+new page
+```
+
+Output:
+
+- added content
+- removed content
+- changed content
+
+---
+
+#### Competitor Tracker
+
+Track:
+
+- pricing pages
+- landing pages
+- feature pages
+
+Alert on changes.
+
+Recurring subscription model.
+
+---
+
+### 9. Documentation Tools
+
+#### Website → Knowledge Base
+
+Crawl docs.
+
+Generate:
+
+- markdown files
+- searchable package
+
+Useful for AI agents.
+
+---
+
+#### Website → LLM Training Dataset
+
+Convert website into:
+
+```json
+{
+  "question": "...",
+  "answer": "..."
+}
+```
+
+or chunked markdown.
+
+Strong B2B tool.
+
+---
+
+### 10. The Most Promising Extensions
+
+If I were building this business, I would prioritize these five because they fit your existing infrastructure and are monetizable:
+
+1. **URL → LLM-Ready Markdown**
+2. **Multiple URLs → Research Report**
+3. **Website Change Monitoring**
+4. **Website → Structured JSON**
+5. **Website → Knowledge Base Export**
+
 ## VISION
 
 Instead of becoming “a collection of converters,” DistillPage could become:

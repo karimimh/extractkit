@@ -253,6 +253,7 @@ USE_REAL_LLM = _env('USE_REAL_LLM', 'false').lower() in ('true', '1', 'yes')
 CREDIT_COSTS = {
     'pdf.export': 1,
     'markdown.export': 1,
+    'structured_json.export': 1,
     'screenshot.export': 1,
     'notes.ai_generate': 1,
     'notes.ai_summarize': 1,

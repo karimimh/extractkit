@@ -469,6 +469,8 @@ h2.subtitle {
 	background: #ecfeff;
 	border: 1px solid #a5f3fc;
 	animation: pop-in 320ms ease;
+	max-width: 100%;
+	min-width: 0;
 }
 
 .result-panel h2 {
@@ -489,6 +491,61 @@ h2.subtitle {
 	background: var(--inverse-bg);
 	color: var(--inverse-text);
 	font-family: "Syne", sans-serif;
+}
+
+.json-result-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+	min-width: 0;
+}
+
+.json-result-actions {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.json-result-actions button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	border: none;
+	border-radius: 999px;
+	background: var(--inverse-bg);
+	color: var(--inverse-text);
+	font-family: "Syne", sans-serif;
+	padding: 0.55rem 0.9rem;
+	cursor: pointer;
+}
+
+.json-preview {
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	margin: 1rem 0 0;
+	max-height: 620px;
+	overflow-x: auto;
+	overflow-y: auto;
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	background: var(--surface);
+	color: var(--text-main);
+	padding: 1rem;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 0.86rem;
+	line-height: 1.55;
+	white-space: pre;
+}
+
+.json-preview code {
+	display: block;
+	width: max-content;
+	min-width: 100%;
 }
 
 .docs-link {
@@ -1217,6 +1274,7 @@ h2.subtitle {
 	align-items: center;
 	gap: 1.2rem;
 	padding: 0.75rem 1.5rem;
+	min-height: 4rem;
 }
 
 .app-nav-sidebar-toggle {
@@ -1446,7 +1504,7 @@ h2.subtitle {
 }
 
 .tool-sidebar {
-	width: 15.5rem;
+	width: 16.5rem;
 	position: fixed;
 	top: 3.8rem;
 	bottom: 0;

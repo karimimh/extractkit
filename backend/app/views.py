@@ -21,10 +21,12 @@ from .serializers import (
     BulkExportMarkdownSerializer,
     BulkExportPdfSerializer,
     BulkExportScreenshotSerializer,
+    BulkExportStructuredJsonSerializer,
     CreatePaymentSerializer,
     ExportMarkdownSerializer,
     ExportRequestSerializer,
     ExportScreenshotSerializer,
+    ExportStructuredJsonSerializer,
     GoogleAuthSerializer,
     LoginSerializer,
     PreviewRequestSerializer,
@@ -43,6 +45,12 @@ from .services.screenshot_generator import (
     generate_bulk_screenshots_zip,
     generate_screenshot_from_snapshot,
     generate_screenshot_from_url,
+)
+from .services.structured_json_generator import (
+    StructuredJsonGenerationError,
+    generate_bulk_structured_json_zip,
+    generate_combined_structured_json,
+    html_to_structured_json,
 )
 from .services.pdf_generator import (
     PdfGenerationError,
@@ -447,6 +455,108 @@ class ExportMarkdownView(APIView):
 
 
 # ---------------------------------------------------------------------------
+# Structured JSON export view
+# ---------------------------------------------------------------------------
+
+class ExportStructuredJsonView(APIView):
+    @extend_schema(
+        tags=["Export"],
+        request=ExportStructuredJsonSerializer,
+        responses={
+            200: OpenApiResponse(description="Structured JSON generated successfully"),
+            400: OpenApiResponse(description="Validation error"),
+            402: OpenApiResponse(description="No download credits remaining"),
+            403: OpenApiResponse(description="Free anonymous download limit reached"),
+            500: OpenApiResponse(description="Structured JSON generation error"),
+        },
+    )
+    def post(self, request):
+        # --- Access control ---
+        if request.user.is_authenticated:
+            if get_balance(request.user) < 1:
+                return Response(
+                    {"detail": "No download credits remaining. Please purchase more."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+        else:
+            ip = get_client_ip(request)
+            if AnonymousDownload.objects.filter(ip_address=ip).exists():
+                return Response(
+                    {"detail": "Free download limit reached. Sign in to download more."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # --- Validate input ---
+        serializer = ExportStructuredJsonSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        url = serializer.validated_data["url"]
+        html_snapshot = serializer.validated_data.get("html_snapshot")
+        base_url = serializer.validated_data.get("base_url") or url
+        selectors = serializer.validated_data.get("selectors") or []
+
+        # --- Fetch HTML if no snapshot provided ---
+        try:
+            if html_snapshot:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_snapshot, "html.parser")
+                title = (
+                    soup.title.string.strip()
+                    if soup.title and soup.title.string
+                    else "Exported Website"
+                )
+                source_html = html_snapshot
+            else:
+                extracted = extract_main_content(url)
+                title = extracted.title
+                source_html = extracted.html
+        except ContentExtractionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response(
+                {"detail": "Failed to fetch page"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # --- Extract structured JSON ---
+        try:
+            generated = html_to_structured_json(
+                source_html,
+                title,
+                source_url=base_url,
+                selectors=selectors,
+            )
+        except StructuredJsonGenerationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response(
+                {"detail": "Failed to generate structured JSON"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # --- Record usage ---
+        if request.user.is_authenticated:
+            try:
+                charge(request.user, "structured_json.export")
+            except InsufficientCredits:
+                return Response(
+                    {"detail": "No download credits remaining. Please purchase more."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+        else:
+            ip = get_client_ip(request)
+            AnonymousDownload.objects.create(ip_address=ip)
+
+        return Response(
+            {
+                "title": generated.title,
+                "data": generated.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Screenshot export view
 # ---------------------------------------------------------------------------
 
@@ -639,6 +749,59 @@ class BulkExportMarkdownView(APIView):
 
         try:
             charge(request.user, "markdown.export", units=n)
+        except InsufficientCredits:
+            return Response(
+                {"detail": "No download credits remaining. Please purchase more."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        file_url = request.build_absolute_uri(f"/media/{relative_path}")
+        return Response(
+            {"title": title, "file_url": file_url, "file_ext": file_ext},
+            status=status.HTTP_200_OK,
+        )
+
+
+class BulkExportStructuredJsonView(APIView):
+    @extend_schema(tags=["Export"])
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Sign in to use bulk export."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = BulkExportStructuredJsonSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        urls = serializer.validated_data["urls"]
+        output_mode = serializer.validated_data["output_mode"]
+        n = len(urls)
+
+        from .services.credits import credit_cost
+        cost_per = credit_cost("structured_json.export")
+        total_cost = cost_per * n
+        if get_balance(request.user) < total_cost:
+            return Response(
+                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        try:
+            if output_mode == "combined":
+                title, relative_path = generate_combined_structured_json(urls)
+                file_ext = "json"
+            else:
+                _titles, relative_path = generate_bulk_structured_json_zip(urls)
+                title = "Bulk JSON Export"
+                file_ext = "zip"
+        except StructuredJsonGenerationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"detail": "Failed to generate bulk JSON"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            charge(request.user, "structured_json.export", units=n)
         except InsufficientCredits:
             return Response(
                 {"detail": "No download credits remaining. Please purchase more."},

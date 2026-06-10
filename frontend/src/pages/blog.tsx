@@ -146,12 +146,61 @@ const ARTICLES: Article[] = [
       },
     ],
   },
+  {
+    slug: "extract-structured-json-from-webpage",
+    title: "How to Extract Structured JSON from a Webpage",
+    description:
+      "Extract structured JSON from any webpage, including title, author, date, headings, paragraphs, tables, images, links, metadata, and JSON-LD.",
+    canonical: "https://distillpage.com/blog/extract-structured-json-from-webpage",
+    toolName: "Web to JSON",
+    toolPath: "/web-to-json",
+    publishedAt: "2026-06-10",
+    updatedAt: "2026-06-10",
+    intro:
+      "Webpages contain useful data, but it is usually trapped inside layout HTML, navigation, scripts, ads, and repeated page chrome. A structured JSON export turns the important parts of a page into predictable fields that are easier to use in apps, datasets, and AI workflows.",
+    sections: [
+      {
+        heading: "Why structured JSON is useful",
+        body: [
+          "Markdown is great for readable content, but developers and data teams often need fields they can parse directly. Structured JSON separates the page title, author, date, headings, paragraphs, tables, images, links, and metadata into a shape that can be consumed by scripts, databases, and LLM pipelines.",
+          "This is helpful for AI developers building ingestion pipelines, data engineers collecting web references, scrapers prototyping extraction rules, and teams that need repeatable page exports without manually copying content from the browser.",
+        ],
+      },
+      {
+        heading: "What the JSON export includes",
+        body: [
+          "The Web to JSON tool extracts common webpage fields such as title, author, published date, headings, paragraph text, tables, images, links, canonical URL, meta tags, Open Graph tags, Twitter tags, and JSON-LD when the page provides it.",
+          "Relative image and link URLs are resolved against the source page, which makes the output easier to use outside the original website. The result can be copied directly or downloaded as a .json file.",
+        ],
+      },
+      {
+        heading: "Clean the page before extracting",
+        body: [
+          "Many pages include cookie banners, newsletter forms, promotional blocks, sidebars, and repeated navigation that can pollute the extracted data. DistillPage lets you preview the page and remove unwanted elements before creating the JSON output.",
+          "For best results, remove anything that is not part of the content you want to analyze: overlays, ads, footer modules, related-post widgets, chat buttons, and duplicated navigation links.",
+        ],
+      },
+      {
+        heading: "When to use bulk JSON export",
+        body: [
+          "Bulk mode is useful when you have several related URLs to process at once. You can export a ZIP with one JSON file per URL or create a combined JSON file for downstream processing.",
+          "Use ZIP mode when each page should remain independent. Use combined JSON when you want a single payload for analysis, search indexing, comparison, summarization, or dataset creation.",
+        ],
+      },
+      {
+        heading: "How to extract webpage JSON",
+        body: [
+          "Open the Web to JSON tool, paste a URL, load the preview, remove unwanted elements, and export. For multiple pages, switch to bulk mode, paste one URL per line, choose ZIP or combined JSON, and download the result.",
+        ],
+      },
+    ],
+  },
 ];
 
 const BLOG_SEO = {
   title: "DistillPage Blog",
   description:
-    "Practical guides for creating clean PDFs, screenshots, and Markdown exports from webpages with DistillPage.",
+    "Practical guides for creating clean PDFs, screenshots, Markdown, and structured JSON exports from webpages with DistillPage.",
   canonical: "https://distillpage.com/blog",
   jsonLd: {
     "@context": "https://schema.org",
@@ -159,7 +208,7 @@ const BLOG_SEO = {
     name: "DistillPage Blog",
     url: "https://distillpage.com/blog",
     description:
-      "Practical guides for creating clean PDFs, screenshots, and Markdown exports from webpages with DistillPage.",
+      "Practical guides for creating clean PDFs, screenshots, Markdown, and structured JSON exports from webpages with DistillPage.",
   },
 };
 
@@ -192,8 +241,9 @@ export function BlogIndex() {
         <p className="eyebrow">DistillPage Blog</p>
         <h1>Guides for cleaner webpage exports</h1>
         <p>
-          Practical articles for turning webpages into focused PDFs, screenshots, and
-          Markdown files without carrying over ads, banners, popups, or unrelated page chrome.
+          Practical articles for turning webpages into focused PDFs, screenshots,
+          Markdown files, and structured JSON without carrying over ads, banners,
+          popups, or unrelated page chrome.
         </p>
       </section>
 

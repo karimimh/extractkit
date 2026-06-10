@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AppNav } from "./components/app-nav";
 import { ToolSidebar } from "./components/tool-sidebar";
 import { BlogIndex, BlogPost } from "./pages/blog";
+import WebsiteToJson from "./pages/website-to-json";
 import WebsiteToMarkdown from "./pages/website-to-markdown";
 import WebsiteToScreenshot from "./pages/website-to-screenshot";
 import WebsiteToPdf from "./pages/website-to-pdf";
@@ -54,6 +55,7 @@ function App() {
         <Route index element={<Navigate to="/web-to-pdf" replace />} />
         <Route path="/web-to-pdf" element={<WebsiteToPdf />} />
         <Route path="/web-to-markdown" element={<WebsiteToMarkdown />} />
+        <Route path="/web-to-json" element={<WebsiteToJson />} />
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
         <Route path="/blog" element={<BlogIndex />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
