@@ -531,6 +531,45 @@ h2.subtitle {
 	cursor: pointer;
 }
 
+.custom-extraction-fields {
+	display: grid;
+	gap: 0.55rem;
+}
+
+.custom-extraction-fields label {
+	font-weight: 650;
+}
+
+.custom-extraction-fields label span,
+.custom-extraction-fields p {
+	color: var(--muted);
+	font-size: 0.82rem;
+	font-weight: 400;
+	margin: 0;
+}
+
+.custom-extraction-fields textarea {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	color: var(--text-main);
+	font: inherit;
+	line-height: 1.5;
+	padding: 0.8rem 0.9rem;
+	resize: vertical;
+	width: 100%;
+}
+
+.custom-extraction-fields textarea:focus {
+	border-color: var(--accent);
+	outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+#json-schema {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 0.78rem;
+}
+
 .json-preview {
 	box-sizing: border-box;
 	display: block;

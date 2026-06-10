@@ -6,7 +6,7 @@ A unified platform for working with web content. Multiple tools, one account, on
 |------|-------|-------------|
 | **Web → PDF** | `/web-to-pdf` | Export a full page, use AI Cleanup, or manually remove elements before generating a PDF |
 | **Web → Markdown** | `/web-to-markdown` | Convert a full or AI-cleaned web page into portable Markdown |
-| **Web → JSON** | `/web-to-json` | Extract structured data from a full, AI-cleaned, or manually edited webpage |
+| **Web → JSON** | `/web-to-json` | Extract standard page fields or custom prompt/schema-driven structured data |
 | **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
 | **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
 | **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
@@ -84,6 +84,10 @@ Credit costs are tunable in `settings.CREDIT_COSTS` without migrations.
    - **Manual Interaction**: render a sandboxed preview, browse the page, and click elements to remove them. This is the default for single-page exports.
 3. The frontend sends the URL, cleanup choice, optional DOM snapshot, and manual selectors to the selected export endpoint.
 4. The backend generates PDF, Markdown, structured JSON, or a screenshot.
+
+Web → JSON also supports **Custom extraction** for single URLs. Describe the records
+and fields to extract, optionally provide an object-rooted JSON Schema, and the backend
+uses `CUSTOM_EXTRACTION_MODEL` (default `gpt-4o-mini`) to produce and validate the result.
 
 AI Cleanup uses `OPENAI_API_KEY` and defaults to `gpt-4o-mini`. Override the model with `AI_CLEANUP_MODEL`. The model receives a bounded DOM outline rather than the full raw page, and returns candidate IDs to remove. AI Cleanup fails with a clear API error when the key is missing or OpenAI cannot analyze the page; it does not silently remove elements using heuristics.
 

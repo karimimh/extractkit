@@ -3,6 +3,11 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
+from .services.custom_structured_extractor import (
+    CustomStructuredExtractionError,
+    validate_json_schema,
+)
+
 
 class PreviewRequestSerializer(serializers.Serializer):
     url = serializers.URLField(required=True)
@@ -80,6 +85,17 @@ class ExportStructuredJsonSerializer(serializers.Serializer):
     url = serializers.URLField(required=True)
     html_snapshot = serializers.CharField(required=False, allow_blank=True)
     base_url = serializers.URLField(required=False)
+    extraction_mode = serializers.ChoiceField(
+        choices=["standard", "custom"],
+        required=False,
+        default="standard",
+    )
+    extraction_prompt = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=4000,
+    )
+    json_schema = serializers.JSONField(required=False)
     selectors = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -95,6 +111,20 @@ class ExportStructuredJsonSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "base_url is required when html_snapshot is provided."
             )
+        if attrs.get("extraction_mode") == "custom" and not attrs.get("extraction_prompt", "").strip():
+            raise serializers.ValidationError(
+                {"extraction_prompt": "Describe the data to extract."}
+            )
+        schema = attrs.get("json_schema")
+        if schema is not None and not isinstance(schema, dict):
+            raise serializers.ValidationError(
+                {"json_schema": "JSON Schema must be a JSON object."}
+            )
+        if schema is not None:
+            try:
+                validate_json_schema(schema)
+            except CustomStructuredExtractionError as exc:
+                raise serializers.ValidationError({"json_schema": str(exc)}) from exc
         return attrs
 
 

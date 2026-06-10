@@ -33,6 +33,10 @@ from .serializers import (
     RegisterSerializer,
 )
 from .services.cleaner import clean_html
+from .services.custom_structured_extractor import (
+    CustomStructuredExtractionError,
+    extract_custom_structured_data,
+)
 from .services.credits import InsufficientCredits, charge, get_balance, grant
 from .services.extractor import ContentExtractionError, extract_main_content
 from .services.markdown_generator import MarkdownGenerationError, html_to_markdown
@@ -499,6 +503,12 @@ class ExportStructuredJsonView(APIView):
         base_url = serializer.validated_data.get("base_url") or url
         selectors = serializer.validated_data.get("selectors") or []
         ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
+        extraction_mode = serializer.validated_data.get("extraction_mode", "standard")
+        extraction_prompt = serializer.validated_data.get("extraction_prompt", "")
+        json_schema = serializer.validated_data.get("json_schema")
+        if extraction_mode == "custom":
+            selectors = []
+            ai_cleanup = False
 
         # --- Fetch HTML if no snapshot provided ---
         try:
@@ -525,14 +535,27 @@ class ExportStructuredJsonView(APIView):
 
         # --- Extract structured JSON ---
         try:
-            generated = html_to_structured_json(
-                source_html,
-                title,
-                source_url=base_url,
-                selectors=selectors,
-                ai_cleanup=ai_cleanup,
-            )
-        except StructuredJsonGenerationError as exc:
+            if extraction_mode == "custom":
+                custom_data = extract_custom_structured_data(
+                    source_html,
+                    extraction_prompt,
+                    schema=json_schema,
+                    selectors=selectors,
+                    ai_cleanup=ai_cleanup,
+                )
+                generated_title = title
+                generated_data = custom_data
+            else:
+                generated = html_to_structured_json(
+                    source_html,
+                    title,
+                    source_url=base_url,
+                    selectors=selectors,
+                    ai_cleanup=ai_cleanup,
+                )
+                generated_title = generated.title
+                generated_data = generated.data
+        except (StructuredJsonGenerationError, CustomStructuredExtractionError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception:
             return Response(
@@ -555,8 +578,8 @@ class ExportStructuredJsonView(APIView):
 
         return Response(
             {
-                "title": generated.title,
-                "data": generated.data,
+                "title": generated_title,
+                "data": generated_data,
             },
             status=status.HTTP_200_OK,
         )

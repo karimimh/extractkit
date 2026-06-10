@@ -41,7 +41,7 @@ type StructuredJson = {
 
 type ExportResult = {
   title: string;
-  data: StructuredJson;
+  data: StructuredJson | Record<string, unknown>;
 };
 
 type BulkExportResult = {
@@ -64,6 +64,7 @@ type InteractionMode = "cursor" | "select";
 type ToolMode = "single" | "bulk";
 type BulkOutputMode = "zip" | "combined";
 type CleanupMode = "full" | "ai" | "manual";
+type ExtractionMode = "standard" | "custom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "json-picker-select";
@@ -234,6 +235,9 @@ function WebsiteToJson() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [cleanupMode, setCleanupMode] = useState<CleanupMode>("manual");
+  const [extractionMode, setExtractionMode] = useState<ExtractionMode>("standard");
+  const [extractionPrompt, setExtractionPrompt] = useState("");
+  const [jsonSchema, setJsonSchema] = useState("");
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -321,7 +325,7 @@ function WebsiteToJson() {
 
   useEffect(() => {
     const trimmedUrl = url.trim();
-    if (cleanupMode !== "manual" || !trimmedUrl) {
+    if (extractionMode === "custom" || cleanupMode !== "manual" || !trimmedUrl) {
       previewRequestIdRef.current += 1;
       setPreviewError(null);
       setPreviewHtml(null);
@@ -334,7 +338,7 @@ function WebsiteToJson() {
     }
     const timeoutId = window.setTimeout(() => void loadPreview(trimmedUrl), 300);
     return () => window.clearTimeout(timeoutId);
-  }, [url, cleanupMode]);
+  }, [url, cleanupMode, extractionMode]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -347,7 +351,7 @@ function WebsiteToJson() {
   const handlePreview = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedUrl = url.trim();
-    if (cleanupMode !== "manual") return;
+    if (extractionMode === "custom" || cleanupMode !== "manual") return;
     if (!trimmedUrl) {
       setPreviewError("Please enter a URL.");
       return;
@@ -376,6 +380,26 @@ function WebsiteToJson() {
       return;
     }
 
+    if (extractionMode === "custom" && !extractionPrompt.trim()) {
+      setError("Describe the data you want to extract.");
+      return;
+    }
+
+    let parsedSchema: Record<string, unknown> | undefined;
+    if (extractionMode === "custom" && jsonSchema.trim()) {
+      try {
+        const candidate = JSON.parse(jsonSchema) as unknown;
+        if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+          setError("JSON Schema must be a JSON object.");
+          return;
+        }
+        parsedSchema = candidate as Record<string, unknown>;
+      } catch {
+        setError("JSON Schema is not valid JSON.");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -385,13 +409,21 @@ function WebsiteToJson() {
         html_snapshot?: string;
         base_url?: string;
         ai_cleanup: boolean;
+        extraction_mode: ExtractionMode;
+        extraction_prompt?: string;
+        json_schema?: Record<string, unknown>;
       } = {
         url: url.trim(),
-        selectors: cleanupMode === "manual" ? selections : [],
-        ai_cleanup: cleanupMode === "ai",
+        selectors: extractionMode === "standard" && cleanupMode === "manual" ? selections : [],
+        ai_cleanup: extractionMode === "standard" && cleanupMode === "ai",
+        extraction_mode: extractionMode,
       };
+      if (extractionMode === "custom") {
+        exportPayload.extraction_prompt = extractionPrompt.trim();
+        if (parsedSchema) exportPayload.json_schema = parsedSchema;
+      }
 
-      if (previewSnapshot && previewBaseUrl) {
+      if (extractionMode === "standard" && previewSnapshot && previewBaseUrl) {
         let finalSnapshot = previewSnapshot;
         if (iframeRef.current?.contentDocument) {
           const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
@@ -569,24 +601,64 @@ function WebsiteToJson() {
                 {previewError && <p className="message error">{previewError}</p>}
 
                 <div className="toggle-group">
-                  <span>Cleanup method</span>
+                  <span>Extraction type</span>
                   <div className="toggle-buttons">
-                    <button type="button" className={cleanupMode === "full" ? "active" : ""} onClick={() => setCleanupMode("full")}>
-                      Full Page export
+                    <button type="button" className={extractionMode === "standard" ? "active" : ""} onClick={() => setExtractionMode("standard")}>
+                      Standard page fields
                     </button>
-                    <button type="button" className={cleanupMode === "ai" ? "active" : ""} onClick={() => {
-                      setCleanupMode("ai");
-                      handleInteractionModeChange("cursor");
-                    }}>
-                      AI Cleanup
-                    </button>
-                    <button type="button" className={cleanupMode === "manual" ? "active" : ""} onClick={() => setCleanupMode("manual")}>
-                      Manual Interaction
+                    <button type="button" className={extractionMode === "custom" ? "active" : ""} onClick={() => setExtractionMode("custom")}>
+                      Custom extraction
                     </button>
                   </div>
                 </div>
 
-                {cleanupMode === "manual" && <div className="preview-shell">
+                {extractionMode === "custom" && (
+                  <div className="custom-extraction-fields">
+                    <label htmlFor="extraction-prompt">What should be extracted?</label>
+                    <textarea
+                      id="extraction-prompt"
+                      value={extractionPrompt}
+                      onChange={(event) => setExtractionPrompt(event.target.value)}
+                      placeholder="Extract every product's name, price, rating, and availability."
+                      rows={3}
+                      maxLength={4000}
+                    />
+                    <label htmlFor="json-schema">
+                      JSON Schema <span>(optional)</span>
+                    </label>
+                    <textarea
+                      id="json-schema"
+                      value={jsonSchema}
+                      onChange={(event) => setJsonSchema(event.target.value)}
+                      placeholder={'{"type":"object","properties":{"products":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"price":{"type":"string"}},"required":["name","price"]}}},"required":["products"]}'}
+                      rows={7}
+                      spellCheck={false}
+                    />
+                    <p>Without a schema, AI chooses suitable fields. With a schema, the result is validated before it is returned.</p>
+                  </div>
+                )}
+
+                {extractionMode === "standard" && (
+                  <div className="toggle-group">
+                    <span>Cleanup method</span>
+                    <div className="toggle-buttons">
+                      <button type="button" className={cleanupMode === "full" ? "active" : ""} onClick={() => setCleanupMode("full")}>
+                        Full Page export
+                      </button>
+                      <button type="button" className={cleanupMode === "ai" ? "active" : ""} onClick={() => {
+                        setCleanupMode("ai");
+                        handleInteractionModeChange("cursor");
+                      }}>
+                        AI Cleanup
+                      </button>
+                      <button type="button" className={cleanupMode === "manual" ? "active" : ""} onClick={() => setCleanupMode("manual")}>
+                        Manual Interaction
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {extractionMode === "standard" && cleanupMode === "manual" && <div className="preview-shell">
                   {previewBlobUrl ? (
                     <div className="preview-panel">
                       <div className="preview-head">
@@ -638,7 +710,7 @@ function WebsiteToJson() {
                   )}
                 </div>}
 
-                {cleanupMode === "manual" && <div className="selection-list">
+                {extractionMode === "standard" && cleanupMode === "manual" && <div className="selection-list">
                   <div className="flex items-center justify-between">
                     <div>Removed elements</div>
                     <div className="selection-info">
@@ -661,7 +733,7 @@ function WebsiteToJson() {
 
                 <div className="export-actions">
                   <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
-                    {isLoading ? "Extracting JSON..." : "Export JSON"}
+                    {isLoading ? "Extracting JSON..." : extractionMode === "custom" ? "Extract Custom JSON" : "Export JSON"}
                   </button>
                 </div>
 

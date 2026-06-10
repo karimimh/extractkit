@@ -7,547 +7,188 @@
 - Write a short dev.to / Medium post about the stack — links from those rank well
 - Get listed on sites like [Uneed](https://www.uneed.best) and [Futurepedia](https://www.futurepedia.io)
 
-## IDEAS
-
-1. **Web → Summary**
-
-Paste a URL and get:
-
-- TL;DR
-- Key takeaways
-- Executive summary
-- Action items
-
-2. **Web → Notes**
-
-Convert an article into structured notes:
-
-- Headings
-- Bullet points
-- Highlights
-- Quotes
-
-3. **Web → Flashcards**
-
-Turn any article into:
-
-- Q&A flashcards
-- Anki export
-- Quiz mode
-
-4. **Web → Mind Map**
-
-Generate a visual hierarchy of concepts from a page.
-
-5. **Web → Audio**
-
-Convert articles into:
-
-- Podcasts
-- Narrated audio lessons
-- MP3 downloads
-
-6. **Web → Slides**
-
-Create a presentation deck from a webpage.
-
-7. **Web → Study Guide**
-
-Produce:
-
-- Summary
-- Definitions
-- Practice questions
-- Flashcards
-- Cheat sheet
-
-8. **Web → Blog Post**
-
-Rewrite an article into a new blog post.
-
-9. **Web → Social Posts**
-
-Generate:
-
-- X posts
-- LinkedIn posts
-- Reddit summaries
-
-10. **Web → Newsletter**
-
-Turn articles into newsletter content.
-
-11. **Web → FAQ**
-
-Automatically generate FAQs from a webpage.
-
-12. **Metadata Extractor**
-
-Extract:
-
-- Open Graph tags
-- Meta descriptions
-- Canonicals
-- Structured data
-
-13. **Readability Cleaner**
-
-Remove ads, popups, navigation, and keep only content.
-
-14. **Text to Image**
-
-given a text, create an image with that text inside it. may be good for social media posts.
-
-maybe `web to image` can be a different tool from `web to screenshot`. here we use AI to summarize website's content and download this text as images
-
-## IDEAS 2
-
-### 1. Webpage → Structured Data
-
-#### Webpage → JSON
-
-Extract:
-
-- Title
-- Author
-- Date
-- Headings
-- Paragraphs
-- Tables
-- Images
-- Links
-- Metadata
-
-Output:
-
-```json
-{
-  "title": "...",
-  "author": "...",
-  "content": "...",
-  "tables": [...]
-}
-```
-
-Target users:
-
-- AI developers
-- Data engineers
-- Scrapers
-
 ---
 
-#### Webpage → CSV
+Your strongest opportunity is not adding many unrelated converters. Build DistillPage into a **web-content extraction, monitoring, and delivery platform**.
 
-Extract:
+You already have reusable foundations:
 
-- Tables
-- Product listings
-- Search results
-- Job listings
+- Browser rendering and screenshots
+- AI cleanup and manual selectors
+- Bulk processing
+- Structured extraction
+- Authentication, credits, and billing
 
-Export:
+## Recommended Roadmap
 
-```csv
-name,price,rating
-```
+### 1. Custom Structured Data Extraction
 
-Very useful for business users.
-
----
-
-#### Webpage → Excel
-
-Same as CSV but with:
-
-- multiple sheets
-- formatting
-- charts
-
-People pay for this.
-
----
-
-### 2. AI-Powered Content Extraction
-
-#### Webpage → Summary
-
-User enters URL.
-
-Output:
-
-- 1 minute summary
-- key points
-- action items
-
-Can be sold as credits.
-
----
-
-#### Webpage → Study Notes
-
-Especially for students.
-
-Outputs:
-
-- summaries
-- definitions
-- key concepts
-- flashcards
-
----
-
-#### Webpage → FAQ
-
-Generate:
-
-```text
-Q: What is X?
-A: ...
-```
-
-Good for learning and support teams.
-
----
-
-#### Webpage → Mind Map
-
-Extract hierarchy.
-
-Generate:
-
-```text
-Main Topic
- ├─ Section A
- ├─ Section B
-```
-
-Can export to:
-
-- PNG
-- PDF
-- Markdown
-
----
-
-### 3. Screenshot-Based Tools
-
-You already generate screenshots.
-
-Leverage them.
-
-#### Full Page Screenshot → PDF
-
-Many users want this.
-
-Different from rendering HTML.
-
----
-
-#### Screenshot → OCR Text
-
-Extract text from screenshot.
-
-Export:
-
-- txt
-- markdown
-
----
-
-#### Screenshot → Editable HTML
-
-AI reconstructs webpage.
-
-Very attractive.
-
----
-
-#### Screenshot → Design Tokens
-
-Extract:
-
-- colors
-- typography
-- spacing
-
-Useful for designers.
-
----
-
-### 4. Website Archiving
-
-#### Website Snapshot
-
-Store:
-
-- HTML
-- CSS
-- Screenshot
-- PDF
-
-User can revisit later.
-
-Like a mini archive service.
-
----
-
-#### Visual Change Monitoring
-
-User enters URL.
-
-You:
-
-- screenshot daily
-- detect differences
-- send alerts
-
-Good recurring revenue.
+Let users describe the data they need or provide a JSON Schema.
 
 Examples:
 
-- competitors
-- pricing pages
-- government sites
+- “Extract every product’s name, price, rating, and availability.”
+- “Extract job title, company, location, and salary.”
+- “Extract this page using my JSON Schema.”
+
+Outputs:
+
+- JSON
+- CSV
+- Excel
+- API response
+
+This is significantly more useful than your current fixed JSON structure in [structured_json_generator.py](/Users/mhk/dev/distillpage/backend/app/services/structured_json_generator.py).
+
+**Why build it first:** it targets developers, researchers, sales teams, and businesses willing to pay more per extraction. Firecrawl similarly supports prompt/schema-based structured extraction across URLs.
 
 ---
 
-#### Content Change Monitoring
+### 2. Website Crawler
+
+Instead of requiring users to paste URLs individually:
+
+1. Enter a domain or sitemap.
+2. Discover its pages.
+3. Filter by path, page depth, or URL pattern.
+4. Export the entire site as Markdown, JSON, PDF, or ZIP.
+
+Useful options:
+
+- Include/exclude URL patterns
+- Maximum pages and depth
+- Sitemap-only mode
+- Deduplicate pages
+- Crawl progress screen
+- Failed-page report
+
+Your bulk exporters already provide much of the output pipeline. Firecrawl’s crawler demonstrates demand for sitemap discovery, recursive crawling, path filtering, webhooks, and structured outputs.
+
+---
+
+### 3. Webpage Change Monitoring
+
+Allow users to schedule a URL and receive notifications when it changes.
 
 Monitor:
 
-- text changes
-- product changes
-- documentation changes
+- Cleaned text
+- Selected page elements
+- Product prices
+- Structured JSON fields
+- Visual screenshot differences
 
-Email summaries.
+Notifications:
 
----
+- Email
+- Webhook
+- Slack or Discord
+- Downloadable before/after comparison
 
-### 5. SEO Tools
-
-Very close to your current stack.
-
-#### SEO Audit
-
-Check:
-
-- title
-- meta tags
-- headings
-- links
-- schema
-
-Generate report.
+This creates recurring usage and subscription revenue rather than one-time conversions.
 
 ---
 
-#### Extract Internal Links
+### 4. CSV and Excel Export
 
-Output:
+Add **Web → CSV** and **Web → Excel** as output options for:
 
-```csv
-source,target
-```
+- HTML tables
+- Product listings
+- Search results
+- Job listings
+- Custom-schema extraction results
 
-SEO agencies need this.
+Excel could generate separate sheets for:
 
----
+- Main extracted records
+- Metadata
+- Links
+- Images
+- Tables
 
-#### Sitemap Visualizer
-
-Input:
-
-```xml
-sitemap.xml
-```
-
-Output:
-
-Visual tree.
+This should share the custom extraction engine rather than becoming another isolated converter.
 
 ---
 
-### 6. AI Content Repurposing
+### 5. Scheduled Exports and Webhooks
 
-This is where AI can shine.
+Let users run conversion jobs:
 
-#### Webpage → LinkedIn Post
+- Hourly, daily, weekly, or monthly
+- Through an API
+- Delivered by webhook, email, or downloadable archive
 
-Turn article into:
+Examples:
 
-- LinkedIn post
-- thread
-- tweet
+- Generate a weekly PDF of a dashboard.
+- Send cleaned Markdown to a knowledge base daily.
+- Extract competitor pricing every morning.
 
----
-
-#### Webpage → Newsletter
-
-Convert article into:
-
-- email newsletter
+This requires an asynchronous job model, but it unlocks automation and API customers.
 
 ---
 
-#### Webpage → Blog Summary
+### 6. Visual Regression and Page Diff
 
-Short blog version.
+Use your screenshot capability to compare two URLs or two captures of the same URL.
 
----
+Outputs:
 
-#### Multiple URLs → Research Report
+- Side-by-side screenshots
+- Pixel-difference overlay
+- Cleaned-text diff
+- DOM/content change summary
+- Percentage changed
 
-Input:
-
-```
-url1
-url2
-url3
-url4
-```
-
-Generate:
-
-- combined report
-- comparison
-- summary
-
-This is very valuable.
+Target users include developers, QA teams, marketers, and compliance teams.
 
 ---
 
-### 7. Developer-Focused Tools
+### 7. Developer API and Integrations
 
-#### URL → Clean Reader View
+Expose the conversion tools as a proper developer product:
 
-Like browser reader mode.
+- API keys
+- Usage dashboard
+- Async jobs
+- Idempotency keys
+- Webhooks
+- Job history
+- Zapier, Make, and n8n integrations
+- MCP server for AI agents
 
-Export:
+Your backend endpoints already provide a useful starting point, but API-key authentication and persistent job tracking would make them commercially usable.
 
-- HTML
-- Markdown
-- PDF
+## Improve Existing Tools First
 
----
+Before adding several new pages, I would add these shared capabilities:
 
-#### URL → LLM-Ready Markdown
+- Export history with rerun and download
+- Saved cleanup presets per domain
+- Reusable manual selectors
+- Desktop, tablet, and mobile viewport presets
+- Cookie-banner removal
+- Wait-for-selector and custom delay
+- Light/dark mode capture
+- Page ranges and PDF headers/footers
+- Markdown with locally downloaded images
+- Partial-failure reports for bulk jobs
+- Preview extracted JSON before charging/exporting
 
-One of the strongest ideas.
+## Suggested Build Order
 
-Removes:
+1. **Custom-schema JSON extraction**
+2. **CSV and Excel outputs**
+3. **Site crawler**
+4. **Job history and asynchronous processing**
+5. **Scheduled monitoring and change alerts**
+6. **Developer API, webhooks, and integrations**
+7. **Visual regression tools**
 
-- navbars
-- ads
-- footers
-- cookie banners
+I would avoid prioritizing Web → Summary, Slides, Audio, or Social Posts yet. Those are crowded AI-generation features and do not leverage your strongest differentiation: reliable webpage rendering, cleanup, extraction, and export.
 
-Produces:
-
-```markdown
-# Title
-
-clean content
-```
-
-Perfect for AI ingestion.
-
----
-
-#### Bulk URLs → Dataset Builder
-
-Input:
-
-```
-100 URLs
-```
-
-Output:
-
-```json
-[
- ...
-]
-```
-
-Developers and AI startups love this.
-
----
-
-### 8. Competitive Intelligence Tools
-
-#### Compare Two URLs
-
-Example:
-
-```
-old page
-new page
-```
-
-Output:
-
-- added content
-- removed content
-- changed content
-
----
-
-#### Competitor Tracker
-
-Track:
-
-- pricing pages
-- landing pages
-- feature pages
-
-Alert on changes.
-
-Recurring subscription model.
-
----
-
-### 9. Documentation Tools
-
-#### Website → Knowledge Base
-
-Crawl docs.
-
-Generate:
-
-- markdown files
-- searchable package
-
-Useful for AI agents.
-
----
-
-#### Website → LLM Training Dataset
-
-Convert website into:
-
-```json
-{
-  "question": "...",
-  "answer": "..."
-}
-```
-
-or chunked markdown.
-
-Strong B2B tool.
-
----
-
-### 10. The Most Promising Extensions
-
-If I were building this business, I would prioritize these five because they fit your existing infrastructure and are monetizable:
-
-1. **URL → LLM-Ready Markdown**
-2. **Multiple URLs → Research Report**
-3. **Website Change Monitoring**
-4. **Website → Structured JSON**
-5. **Website → Knowledge Base Export**
+Sources: [Firecrawl Crawl](https://docs.firecrawl.dev/features/crawl), [Firecrawl Extract](https://docs.firecrawl.dev/features/extract), [Browserless Screenshot API](https://docs.browserless.io/rest-apis/screenshot-api), [changedetection.io](https://changedetection.io/)
 
 ## VISION
 
