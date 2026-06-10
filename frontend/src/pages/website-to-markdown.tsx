@@ -500,7 +500,7 @@ function WebsiteToMarkdown() {
   const hasEnoughCredits = !user || user.download_credits >= totalCreditCost;
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
           <h1>Export Any Webpage to Markdown</h1>
@@ -662,8 +662,8 @@ function WebsiteToMarkdown() {
                       style={{
                         marginTop: "1rem",
                         padding: "1.25rem 1.5rem",
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
                         borderRadius: "0.5rem",
                         maxHeight: "600px",
                         overflowY: "auto",

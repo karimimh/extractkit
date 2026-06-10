@@ -577,7 +577,7 @@ function WebsiteToPdf() {
   const hasEnoughCredits = !user || user.download_credits >= totalCreditCost;
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
           <h1>Export Any Webpage to a Custom PDF</h1>

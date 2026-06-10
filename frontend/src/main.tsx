@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './context/auth-context.tsx'
+import { ThemeProvider } from './context/theme-context.tsx'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 
@@ -13,11 +14,13 @@ const rootElement = document.getElementById('root')!
 const app = (
   <StrictMode>
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </GoogleOAuthProvider>
   </StrictMode>
 )
@@ -28,4 +31,3 @@ if (rootElement.hasChildNodes()) {
 } else {
   createRoot(rootElement).render(app)
 }
-

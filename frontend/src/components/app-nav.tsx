@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { UserHeader } from "./user-header";
+import { ThemeSwitcher } from "./theme-switcher";
 import { WEB_TOOLS } from "./tool-nav-items";
 
 const ROUTE_TITLES = [
@@ -46,6 +47,7 @@ export function AppNav({ showSidebarToggle = false, onOpenSidebar }: AppNavProps
             {pageTitle}
           </div>
           <div className="app-nav-right">
+            <ThemeSwitcher />
             <div className="app-nav-user">
               <UserHeader />
             </div>
