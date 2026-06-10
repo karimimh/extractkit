@@ -170,16 +170,16 @@ const ARTICLES: Article[] = [
   },
   {
     slug: "extract-structured-json-from-webpage",
-    title: "How to Extract Structured JSON from a Webpage",
+    title: "How to Extract Custom Structured JSON from a Webpage",
     description:
-      "Extract structured JSON from any webpage using AI Cleanup, full-page export, or manual interaction.",
+      "Extract standard webpage data or define custom structured JSON with a prompt and optional JSON Schema.",
     canonical: "https://distillpage.com/blog/extract-structured-json-from-webpage",
     toolName: "Web to JSON",
     toolPath: "/web-to-json",
     publishedAt: "2026-06-10",
-    updatedAt: "2026-06-10",
+    updatedAt: "2026-06-11",
     intro:
-      "Webpages contain useful data, but it is usually trapped inside layout HTML, navigation, scripts, ads, and repeated page chrome. DistillPage can use AI Cleanup, preserve the full page, or let you manually control the source before creating structured JSON.",
+      "Webpages contain useful data, but the fields you need vary from page to page. DistillPage can create its standard webpage JSON or extract custom records and fields from your instructions, with an optional JSON Schema to define the exact result.",
     sections: [
       {
         heading: "Why structured JSON is useful",
@@ -189,10 +189,17 @@ const ARTICLES: Article[] = [
         ],
       },
       {
-        heading: "What the JSON export includes",
+        heading: "Standard JSON or custom extraction",
         body: [
-          "The Web to JSON tool extracts common webpage fields such as title, author, published date, headings, paragraph text, tables, images, links, canonical URL, meta tags, Open Graph tags, Twitter tags, and JSON-LD when the page provides it.",
-          "Relative image and link URLs are resolved against the source page, which makes the output easier to use outside the original website. The result can be copied directly or downloaded as a .json file.",
+          "Standard extraction collects common webpage fields such as title, author, published date, headings, paragraph text, tables, images, links, canonical URL, meta tags, Open Graph tags, Twitter tags, and JSON-LD.",
+          "Custom extraction lets you describe the data you want in plain language. For example, ask for every product's name, price, rating, and availability, or request the company name, funding stage, founders, and contact details from a profile page.",
+        ],
+      },
+      {
+        heading: "Use a JSON Schema when the shape matters",
+        body: [
+          "A prompt explains what to extract. An optional JSON Schema defines how the response must be structured, including field names, value types, required fields, nested objects, and arrays of repeated records.",
+          "Schema-driven extraction is useful when the JSON will feed an API, database, automation, or typed application. DistillPage validates that the schema has an object root and checks the extracted result against it before returning the data.",
         ],
       },
       {
@@ -203,10 +210,10 @@ const ARTICLES: Article[] = [
         ],
       },
       {
-        heading: "AI Cleanup for structured datasets",
+        heading: "Create reliable repeated records",
         body: [
-          "AI Cleanup is useful when creating datasets from several websites because it reduces repeated navigation links, promotional text, and unrelated page modules before fields are extracted.",
-          "The model selects unwanted DOM containers rather than rewriting the page content. This helps preserve headings, paragraphs, tables, images, links, metadata, and other useful source material.",
+          "When a page contains repeated items such as products, jobs, events, properties, or search results, ask for an array of objects with the same fields. This makes the result ready for filtering, analysis, or conversion into rows.",
+          "Tell the extractor not to invent missing values and use a schema when downstream code requires consistent types. The custom extractor treats webpage content as untrusted data and follows your extraction request rather than instructions found inside the page.",
         ],
       },
       {
@@ -219,7 +226,141 @@ const ARTICLES: Article[] = [
       {
         heading: "How to extract webpage JSON",
         body: [
-          "Open the Web to JSON tool, paste a URL, and choose Full Page export, AI Cleanup, or Manual Interaction. For multiple pages, switch to bulk mode, choose Full Page export or AI Cleanup, paste one URL per line, choose ZIP or combined JSON, and download the result.",
+          "Open the Web to JSON tool and paste a URL. Choose Standard extraction for the built-in webpage structure, or Custom extraction to enter a request and optional JSON Schema. Then choose Full Page export, AI Cleanup, or Manual Interaction and extract the result.",
+          "Custom extraction is available for a single URL. For multiple pages using the standard structure, switch to bulk mode, paste one URL per line, and choose a ZIP or combined JSON file.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "export-webpage-data-to-csv",
+    title: "How to Export Webpage Data to CSV",
+    description:
+      "Turn webpage tables, listings, and repeated records into a clean CSV using a custom extraction prompt.",
+    canonical: "https://distillpage.com/blog/export-webpage-data-to-csv",
+    toolName: "Web to CSV",
+    toolPath: "/web-to-csv",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    intro:
+      "Copying webpage data into a spreadsheet is slow and error-prone. DistillPage lets you describe the records you need, extracts them from the page, and generates a UTF-8 CSV with consistent columns.",
+    sections: [
+      {
+        heading: "What kinds of pages work well",
+        body: [
+          "CSV export is useful for product listings, pricing tables, directories, search results, job boards, event lists, property listings, and other pages with repeated records.",
+          "The page does not need to contain a traditional HTML table. A custom extraction request can turn visually repeated cards or list items into rows.",
+        ],
+      },
+      {
+        heading: "Describe the rows you need",
+        body: [
+          "Enter a direct request such as: Extract every product's name, price, rating, availability, and product URL. DistillPage uses the first repeated object array in the extracted result as the CSV records.",
+          "An optional JSON Schema can define field names and types before extraction. This is useful when you need stable column names for an import, automation, or recurring analysis.",
+        ],
+      },
+      {
+        heading: "How nested data becomes columns",
+        body: [
+          "Nested object fields are flattened into dot-separated columns so useful details are not lost. Lists and more complex values remain valid serialized data inside their cells.",
+          "The CSV includes a header row and UTF-8 encoding for broad spreadsheet compatibility. Values that could be interpreted as spreadsheet formulas are escaped before export.",
+        ],
+      },
+      {
+        heading: "How to export a webpage to CSV",
+        body: [
+          "Open Web to CSV, paste the webpage URL, and describe the repeated records to extract. Add an optional JSON Schema when you need a strict structure, then generate and download the .csv file.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "export-webpage-data-to-excel",
+    title: "How to Export Webpage Data to Excel",
+    description:
+      "Create an Excel workbook from webpage records, with supporting metadata, links, images, and tables when available.",
+    canonical: "https://distillpage.com/blog/export-webpage-data-to-excel",
+    toolName: "Web to Excel",
+    toolPath: "/web-to-excel",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    intro:
+      "An Excel workbook is useful when webpage data needs more context than a single flat file can provide. DistillPage extracts the records you describe and creates a workbook that can also preserve supporting page data in separate sheets.",
+    sections: [
+      {
+        heading: "When Excel is better than CSV",
+        body: [
+          "Choose Excel when people will review the data directly, when you want filters in the header row, or when the source includes useful metadata, links, images, or multiple tables.",
+          "CSV remains a good choice for a simple import or data pipeline. Excel is better for a self-contained workbook that keeps the primary records and supporting context together.",
+        ],
+      },
+      {
+        heading: "Extract custom records from any layout",
+        body: [
+          "Describe the rows you need in plain language, even when the webpage uses cards, lists, or other visual layouts instead of a table. An optional JSON Schema can enforce the expected fields and repeated-record structure.",
+          "The first repeated object array becomes the Records sheet. Nested objects are flattened into columns, which makes the primary dataset easy to sort and filter.",
+        ],
+      },
+      {
+        heading: "What the workbook can contain",
+        body: [
+          "Every workbook includes a Records sheet. When the extracted data provides them, DistillPage also creates Metadata, Links, Images, and Tables sheets so supporting page information remains accessible without crowding the main records.",
+          "Header rows are styled and filtered, cell values are cleaned for spreadsheet compatibility, and potentially executable formula-like values are escaped.",
+        ],
+      },
+      {
+        heading: "How to export a webpage to Excel",
+        body: [
+          "Open Web to Excel, paste the webpage URL, describe the records to extract, and optionally provide a JSON Schema. Generate the export and download the resulting .xlsx workbook.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "crawl-and-export-a-website",
+    title: "How to Crawl and Export an Entire Website",
+    description:
+      "Discover same-domain pages from sitemaps and internal links, select the URLs you need, and export them together.",
+    canonical: "https://distillpage.com/blog/crawl-and-export-a-website",
+    toolName: "Website Crawler",
+    toolPath: "/website-crawler",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    intro:
+      "Collecting pages one URL at a time is impractical when you need a documentation site, blog, knowledge base, or other section of a website. DistillPage discovers same-domain pages, lets you review the URL list, and exports the selected pages together.",
+    sections: [
+      {
+        heading: "How website discovery works",
+        body: [
+          "The crawler starts with the site's sitemap when one is available, including nested sitemap indexes. It can then follow same-domain internal links up to the maximum depth and page limit you choose.",
+          "Use sitemap-only mode when you trust the site's published URL inventory and do not want link discovery. You can also start with a direct sitemap URL.",
+        ],
+      },
+      {
+        heading: "Control which pages are included",
+        body: [
+          "Include and exclude path patterns help focus the crawl. For example, include /docs/* or /blog/* while excluding admin, tag, account, or archive paths.",
+          "After discovery, review the URL list and select only the pages you want to export. This prevents unwanted pages from consuming export credits or entering the final dataset.",
+        ],
+      },
+      {
+        heading: "Choose the right website export",
+        body: [
+          "Selected pages can be exported as Markdown, PDF, JSON, or screenshots. Markdown, PDF, and JSON support either a ZIP with one file per page or a combined file; screenshots are delivered as a ZIP.",
+          "Use Full Page export to preserve each page or AI Cleanup to reduce repeated navigation, ads, prompts, and unrelated page chrome across the selected URLs.",
+        ],
+      },
+      {
+        heading: "Common crawler workflows",
+        body: [
+          "Export a documentation site to Markdown for local search or LLM input, archive a blog as PDFs, collect standard JSON for analysis, or capture a set of pages as screenshots for QA and design review.",
+          "Crawler exports require sign-in, and each selected page uses one export credit. Start with a focused path pattern and page limit when testing a new site.",
+        ],
+      },
+      {
+        heading: "How to crawl and export a website",
+        body: [
+          "Open Website Crawler, enter the website or sitemap URL, set the page limit, link depth, and optional path patterns, then discover pages. Review the results, select the URLs you need, choose the format and cleanup method, and export them together.",
         ],
       },
     ],
@@ -229,7 +370,7 @@ const ARTICLES: Article[] = [
 const BLOG_SEO = {
   title: "DistillPage Blog",
   description:
-    "Practical guides for full-page exports, AI Cleanup, and manual webpage conversion with DistillPage.",
+    "Practical guides for webpage conversion, custom structured extraction, tabular exports, and website crawling.",
   canonical: "https://distillpage.com/blog",
   jsonLd: {
     "@context": "https://schema.org",
@@ -237,7 +378,7 @@ const BLOG_SEO = {
     name: "DistillPage Blog",
     url: "https://distillpage.com/blog",
     description:
-      "Practical guides for full-page exports, AI Cleanup, and manual webpage conversion with DistillPage.",
+      "Practical guides for webpage conversion, custom structured extraction, tabular exports, and website crawling.",
   },
 };
 
@@ -271,8 +412,8 @@ export function BlogIndex() {
         <h1>Guides for cleaner webpage exports</h1>
         <p>
           Practical articles for turning webpages into focused PDFs, screenshots,
-          Markdown files, and structured JSON using AI Cleanup, Full Page export,
-          or Manual Interaction.
+          Markdown, custom structured JSON, CSV, and Excel, plus crawling and
+          exporting complete website sections.
         </p>
       </section>
 

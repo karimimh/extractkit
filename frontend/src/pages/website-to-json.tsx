@@ -10,7 +10,7 @@ import { usePageSeo } from "../hooks/use-page-seo";
 const JSON_TOOL_SEO = {
   title: "Webpage to JSON – DistillPage",
   description:
-    "Extract structured JSON from any webpage using full-page export, AI Cleanup, or manual element removal.",
+    "Extract standard webpage fields or use custom instructions and an optional JSON Schema to create structured JSON.",
   canonical: "https://distillpage.com/web-to-json",
   jsonLd: {
     "@context": "https://schema.org",
@@ -18,7 +18,7 @@ const JSON_TOOL_SEO = {
     name: "Webpage to JSON – DistillPage",
     url: "https://distillpage.com/web-to-json",
     description:
-      "Extract structured JSON from webpages with optional AI Cleanup for scraping, data engineering, and analysis.",
+      "Extract standard webpage fields or create custom structured JSON using instructions and an optional JSON Schema.",
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -549,9 +549,9 @@ function WebsiteToJson() {
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
           <h1>Extract Structured JSON from Any Webpage</h1>
-          <h2 className="subtitle">Turn page content into clean fields for apps, agents, and datasets</h2>
+          <h2 className="subtitle">Extract standard fields or describe the custom JSON your workflow needs</h2>
           <p className="subtitle">
-            Export the full page, let AI remove unrelated chrome and interruptions, or manually choose sections before extracting structured fields.
+            Use custom instructions and an optional JSON Schema to extract specific records and fields, or export the page with the built-in standard structure.
           </p>
         </header>
 
