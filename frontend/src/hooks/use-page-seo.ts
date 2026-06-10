@@ -42,6 +42,5 @@ export function usePageSeo({ title, description, canonical, jsonLd }: PageSeoOpt
       }
       ldScript.textContent = JSON.stringify(jsonLd);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // options are module-level constants — intentionally run once on mount
+  }, [title, description, canonical, jsonLd]);
 }

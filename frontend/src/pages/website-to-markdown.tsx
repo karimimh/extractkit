@@ -505,11 +505,6 @@ function WebsiteToMarkdown() {
         <header className="card-header">
           <h1>Export Any Webpage to Markdown</h1>
           <h2 className="subtitle">Convert a web page into clean, portable Markdown</h2>
-          <div className="seo-tags">
-            {["webpage to markdown", "html to markdown", "website to md", "clean markdown export", "web scraper markdown", "convert page markdown"].map((tag) => (
-              <span className="seo-tag" key={tag}>{tag}</span>
-            ))}
-          </div>
           <p className="subtitle">
             Paste a URL and preview the page. Switch to Remove mode to click away ads, banners, and sidebars, then export the clean result as a Markdown file.
           </p>

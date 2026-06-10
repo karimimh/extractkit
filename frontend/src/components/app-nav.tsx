@@ -7,12 +7,13 @@ const ALL_TOOLS = [
   { to: "/web-to-pdf", label: "Web → PDF" },
   { to: "/web-to-markdown", label: "Web → Markdown" },
   { to: "/web-to-screenshot", label: "Web → Screenshot" },
+  { to: "/blog", label: "Blog" },
   // { to: "/study", label: "PDF → Study" },
   // { to: "/notes", label: "NoteMD" },
   // { to: "/images", label: "Image Tools" },
 ];
 
-const WEB_TOOLS = ["/web-to-pdf", "/web-to-markdown", "/web-to-screenshot"];
+const WEB_TOOLS = ["/web-to-pdf", "/web-to-markdown", "/web-to-screenshot", "/blog"];
 const TOOLS = import.meta.env.PROD
   ? ALL_TOOLS.filter((t) => WEB_TOOLS.includes(t.to))
   : ALL_TOOLS;

@@ -582,11 +582,6 @@ function WebsiteToPdf() {
         <header className="card-header">
           <h1>Export Any Webpage to a Custom PDF</h1>
           <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
-          <div className="seo-tags">
-            {["custom pdf from webpage", "remove elements from pdf", "clean webpage to pdf", "export website without ads", "web to pdf converter", "html to pdf", "save webpage as pdf"].map((tag) => (
-              <span className="seo-tag" key={tag}>{tag}</span>
-            ))}
-          </div>
           <p className="subtitle">
             Paste a URL and get a live, interactive preview of the page. Click buttons, expand sections, and navigate — just like a real browser. Then switch to Remove mode and click any element (ads, cookie banners, sidebars, headers) to strip it out. Export the final result as a pixel-perfect PDF.
           </p>

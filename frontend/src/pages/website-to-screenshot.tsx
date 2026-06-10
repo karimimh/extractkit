@@ -506,11 +506,6 @@ function WebsiteToScreenshot() {
         <header className="card-header">
           <h1>Export Any Webpage to an Image</h1>
           <h2 className="subtitle">Generate pixel-perfect full-page screenshots from any URL</h2>
-          <div className="seo-tags">
-            {["full page screenshot", "webpage to image", "website screenshot tool", "capture website png", "web screenshot generator", "screenshot any url"].map((tag) => (
-              <span className="seo-tag" key={tag}>{tag}</span>
-            ))}
-          </div>
           <p className="subtitle">
             Paste a URL and get a live preview. Remove elements you don't want — ads, banners, cookie notices — then capture the whole page as a high-resolution PNG image.
           </p>

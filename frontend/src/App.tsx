@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AppNav } from "./components/app-nav";
+import { BlogIndex, BlogPost } from "./pages/blog";
 import WebsiteToMarkdown from "./pages/website-to-markdown";
 import WebsiteToScreenshot from "./pages/website-to-screenshot";
 import WebsiteToPdf from "./pages/website-to-pdf";
@@ -24,6 +25,8 @@ function App() {
         <Route path="/web-to-pdf" element={<WebsiteToPdf />} />
         <Route path="/web-to-markdown" element={<WebsiteToMarkdown />} />
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
+        <Route path="/blog" element={<BlogIndex />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
         {!import.meta.env.PROD && (
           <>
             <Route path="/study/*" element={<StudyTool />} />
