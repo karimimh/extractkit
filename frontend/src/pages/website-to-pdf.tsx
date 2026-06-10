@@ -10,7 +10,7 @@ import { usePageSeo } from "../hooks/use-page-seo";
 const PDF_TOOL_SEO = {
   title: "Web to PDF Converter – DistillPage",
   description:
-    "Convert any website to a clean, high-fidelity PDF in seconds. Visually remove ads, navbars, and cookie banners before exporting. Free to try.",
+    "Convert any website to a clean, high-fidelity PDF. Export the full page, use AI Cleanup, or manually remove unwanted elements.",
   canonical: "https://distillpage.com/web-to-pdf",
   jsonLd: {
     "@context": "https://schema.org",
@@ -18,7 +18,7 @@ const PDF_TOOL_SEO = {
     name: "Web to PDF Converter – DistillPage",
     url: "https://distillpage.com/web-to-pdf",
     description:
-      "Convert any website to a clean, high-fidelity PDF. Visually remove ads, navbars, and cookie banners, then export a polished PDF in seconds.",
+      "Convert any website to a clean PDF with full-page export, AI Cleanup, or manual element removal.",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -50,6 +50,7 @@ type InteractionMode = "cursor" | "select";
 type RenderMode = "screen" | "print";
 type ToolMode = "single" | "bulk";
 type BulkOutputMode = "zip" | "combined";
+type CleanupMode = "full" | "ai" | "manual";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "pdf-picker-select";
@@ -271,6 +272,7 @@ function WebsiteToPdf() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
+  const [cleanupMode, setCleanupMode] = useState<CleanupMode>("manual");
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [renderMode, setRenderMode] = useState<RenderMode>("print");
   const [result, setResult] = useState<ExportResult | null>(null);
@@ -282,6 +284,7 @@ function WebsiteToPdf() {
   // --- Bulk state ---
   const [bulkUrls, setBulkUrls] = useState<string>("");
   const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
+  const [bulkAiCleanup, setBulkAiCleanup] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
 
   useEffect(() => {
@@ -373,7 +376,7 @@ function WebsiteToPdf() {
   useEffect(() => {
     const trimmedUrl = url.trim();
 
-    if (!trimmedUrl) {
+    if (cleanupMode !== "manual" || !trimmedUrl) {
       previewRequestIdRef.current += 1;
       setPreviewError(null);
       setPreviewHtml(null);
@@ -390,12 +393,14 @@ function WebsiteToPdf() {
     }, 300);
 
     return () => window.clearTimeout(timeoutId);
-  }, [url]);
+  }, [url, cleanupMode]);
 
   const handlePreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const trimmedUrl = url.trim();
+
+    if (cleanupMode !== "manual") return;
 
     if (!trimmedUrl) {
       setPreviewError("Please enter a URL.");
@@ -453,10 +458,12 @@ function WebsiteToPdf() {
         html_snapshot?: string;
         base_url?: string;
         use_print_css: boolean;
+        ai_cleanup: boolean;
       } = {
         url: url.trim(),
-        selectors: selections,
+        selectors: cleanupMode === "manual" ? selections : [],
         use_print_css: renderMode === "print",
+        ai_cleanup: cleanupMode === "ai",
       };
 
       if (previewSnapshot && previewBaseUrl && iframeRef.current?.contentDocument) {
@@ -542,6 +549,7 @@ function WebsiteToPdf() {
           urls: validUrls,
           output_mode: bulkOutputMode,
           use_print_css: renderMode === "print",
+          ai_cleanup: bulkAiCleanup,
         }),
       });
 
@@ -580,10 +588,10 @@ function WebsiteToPdf() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to a Custom PDF</h1>
+          <h1>Export Any Webpage to PDF</h1>
           <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
           <p className="subtitle">
-            Paste a URL and get a live, interactive preview of the page. Click buttons, expand sections, and navigate — just like a real browser. Then switch to Remove mode and click any element (ads, cookie banners, sidebars, headers) to strip it out. Export the final result as a pixel-perfect PDF.
+            Export the full page, let AI remove navigation, ads, footers, and interruptions, or manually interact with the page and choose exactly what to remove.
           </p>
         </header>
 
@@ -630,15 +638,45 @@ function WebsiteToPdf() {
 
                 {previewError && <p className="message error">{previewError}</p>}
 
-                <div className="preview-shell">
+                <div className="toggle-group">
+                  <span>Cleanup method</span>
+                  <div className="toggle-buttons">
+                    <button
+                      type="button"
+                      className={cleanupMode === "full" ? "active" : ""}
+                      onClick={() => setCleanupMode("full")}
+                    >
+                      Full Page export
+                    </button>
+                    <button
+                      type="button"
+                      className={cleanupMode === "ai" ? "active" : ""}
+                      onClick={() => {
+                        setCleanupMode("ai");
+                        handleInteractionModeChange("cursor");
+                      }}
+                    >
+                      AI Cleanup
+                    </button>
+                    <button
+                      type="button"
+                      className={cleanupMode === "manual" ? "active" : ""}
+                      onClick={() => setCleanupMode("manual")}
+                    >
+                      Manual Interaction
+                    </button>
+                  </div>
+                </div>
+
+                {cleanupMode === "manual" && <div className="preview-shell">
                   {previewBlobUrl ? (
                     <div className="preview-panel">
                       <div className="preview-head">
                         <div className="preview-head-left">
                           <h2>{previewTitle ?? "Preview"}</h2>
-                          <p>Click to remove elements.</p>
+                          <p>Browse the page or click elements to remove them.</p>
                         </div>
-                        <div className="toggle-buttons">
+                        {cleanupMode === "manual" && <div className="toggle-buttons">
                           <button
                             type="button"
                             className={interactionMode === "select" ? "active flex-button" : "flex-button"}
@@ -655,7 +693,7 @@ function WebsiteToPdf() {
                           >
                             <MousePointer size={16} /> Browse page
                           </button>
-                        </div>
+                        </div>}
                       </div>
                       <iframe
                         ref={iframeRef}
@@ -680,9 +718,9 @@ function WebsiteToPdf() {
                       <p>Load a page to start interacting or remove elements from the webpage.</p>
                     </div>
                   )}
-                </div>
+                </div>}
 
-                <div className="selection-list">
+                {cleanupMode === "manual" && <div className="selection-list">
                   <div className="flex items-center justify-between">
                     <div>Removed elements</div>
                     <div className="selection-info">
@@ -703,7 +741,7 @@ function WebsiteToPdf() {
                   ) : (
                     <span className="empty">No selections yet.</span>
                   )}
-                </div>
+                </div>}
 
                 <div className="toggle-group">
                   <span>Layout mode</span>
@@ -781,6 +819,26 @@ function WebsiteToPdf() {
                       onClick={() => setBulkOutputMode("combined")}
                     >
                       Combined PDF
+                    </button>
+                  </div>
+                </div>
+
+                <div className="toggle-group">
+                  <span>Cleanup method</span>
+                  <div className="toggle-buttons">
+                    <button
+                      type="button"
+                      className={bulkAiCleanup ? "active" : ""}
+                      onClick={() => setBulkAiCleanup(true)}
+                    >
+                      AI Cleanup
+                    </button>
+                    <button
+                      type="button"
+                      className={!bulkAiCleanup ? "active" : ""}
+                      onClick={() => setBulkAiCleanup(false)}
+                    >
+                      Full Page export
                     </button>
                   </div>
                 </div>

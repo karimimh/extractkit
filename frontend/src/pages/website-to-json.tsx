@@ -10,7 +10,7 @@ import { usePageSeo } from "../hooks/use-page-seo";
 const JSON_TOOL_SEO = {
   title: "Webpage to JSON – DistillPage",
   description:
-    "Extract structured JSON from any webpage, including title, author, date, headings, paragraphs, tables, images, links, and metadata.",
+    "Extract structured JSON from any webpage using full-page export, AI Cleanup, or manual element removal.",
   canonical: "https://distillpage.com/web-to-json",
   jsonLd: {
     "@context": "https://schema.org",
@@ -18,7 +18,7 @@ const JSON_TOOL_SEO = {
     name: "Webpage to JSON – DistillPage",
     url: "https://distillpage.com/web-to-json",
     description:
-      "Extract structured JSON from webpages for AI workflows, scraping, data engineering, and analysis.",
+      "Extract structured JSON from webpages with optional AI Cleanup for scraping, data engineering, and analysis.",
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -63,6 +63,7 @@ type ErrorPayload = {
 type InteractionMode = "cursor" | "select";
 type ToolMode = "single" | "bulk";
 type BulkOutputMode = "zip" | "combined";
+type CleanupMode = "full" | "ai" | "manual";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "json-picker-select";
@@ -232,6 +233,7 @@ function WebsiteToJson() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
+  const [cleanupMode, setCleanupMode] = useState<CleanupMode>("manual");
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -241,6 +243,7 @@ function WebsiteToJson() {
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [bulkUrls, setBulkUrls] = useState("");
   const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
+  const [bulkAiCleanup, setBulkAiCleanup] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewRequestIdRef = useRef(0);
@@ -318,7 +321,7 @@ function WebsiteToJson() {
 
   useEffect(() => {
     const trimmedUrl = url.trim();
-    if (!trimmedUrl) {
+    if (cleanupMode !== "manual" || !trimmedUrl) {
       previewRequestIdRef.current += 1;
       setPreviewError(null);
       setPreviewHtml(null);
@@ -331,7 +334,7 @@ function WebsiteToJson() {
     }
     const timeoutId = window.setTimeout(() => void loadPreview(trimmedUrl), 300);
     return () => window.clearTimeout(timeoutId);
-  }, [url]);
+  }, [url, cleanupMode]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -344,6 +347,7 @@ function WebsiteToJson() {
   const handlePreview = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedUrl = url.trim();
+    if (cleanupMode !== "manual") return;
     if (!trimmedUrl) {
       setPreviewError("Please enter a URL.");
       return;
@@ -380,9 +384,11 @@ function WebsiteToJson() {
         selectors: string[];
         html_snapshot?: string;
         base_url?: string;
+        ai_cleanup: boolean;
       } = {
         url: url.trim(),
-        selectors: selections,
+        selectors: cleanupMode === "manual" ? selections : [],
+        ai_cleanup: cleanupMode === "ai",
       };
 
       if (previewSnapshot && previewBaseUrl) {
@@ -454,7 +460,7 @@ function WebsiteToJson() {
       const response = await fetch(`${API_BASE_URL}/api/export/bulk-json/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validBulkUrls, output_mode: bulkOutputMode }),
+        body: JSON.stringify({ urls: validBulkUrls, output_mode: bulkOutputMode, ai_cleanup: bulkAiCleanup }),
       });
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
@@ -513,7 +519,7 @@ function WebsiteToJson() {
           <h1>Extract Structured JSON from Any Webpage</h1>
           <h2 className="subtitle">Turn page content into clean fields for apps, agents, and datasets</h2>
           <p className="subtitle">
-            Paste a URL, preview the page, remove unwanted sections, and export title, author, date, headings, paragraphs, tables, images, links, and metadata.
+            Export the full page, let AI remove unrelated chrome and interruptions, or manually choose sections before extracting structured fields.
           </p>
         </header>
 
@@ -562,15 +568,33 @@ function WebsiteToJson() {
 
                 {previewError && <p className="message error">{previewError}</p>}
 
-                <div className="preview-shell">
+                <div className="toggle-group">
+                  <span>Cleanup method</span>
+                  <div className="toggle-buttons">
+                    <button type="button" className={cleanupMode === "full" ? "active" : ""} onClick={() => setCleanupMode("full")}>
+                      Full Page export
+                    </button>
+                    <button type="button" className={cleanupMode === "ai" ? "active" : ""} onClick={() => {
+                      setCleanupMode("ai");
+                      handleInteractionModeChange("cursor");
+                    }}>
+                      AI Cleanup
+                    </button>
+                    <button type="button" className={cleanupMode === "manual" ? "active" : ""} onClick={() => setCleanupMode("manual")}>
+                      Manual Interaction
+                    </button>
+                  </div>
+                </div>
+
+                {cleanupMode === "manual" && <div className="preview-shell">
                   {previewBlobUrl ? (
                     <div className="preview-panel">
                       <div className="preview-head">
                         <div className="preview-head-left">
                           <h2>{previewTitle ?? "Preview"}</h2>
-                          <p>Click to remove elements before extraction.</p>
+                          <p>Browse the page or click elements to remove them before extraction.</p>
                         </div>
-                        <div className="toggle-buttons">
+                        {cleanupMode === "manual" && <div className="toggle-buttons">
                           <button
                             type="button"
                             className={interactionMode === "select" ? "active flex-button" : "flex-button"}
@@ -587,7 +611,7 @@ function WebsiteToJson() {
                           >
                             <MousePointer size={16} /> Browse page
                           </button>
-                        </div>
+                        </div>}
                       </div>
                       <iframe
                         ref={iframeRef}
@@ -612,9 +636,9 @@ function WebsiteToJson() {
                       <p>Load a page to preview it and choose anything you want removed from the JSON output.</p>
                     </div>
                   )}
-                </div>
+                </div>}
 
-                <div className="selection-list">
+                {cleanupMode === "manual" && <div className="selection-list">
                   <div className="flex items-center justify-between">
                     <div>Removed elements</div>
                     <div className="selection-info">
@@ -633,7 +657,7 @@ function WebsiteToJson() {
                   ) : (
                     <span className="empty">No selections yet.</span>
                   )}
-                </div>
+                </div>}
 
                 <div className="export-actions">
                   <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
@@ -702,6 +726,18 @@ function WebsiteToJson() {
                       onClick={() => setBulkOutputMode("combined")}
                     >
                       Combined JSON
+                    </button>
+                  </div>
+                </div>
+
+                <div className="toggle-group">
+                  <span>Cleanup method</span>
+                  <div className="toggle-buttons">
+                    <button type="button" className={bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(true)}>
+                      AI Cleanup
+                    </button>
+                    <button type="button" className={!bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(false)}>
+                      Full Page export
                     </button>
                   </div>
                 </div>

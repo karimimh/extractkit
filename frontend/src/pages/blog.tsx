@@ -24,20 +24,27 @@ const ARTICLES: Article[] = [
     slug: "custom-pdf-from-webpage",
     title: "How to Create a Custom PDF from a Webpage",
     description:
-      "Learn how to turn any webpage into a clean custom PDF by removing ads, popups, cookie banners, navigation, and other unwanted elements before export.",
+      "Learn how to turn any webpage into a custom PDF using AI Cleanup, full-page export, or manual interaction.",
     canonical: "https://distillpage.com/blog/custom-pdf-from-webpage",
     toolName: "Web to PDF",
     toolPath: "/web-to-pdf",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "Saving a webpage as a PDF is easy until the page includes sticky headers, cookie banners, ads, sidebars, chat widgets, or collapsed sections you need to open first. A custom PDF workflow gives you control over the page before the final export.",
+      "Saving a webpage as a PDF is easy until the page includes sticky headers, cookie banners, ads, sidebars, or chat widgets. DistillPage lets you use AI Cleanup, export the full page, or manually control the page before the final PDF.",
     sections: [
       {
         heading: "When a normal browser PDF is not enough",
         body: [
           "Browser print tools are useful for simple pages, but they often capture the page exactly as it is served. That means promotional banners, newsletter popups, floating buttons, and unrelated navigation can end up in the file.",
-          "DistillPage loads the webpage in an interactive preview first. You can browse the page, expand the content you need, switch to remove mode, and click the parts that should not appear in the PDF.",
+          "DistillPage provides three cleanup methods. Full Page export keeps the page unchanged. AI Cleanup asks OpenAI to identify page chrome and interruptions while preserving the primary content. Manual Interaction opens an interactive preview where you can browse, expand content, and click exactly what should be removed.",
+        ],
+      },
+      {
+        heading: "AI Cleanup or Manual Interaction",
+        body: [
+          "AI Cleanup is useful when you want a clean result quickly or need to process several pages with unfamiliar HTML structures. It analyzes the page content and structure instead of relying only on known class names.",
+          "Manual Interaction is the default for single-page exports because it gives you direct control. Use it when the page has interactive sections to open, when a useful sidebar should remain, or when you need an exact visual result.",
         ],
       },
       {
@@ -57,7 +64,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How to make the PDF",
         body: [
-          "Open the Web to PDF tool, paste the URL, load the preview, remove the unwanted elements, choose the layout mode, and export. For repeated work, bulk mode can process several URLs into separate files or a combined export.",
+          "Open the Web to PDF tool, paste the URL, and choose Full Page export, AI Cleanup, or Manual Interaction. With Manual Interaction, use the preview to browse and remove elements. Then choose the layout mode and export. Bulk mode supports Full Page export and AI Cleanup.",
         ],
       },
     ],
@@ -66,20 +73,27 @@ const ARTICLES: Article[] = [
     slug: "remove-elements-before-website-screenshot",
     title: "How to Capture a Full Page Website Screenshot Without Clutter",
     description:
-      "Capture a clean full-page website screenshot by removing ads, popups, cookie banners, sticky headers, and other page elements before saving the image.",
+      "Capture a clean website screenshot using AI Cleanup, full-page export, or manual interaction before saving the image.",
     canonical: "https://distillpage.com/blog/remove-elements-before-website-screenshot",
     toolName: "Web to Screenshot",
     toolPath: "/web-to-screenshot",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "A full-page website screenshot should show the page you care about, not every floating banner and overlay the site decides to add. Cleaning the page before capture gives you a screenshot that is easier to share, compare, and archive.",
+      "A website screenshot should show the page you care about, not every floating banner and overlay the site decides to add. DistillPage offers AI Cleanup, Full Page export, and Manual Interaction before capture.",
     sections: [
       {
         heading: "Why full-page screenshots need cleanup",
         body: [
           "Most screenshot tools capture the visible page state. If a popup, cookie prompt, support widget, sticky menu, or ad is present, it becomes part of the final image. On long pages, repeated sticky elements can make the screenshot feel messy or misleading.",
-          "DistillPage adds an interactive removal step before export. Load the page, click away the elements you do not want, and then capture the cleaned page as a high-resolution PNG.",
+          "Use AI Cleanup when you want OpenAI to identify common interruptions automatically. Use Full Page export when every element should remain. Manual Interaction, the default for single-page captures, lets you browse the page and click away only the elements you do not want.",
+        ],
+      },
+      {
+        heading: "Choose the right cleanup method",
+        body: [
+          "AI Cleanup works well for quick captures and unfamiliar websites because it evaluates the DOM structure, labels, and visible text. It can identify navigation, ads, cookie prompts, popups, footers, and unrelated sidebars even when the site uses custom class names.",
+          "Manual Interaction is better for design review and QA where the exact page state matters. Open tabs, expand accordions, preserve useful controls, and remove only the elements that should not appear in the evidence.",
         ],
       },
       {
@@ -99,7 +113,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How to capture the clean screenshot",
         body: [
-          "Open the Web to Screenshot tool, paste the URL, choose the viewport width, remove unwanted elements in the preview, and capture the screenshot. Bulk mode can capture several URLs when you need repeatable page evidence.",
+          "Open the Web to Screenshot tool, paste the URL, choose Full Page export, AI Cleanup, or Manual Interaction, select the viewport width, and capture the screenshot. Bulk mode supports Full Page export and AI Cleanup for repeatable captures.",
         ],
       },
     ],
@@ -108,14 +122,14 @@ const ARTICLES: Article[] = [
     slug: "convert-webpage-to-clean-markdown",
     title: "How to Convert a Webpage to Clean Markdown",
     description:
-      "Convert a webpage to readable Markdown for notes, documentation, research, and LLM workflows while removing ads, navigation, banners, and other unwanted elements.",
+      "Convert a webpage to readable Markdown using AI Cleanup, full-page export, or manual element removal.",
     canonical: "https://distillpage.com/blog/convert-webpage-to-clean-markdown",
     toolName: "Web to Markdown",
     toolPath: "/web-to-markdown",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "Markdown is a practical format for notes, documentation, research archives, and LLM input. The hard part is getting the useful content from a webpage without dragging along navigation, ads, cookie notices, and unrelated layout fragments.",
+      "Markdown is a practical format for notes, documentation, research archives, and LLM input. DistillPage can preserve the full page, use AI Cleanup to identify unrelated elements, or let you manually control what reaches the final Markdown.",
     sections: [
       {
         heading: "Why clean Markdown is better than raw HTML",
@@ -128,7 +142,15 @@ const ARTICLES: Article[] = [
         heading: "Remove page clutter before conversion",
         body: [
           "A converter can only work with the page state it receives. If the webpage includes a modal, a subscription banner, a sticky header, or a large sidebar, those elements can pollute the Markdown output.",
-          "DistillPage lets you preview the webpage and remove unwanted elements before export. That gives you a cleaner source for the Markdown conversion instead of forcing you to edit noisy output afterward.",
+          "AI Cleanup asks OpenAI to identify navigation, ads, cookie notices, signup prompts, footers, and unrelated sidebars before conversion. This works across websites that use different class names and DOM structures.",
+          "Manual Interaction is the default for single-page conversion and lets you preview the webpage and remove exact elements before export. Full Page export keeps everything when cleanup is not appropriate.",
+        ],
+      },
+      {
+        heading: "When to use AI Cleanup",
+        body: [
+          "AI Cleanup is useful for research collections, documentation ingestion, and LLM workflows where repeated site chrome adds noise. The model receives a compact DOM outline and chooses unwanted containers while preserving primary content.",
+          "Use Manual Interaction when you need to inspect the page first or preserve unusual supporting content. Use Full Page export when the complete page structure is part of the material you need.",
         ],
       },
       {
@@ -141,7 +163,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How to export Markdown from a URL",
         body: [
-          "Open the Web to Markdown tool, paste the page URL, load the preview, remove unwanted elements, and export the cleaned content. Use bulk mode when you need Markdown from several related pages.",
+          "Open the Web to Markdown tool, paste the page URL, and choose Full Page export, AI Cleanup, or Manual Interaction. Manual Interaction opens the preview for exact removal. Use bulk mode with Full Page export or AI Cleanup when you need Markdown from several related pages.",
         ],
       },
     ],
@@ -150,14 +172,14 @@ const ARTICLES: Article[] = [
     slug: "extract-structured-json-from-webpage",
     title: "How to Extract Structured JSON from a Webpage",
     description:
-      "Extract structured JSON from any webpage, including title, author, date, headings, paragraphs, tables, images, links, metadata, and JSON-LD.",
+      "Extract structured JSON from any webpage using AI Cleanup, full-page export, or manual interaction.",
     canonical: "https://distillpage.com/blog/extract-structured-json-from-webpage",
     toolName: "Web to JSON",
     toolPath: "/web-to-json",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "Webpages contain useful data, but it is usually trapped inside layout HTML, navigation, scripts, ads, and repeated page chrome. A structured JSON export turns the important parts of a page into predictable fields that are easier to use in apps, datasets, and AI workflows.",
+      "Webpages contain useful data, but it is usually trapped inside layout HTML, navigation, scripts, ads, and repeated page chrome. DistillPage can use AI Cleanup, preserve the full page, or let you manually control the source before creating structured JSON.",
     sections: [
       {
         heading: "Why structured JSON is useful",
@@ -176,8 +198,15 @@ const ARTICLES: Article[] = [
       {
         heading: "Clean the page before extracting",
         body: [
-          "Many pages include cookie banners, newsletter forms, promotional blocks, sidebars, and repeated navigation that can pollute the extracted data. DistillPage lets you preview the page and remove unwanted elements before creating the JSON output.",
-          "For best results, remove anything that is not part of the content you want to analyze: overlays, ads, footer modules, related-post widgets, chat buttons, and duplicated navigation links.",
+          "Many pages include cookie banners, newsletter forms, promotional blocks, sidebars, and repeated navigation that can pollute extracted data. AI Cleanup asks OpenAI to identify these unrelated containers even when each website uses different class names.",
+          "Manual Interaction is the default for single-page extraction and opens a preview where you can remove exact elements. Full Page export preserves all page content when you need a complete dataset.",
+        ],
+      },
+      {
+        heading: "AI Cleanup for structured datasets",
+        body: [
+          "AI Cleanup is useful when creating datasets from several websites because it reduces repeated navigation links, promotional text, and unrelated page modules before fields are extracted.",
+          "The model selects unwanted DOM containers rather than rewriting the page content. This helps preserve headings, paragraphs, tables, images, links, metadata, and other useful source material.",
         ],
       },
       {
@@ -190,7 +219,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How to extract webpage JSON",
         body: [
-          "Open the Web to JSON tool, paste a URL, load the preview, remove unwanted elements, and export. For multiple pages, switch to bulk mode, paste one URL per line, choose ZIP or combined JSON, and download the result.",
+          "Open the Web to JSON tool, paste a URL, and choose Full Page export, AI Cleanup, or Manual Interaction. For multiple pages, switch to bulk mode, choose Full Page export or AI Cleanup, paste one URL per line, choose ZIP or combined JSON, and download the result.",
         ],
       },
     ],
@@ -200,7 +229,7 @@ const ARTICLES: Article[] = [
 const BLOG_SEO = {
   title: "DistillPage Blog",
   description:
-    "Practical guides for creating clean PDFs, screenshots, Markdown, and structured JSON exports from webpages with DistillPage.",
+    "Practical guides for full-page exports, AI Cleanup, and manual webpage conversion with DistillPage.",
   canonical: "https://distillpage.com/blog",
   jsonLd: {
     "@context": "https://schema.org",
@@ -208,7 +237,7 @@ const BLOG_SEO = {
     name: "DistillPage Blog",
     url: "https://distillpage.com/blog",
     description:
-      "Practical guides for creating clean PDFs, screenshots, Markdown, and structured JSON exports from webpages with DistillPage.",
+      "Practical guides for full-page exports, AI Cleanup, and manual webpage conversion with DistillPage.",
   },
 };
 
@@ -242,8 +271,8 @@ export function BlogIndex() {
         <h1>Guides for cleaner webpage exports</h1>
         <p>
           Practical articles for turning webpages into focused PDFs, screenshots,
-          Markdown files, and structured JSON without carrying over ads, banners,
-          popups, or unrelated page chrome.
+          Markdown files, and structured JSON using AI Cleanup, Full Page export,
+          or Manual Interaction.
         </p>
       </section>
 

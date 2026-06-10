@@ -11,6 +11,8 @@ from uuid import uuid4
 from bs4 import BeautifulSoup
 from django.conf import settings
 
+from .cleaner import AiCleanupError, apply_ai_cleanup_to_soup
+
 
 @dataclass
 class GeneratedStructuredJson:
@@ -206,6 +208,7 @@ def html_to_structured_json(
     *,
     source_url: str | None = None,
     selectors: list[str] | None = None,
+    ai_cleanup: bool = False,
 ) -> GeneratedStructuredJson:
     """Extract common webpage fields from HTML into a JSON-serializable dict."""
     try:
@@ -214,6 +217,9 @@ def html_to_structured_json(
         for selector in selectors or []:
             for element in soup.select(selector):
                 element.decompose()
+
+        if ai_cleanup:
+            apply_ai_cleanup_to_soup(soup)
 
         extracted_title = title.strip() or _meta_content(soup, 'meta[property="og:title"]')
         if not extracted_title and soup.title and soup.title.string:
@@ -241,6 +247,8 @@ def html_to_structured_json(
             "metadata": metadata,
         }
         return GeneratedStructuredJson(title=extracted_title, data=data)
+    except AiCleanupError as exc:
+        raise StructuredJsonGenerationError(str(exc)) from exc
     except Exception as exc:
         raise StructuredJsonGenerationError("Failed to extract structured JSON") from exc
 
@@ -250,7 +258,7 @@ def _safe_json_filename(title: str, index: int) -> str:
     return f"{index:02d}_{sanitized}.json"
 
 
-def generate_bulk_structured_json_zip(urls: list[str]) -> tuple[list[str], str]:
+def generate_bulk_structured_json_zip(urls: list[str], ai_cleanup: bool = False) -> tuple[list[str], str]:
     """Generate one JSON file per URL and bundle them into a ZIP.
 
     Returns (titles, zip_relative_path).
@@ -273,19 +281,22 @@ def generate_bulk_structured_json_zip(urls: list[str]) -> tuple[list[str], str]:
                     extracted.title,
                     source_url=url,
                     selectors=[],
+                    ai_cleanup=ai_cleanup,
                 )
                 titles.append(generated.title)
                 zf.writestr(
                     _safe_json_filename(generated.title, index),
                     json.dumps(generated.data, ensure_ascii=False, indent=2).encode("utf-8"),
                 )
-            except (ContentExtractionError, StructuredJsonGenerationError, Exception):
+            except Exception:
+                if ai_cleanup:
+                    raise
                 titles.append(f"Page {index} (failed)")
 
     return titles, f"exports/{zip_filename}"
 
 
-def generate_combined_structured_json(urls: list[str]) -> tuple[str, str]:
+def generate_combined_structured_json(urls: list[str], ai_cleanup: bool = False) -> tuple[str, str]:
     """Generate one JSON array containing extracted data for all successful URLs.
 
     Returns (title, relative_path).
@@ -304,9 +315,12 @@ def generate_combined_structured_json(urls: list[str]) -> tuple[str, str]:
                 extracted.title,
                 source_url=url,
                 selectors=[],
+                ai_cleanup=ai_cleanup,
             )
             pages.append(generated.data)
-        except (ContentExtractionError, StructuredJsonGenerationError, Exception):
+        except Exception:
+            if ai_cleanup:
+                raise
             pass
 
     if not pages:

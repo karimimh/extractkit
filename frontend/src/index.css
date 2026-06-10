@@ -94,8 +94,18 @@ a {
 }
 
 .app-tool-page {
+	min-height: inherit;
+	display: flex;
+	flex-direction: column;
 	background: var(--page-bg);
 	color: var(--text-main);
+}
+
+.app-tool-page > div:first-child {
+	width: 100%;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
 }
 
 .page-shell {
@@ -348,7 +358,7 @@ h2.subtitle {
 }
 
 .support-footer {
-	margin-top: 2rem;
+	margin-top: auto;
 	padding-top: 1rem;
 	border-top: 1px solid var(--border);
 	text-align: end;
@@ -1495,6 +1505,7 @@ h2.subtitle {
 
 .app-shell-main {
 	min-width: 0;
+	min-height: calc(100vh - 3.8rem);
 	padding-left: 15.5rem;
 }
 
@@ -1622,6 +1633,7 @@ h2.subtitle {
 	}
 
 	.app-shell-main {
+		min-height: calc(100vh - 3.65rem);
 		padding-left: 0;
 	}
 

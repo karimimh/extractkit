@@ -11,6 +11,8 @@ from uuid import uuid4
 from bs4 import BeautifulSoup
 from django.conf import settings
 
+from .cleaner import AiCleanupError, apply_ai_cleanup
+
 logger = logging.getLogger(__name__)
 
 
@@ -142,6 +144,7 @@ def generate_pdf_from_url(
   timeout_ms: int = 60000,
   selectors: list[str] | None = None,
   use_print_css: bool = False,
+  ai_cleanup: bool = False,
 ) -> GeneratedPdf:
   try:
     from playwright.sync_api import sync_playwright
@@ -173,6 +176,8 @@ def generate_pdf_from_url(
 
       page.emulate_media(media="print" if use_print_css else "screen")
 
+      if ai_cleanup:
+        apply_ai_cleanup(page)
       _apply_selections(page, selectors)
 
       title = page.title().strip() or "Exported Website"
@@ -206,6 +211,8 @@ def generate_pdf_from_url(
       
   except PdfGenerationError:
     raise
+  except AiCleanupError as exc:
+    raise PdfGenerationError(str(exc)) from exc
   except Exception as exc:
     logger.error(f"Unexpected error during PDF generation: {exc}", exc_info=True)
     raise PdfGenerationError("Failed to render full page PDF") from exc
@@ -219,6 +226,7 @@ def generate_pdf_from_snapshot(
   timeout_ms: int = 60000,
   selectors: list[str] | None = None,
   use_print_css: bool = False,
+  ai_cleanup: bool = False,
 ) -> GeneratedPdf:
   try:
     from playwright.sync_api import sync_playwright
@@ -247,6 +255,8 @@ def generate_pdf_from_snapshot(
         raise PdfGenerationError(f"Failed to load HTML content: {str(e)}") from e
 
       page.emulate_media(media="print" if use_print_css else "screen")
+      if ai_cleanup:
+        apply_ai_cleanup(page, wait_for_delayed_content=False)
       _apply_selections(page, selectors)
 
       title = page.title().strip() or "Exported Website"
@@ -280,6 +290,8 @@ def generate_pdf_from_snapshot(
       
   except PdfGenerationError:
     raise
+  except AiCleanupError as exc:
+    raise PdfGenerationError(str(exc)) from exc
   except Exception as exc:
     logger.error(f"Unexpected error during PDF generation: {exc}", exc_info=True)
     raise PdfGenerationError("Failed to render preview PDF") from exc
@@ -390,6 +402,7 @@ def _build_cover_toc_html(articles: list[dict]) -> str:
 def generate_bulk_pdfs_zip(
     urls: list[str],
     use_print_css: bool = False,
+    ai_cleanup: bool = False,
 ) -> tuple[list[str], str]:
     """Generate individual PDFs for each URL and bundle them into a ZIP archive.
 
@@ -405,12 +418,14 @@ def generate_bulk_pdfs_zip(
     with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
         for i, url in enumerate(urls, 1):
             try:
-                generated = generate_pdf_from_url(url, use_print_css=use_print_css)
+                generated = generate_pdf_from_url(url, use_print_css=use_print_css, ai_cleanup=ai_cleanup)
                 titles.append(generated.title)
                 pdf_path = Path(settings.MEDIA_ROOT) / generated.relative_path
                 zf.write(str(pdf_path), _safe_filename(generated.title, i, "pdf"))
                 pdf_path.unlink(missing_ok=True)
             except PdfGenerationError:
+                if ai_cleanup:
+                    raise
                 titles.append(f"Page {i} (failed)")
 
     return titles, f"exports/{zip_filename}"
@@ -419,6 +434,7 @@ def generate_bulk_pdfs_zip(
 def generate_combined_pdf(
     urls: list[str],
     use_print_css: bool = False,
+    ai_cleanup: bool = False,
 ) -> tuple[str, str]:
     """Generate a combined PDF with cover page, table of contents, and all articles.
 
@@ -436,13 +452,15 @@ def generate_combined_pdf(
     articles: list[dict] = []
     for url in urls:
         try:
-            generated = generate_pdf_from_url(url, use_print_css=use_print_css)
+            generated = generate_pdf_from_url(url, use_print_css=use_print_css, ai_cleanup=ai_cleanup)
             articles.append({
                 "title": generated.title,
                 "url": url,
                 "path": Path(settings.MEDIA_ROOT) / generated.relative_path,
             })
         except PdfGenerationError:
+            if ai_cleanup:
+                raise
             pass
 
     if not articles:

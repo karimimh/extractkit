@@ -4,10 +4,10 @@ A unified platform for working with web content. Multiple tools, one account, on
 
 | Tool | Route | Description |
 |------|-------|-------------|
-| **Web → PDF** | `/web-to-pdf` | Render any URL in a live interactive preview, remove unwanted elements by clicking them, export a clean PDF |
-| **Web → Markdown** | `/web-to-markdown` | Convert a web page into clean, portable Markdown |
-| **Web → JSON** | `/web-to-json` | Extract structured webpage data as JSON |
-| **Web → Screenshot** | `/web-to-screenshot` | Export any webpage to a high-resolution PNG image |
+| **Web → PDF** | `/web-to-pdf` | Export a full page, use AI Cleanup, or manually remove elements before generating a PDF |
+| **Web → Markdown** | `/web-to-markdown` | Convert a full or AI-cleaned web page into portable Markdown |
+| **Web → JSON** | `/web-to-json` | Extract structured data from a full, AI-cleaned, or manually edited webpage |
+| **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
 | **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
 | **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
 | **Images** | `/images` | Client-side canvas image editor with adjustments, filters, white-balance correction, and super-resolution |
@@ -75,16 +75,17 @@ Credit costs are tunable in `settings.CREDIT_COSTS` without migrations.
 
 ---
 
-## Web → PDF tool
+## Web conversion tools
 
 1. User enters a URL.
-2. Backend fetches the page and returns full HTML + `base_url`.
-3. Frontend renders the page in a sandboxed iframe with an element-picker overlay.
-4. **Cursor mode** — interact with the live page normally (scroll, click, expand).
-5. **Select mode** — click any element to mark it for removal (teal hover → orange selected).
-6. DOM snapshot + selectors sent to `POST /api/export/`.
-7. Backend strips selected elements (BeautifulSoup) and renders PDF (WeasyPrint / Playwright).
-8. Browser downloads the file.
+2. User chooses a cleanup method:
+   - **Full Page export**: export the page without cleanup.
+   - **AI Cleanup**: OpenAI analyzes a compact DOM outline and identifies navigation, ads, cookie banners, popups, footers, unrelated sidebars, and other interruptions while preserving primary content.
+   - **Manual Interaction**: render a sandboxed preview, browse the page, and click elements to remove them. This is the default for single-page exports.
+3. The frontend sends the URL, cleanup choice, optional DOM snapshot, and manual selectors to the selected export endpoint.
+4. The backend generates PDF, Markdown, structured JSON, or a screenshot.
+
+AI Cleanup uses `OPENAI_API_KEY` and defaults to `gpt-4o-mini`. Override the model with `AI_CLEANUP_MODEL`. The model receives a bounded DOM outline rather than the full raw page, and returns candidate IDs to remove. AI Cleanup fails with a clear API error when the key is missing or OpenAI cannot analyze the page; it does not silently remove elements using heuristics.
 
 ---
 
@@ -129,6 +130,13 @@ Core endpoints:
 ```
 POST /api/preview/                     Fetch URL for iframe preview
 POST /api/export/                      Generate PDF
+POST /api/export-markdown/             Generate Markdown
+POST /api/export-json/                 Generate structured JSON
+POST /api/export-screenshot/           Generate a PNG screenshot
+POST /api/export/bulk-pdf/             Generate bulk PDF output
+POST /api/export/bulk-markdown/        Generate bulk Markdown output
+POST /api/export/bulk-json/            Generate bulk JSON output
+POST /api/export/bulk-screenshot/      Generate bulk screenshot output
 POST /api/auth/register/               Create account
 POST /api/auth/login/                  Sign in
 POST /api/auth/google/                 Google sign-in
@@ -155,6 +163,8 @@ GET  /api/images/auto-white-balance/   White-balance correction
 GET  /api/images/super-resolution/     Super-resolution (Real-ESRGAN)
 ```
 
+All web conversion export endpoints accept `ai_cleanup: true` to enable AI Cleanup. Single-page endpoints also accept `selectors` for Manual Interaction exports. Omitting both produces a Full Page export.
+
 ---
 
 ## Local development
@@ -172,6 +182,15 @@ python manage.py runserver
 ```
 
 Required `.env` keys for full functionality — see DEPLOY.md for the complete list.
+
+For AI Cleanup:
+
+```bash
+OPENAI_API_KEY=<your-openai-api-key>
+AI_CLEANUP_MODEL=gpt-4o-mini
+AI_CLEANUP_RENDER_WAIT_MS=5000
+# OPENAI_BASE_URL=<optional-compatible-api-base-url>
+```
 
 **Frontend:**
 
@@ -192,5 +211,3 @@ cd frontend && npx tsc -b
 ```bash
 cd frontend && npm run build   # outputs to frontend/dist/
 ```
-
-

@@ -12,7 +12,7 @@ import { usePageSeo } from "../hooks/use-page-seo";
 const MD_TOOL_SEO = {
   title: "Web to Markdown Converter – DistillPage",
   description:
-    "Convert any website to clean, readable Markdown in seconds. Remove unwanted elements and export distilled content ready for docs, notes, or LLMs. Free to try.",
+    "Convert any website to clean Markdown using full-page export, AI Cleanup, or manual element removal.",
   canonical: "https://distillpage.com/web-to-markdown",
   jsonLd: {
     "@context": "https://schema.org",
@@ -20,7 +20,7 @@ const MD_TOOL_SEO = {
     name: "Web to Markdown Converter – DistillPage",
     url: "https://distillpage.com/web-to-markdown",
     description:
-      "Convert any website to clean, readable Markdown. Remove ads and clutter, then export distilled content ready for docs, notes, or LLM input.",
+      "Convert websites to clean Markdown with full-page export, AI Cleanup, or manual element removal.",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -51,6 +51,7 @@ type ErrorPayload = {
 type InteractionMode = "cursor" | "select";
 type ToolMode = "single" | "bulk";
 type BulkOutputMode = "zip" | "combined";
+type CleanupMode = "full" | "ai" | "manual";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "md-picker-select";
@@ -224,6 +225,7 @@ function WebsiteToMarkdown() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
+  const [cleanupMode, setCleanupMode] = useState<CleanupMode>("manual");
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -234,6 +236,7 @@ function WebsiteToMarkdown() {
   // --- Bulk state ---
   const [bulkUrls, setBulkUrls] = useState<string>("");
   const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
+  const [bulkAiCleanup, setBulkAiCleanup] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
 
   useEffect(() => {
@@ -307,7 +310,7 @@ function WebsiteToMarkdown() {
 
   useEffect(() => {
     const trimmedUrl = url.trim();
-    if (!trimmedUrl) {
+    if (cleanupMode !== "manual" || !trimmedUrl) {
       previewRequestIdRef.current += 1;
       setPreviewError(null);
       setPreviewHtml(null);
@@ -320,11 +323,12 @@ function WebsiteToMarkdown() {
     }
     const timeoutId = window.setTimeout(() => void loadPreview(trimmedUrl), 300);
     return () => window.clearTimeout(timeoutId);
-  }, [url]);
+  }, [url, cleanupMode]);
 
   const handlePreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedUrl = url.trim();
+    if (cleanupMode !== "manual") return;
     if (!trimmedUrl) {
       setPreviewError("Please enter a URL.");
       return;
@@ -374,9 +378,11 @@ function WebsiteToMarkdown() {
         selectors: string[];
         html_snapshot?: string;
         base_url?: string;
+        ai_cleanup: boolean;
       } = {
         url: url.trim(),
-        selectors: selections,
+        selectors: cleanupMode === "manual" ? selections : [],
+        ai_cleanup: cleanupMode === "ai",
       };
 
       if (previewSnapshot && previewBaseUrl) {
@@ -465,7 +471,7 @@ function WebsiteToMarkdown() {
       const response = await fetch(`${API_BASE_URL}/api/export/bulk-markdown/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validUrls, output_mode: bulkOutputMode }),
+        body: JSON.stringify({ urls: validUrls, output_mode: bulkOutputMode, ai_cleanup: bulkAiCleanup }),
       });
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
@@ -506,7 +512,7 @@ function WebsiteToMarkdown() {
           <h1>Export Any Webpage to Markdown</h1>
           <h2 className="subtitle">Convert a web page into clean, portable Markdown</h2>
           <p className="subtitle">
-            Paste a URL and preview the page. Switch to Remove mode to click away ads, banners, and sidebars, then export the clean result as a Markdown file.
+            Export the full page, let AI remove navigation, ads, footers, and interruptions, or manually choose what should be excluded from the Markdown.
           </p>
         </header>
 
@@ -553,15 +559,33 @@ function WebsiteToMarkdown() {
 
                 {previewError && <p className="message error">{previewError}</p>}
 
-                <div className="preview-shell">
+                <div className="toggle-group">
+                  <span>Cleanup method</span>
+                  <div className="toggle-buttons">
+                    <button type="button" className={cleanupMode === "full" ? "active" : ""} onClick={() => setCleanupMode("full")}>
+                      Full Page export
+                    </button>
+                    <button type="button" className={cleanupMode === "ai" ? "active" : ""} onClick={() => {
+                      setCleanupMode("ai");
+                      handleInteractionModeChange("cursor");
+                    }}>
+                      AI Cleanup
+                    </button>
+                    <button type="button" className={cleanupMode === "manual" ? "active" : ""} onClick={() => setCleanupMode("manual")}>
+                      Manual Interaction
+                    </button>
+                  </div>
+                </div>
+
+                {cleanupMode === "manual" && <div className="preview-shell">
                   {previewBlobUrl ? (
                     <div className="preview-panel">
                       <div className="preview-head">
                         <div className="preview-head-left">
                           <h2>{previewTitle ?? "Preview"}</h2>
-                          <p>Click to remove elements.</p>
+                          <p>Browse the page or click elements to remove them.</p>
                         </div>
-                        <div className="toggle-buttons">
+                        {cleanupMode === "manual" && <div className="toggle-buttons">
                           <button
                             type="button"
                             className={interactionMode === "select" ? "active flex-button" : "flex-button"}
@@ -578,7 +602,7 @@ function WebsiteToMarkdown() {
                           >
                             <MousePointer size={16} /> Browse page
                           </button>
-                        </div>
+                        </div>}
                       </div>
                       <iframe
                         ref={iframeRef}
@@ -603,9 +627,9 @@ function WebsiteToMarkdown() {
                       <p>Load a page to start interacting or remove elements from the webpage.</p>
                     </div>
                   )}
-                </div>
+                </div>}
 
-                <div className="selection-list">
+                {cleanupMode === "manual" && <div className="selection-list">
                   <div className="flex items-center justify-between">
                     <div>Removed elements</div>
                     <div className="selection-info">
@@ -624,7 +648,7 @@ function WebsiteToMarkdown() {
                   ) : (
                     <span className="empty">No selections yet.</span>
                   )}
-                </div>
+                </div>}
 
                 <div className="export-actions">
                   <button type="button" onClick={onSubmit} disabled={isLoading} className={isLoading ? "export-loading" : ""}>
@@ -700,6 +724,18 @@ function WebsiteToMarkdown() {
                       onClick={() => setBulkOutputMode("combined")}
                     >
                       Combined Markdown
+                    </button>
+                  </div>
+                </div>
+
+                <div className="toggle-group">
+                  <span>Cleanup method</span>
+                  <div className="toggle-buttons">
+                    <button type="button" className={bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(true)}>
+                      AI Cleanup
+                    </button>
+                    <button type="button" className={!bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(false)}>
+                      Full Page export
                     </button>
                   </div>
                 </div>

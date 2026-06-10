@@ -21,6 +21,7 @@ class BulkExportPdfSerializer(serializers.Serializer):
     )
     output_mode = serializers.ChoiceField(choices=["zip", "combined"], default="zip")
     use_print_css = serializers.BooleanField(required=False, default=False)
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
 
 class BulkExportMarkdownSerializer(serializers.Serializer):
@@ -30,6 +31,7 @@ class BulkExportMarkdownSerializer(serializers.Serializer):
         max_length=50,
     )
     output_mode = serializers.ChoiceField(choices=["zip", "combined"], default="zip")
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
 
 class BulkExportStructuredJsonSerializer(serializers.Serializer):
@@ -39,6 +41,7 @@ class BulkExportStructuredJsonSerializer(serializers.Serializer):
         max_length=50,
     )
     output_mode = serializers.ChoiceField(choices=["zip", "combined"], default="zip")
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
 
 class BulkExportScreenshotSerializer(serializers.Serializer):
@@ -48,6 +51,7 @@ class BulkExportScreenshotSerializer(serializers.Serializer):
         max_length=50,
     )
     width = serializers.IntegerField(required=False, default=1440, min_value=320, max_value=3840)
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
 
 class ExportMarkdownSerializer(serializers.Serializer):
@@ -60,6 +64,7 @@ class ExportMarkdownSerializer(serializers.Serializer):
         default=list,
         allow_empty=True,
     )
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         html_snapshot = attrs.get("html_snapshot")
@@ -81,6 +86,7 @@ class ExportStructuredJsonSerializer(serializers.Serializer):
         default=list,
         allow_empty=True,
     )
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         html_snapshot = attrs.get("html_snapshot")
@@ -97,6 +103,7 @@ class ExportRequestSerializer(serializers.Serializer):
     html_snapshot = serializers.CharField(required=False, allow_blank=True)
     base_url = serializers.URLField(required=False)
     use_print_css = serializers.BooleanField(required=False, default=False)
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
     selectors = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -127,6 +134,7 @@ class ExportScreenshotSerializer(serializers.Serializer):
         allow_empty=True,
     )
     width = serializers.IntegerField(required=False, default=1440, min_value=320, max_value=3840)
+    ai_cleanup = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         html_snapshot = attrs.get("html_snapshot")
@@ -221,4 +229,3 @@ class CreatePaymentSerializer(serializers.Serializer):
         if value not in packages:
             raise serializers.ValidationError("Invalid package ID.")
         return value
-

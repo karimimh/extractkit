@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from django.conf import settings
 
+from .cleaner import AiCleanupError, apply_ai_cleanup
 from .pdf_generator import _apply_selections, _ensure_base_tag
 
 
@@ -26,6 +27,7 @@ def generate_screenshot_from_url(
     timeout_ms: int = 60000,
     selectors: list[str] | None = None,
     width: int = 1440,
+    ai_cleanup: bool = False,
 ) -> GeneratedScreenshot:
     try:
         from playwright.sync_api import sync_playwright
@@ -56,6 +58,8 @@ def generate_screenshot_from_url(
                     f"Failed to load URL (status {response.status})"
                 )
 
+            if ai_cleanup:
+                apply_ai_cleanup(page)
             _apply_selections(page, selectors)
 
             title = page.title().strip() or "Screenshot"
@@ -69,6 +73,8 @@ def generate_screenshot_from_url(
             browser.close()
     except ScreenshotGenerationError:
         raise
+    except AiCleanupError as exc:
+        raise ScreenshotGenerationError(str(exc)) from exc
     except Exception as exc:
         raise ScreenshotGenerationError("Failed to capture screenshot") from exc
 
@@ -81,6 +87,7 @@ def generate_screenshot_from_snapshot(
     timeout_ms: int = 60000,
     selectors: list[str] | None = None,
     width: int = 1440,
+    ai_cleanup: bool = False,
 ) -> GeneratedScreenshot:
     try:
         from playwright.sync_api import sync_playwright
@@ -107,6 +114,8 @@ def generate_screenshot_from_snapshot(
             page = context.new_page()
             page.set_content(html_with_base, wait_until="load", timeout=timeout_ms)
 
+            if ai_cleanup:
+                apply_ai_cleanup(page, wait_for_delayed_content=False)
             _apply_selections(page, selectors)
 
             title = page.title().strip() or "Screenshot"
@@ -120,6 +129,8 @@ def generate_screenshot_from_snapshot(
             browser.close()
     except ScreenshotGenerationError:
         raise
+    except AiCleanupError as exc:
+        raise ScreenshotGenerationError(str(exc)) from exc
     except Exception as exc:
         raise ScreenshotGenerationError("Failed to capture screenshot from snapshot") from exc
 
@@ -133,6 +144,7 @@ def generate_screenshot_from_snapshot(
 def generate_bulk_screenshots_zip(
     urls: list[str],
     width: int = 1440,
+    ai_cleanup: bool = False,
 ) -> tuple[list[str], str]:
     """Generate screenshots for each URL and bundle them into a ZIP archive.
 
@@ -148,13 +160,15 @@ def generate_bulk_screenshots_zip(
     with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
         for i, url in enumerate(urls, 1):
             try:
-                generated = generate_screenshot_from_url(url, width=width)
+                generated = generate_screenshot_from_url(url, width=width, ai_cleanup=ai_cleanup)
                 titles.append(generated.title)
                 img_path = Path(settings.MEDIA_ROOT) / generated.relative_path
                 sanitized = re.sub(r"[^\w\- ]", "", generated.title)[:80].strip() or f"page_{i}"
                 zf.write(str(img_path), f"{i:02d}_{sanitized}.png")
                 img_path.unlink(missing_ok=True)
             except ScreenshotGenerationError:
+                if ai_cleanup:
+                    raise
                 titles.append(f"Page {i} (failed)")
 
     return titles, f"exports/{zip_filename}"

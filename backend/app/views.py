@@ -244,6 +244,7 @@ class ExportPdfView(APIView):
         base_url = serializer.validated_data.get("base_url")
         selectors = serializer.validated_data.get("selectors") or []
         use_print_css = serializer.validated_data.get("use_print_css", False)
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
 
         # --- Generate PDF ---
         try:
@@ -253,12 +254,14 @@ class ExportPdfView(APIView):
                     base_url,
                     selectors=selectors,
                     use_print_css=use_print_css,
+                    ai_cleanup=ai_cleanup,
                 )
             else:
                 generated = generate_pdf_from_url(
                     url,
                     selectors=selectors,
                     use_print_css=use_print_css,
+                    ai_cleanup=ai_cleanup,
                 )
         except PdfGenerationError as exc:
             return Response(
@@ -397,6 +400,7 @@ class ExportMarkdownView(APIView):
         url = serializer.validated_data["url"]
         html_snapshot = serializer.validated_data.get("html_snapshot")
         selectors = serializer.validated_data.get("selectors") or []
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
 
         # --- Fetch HTML if no snapshot provided ---
         try:
@@ -423,7 +427,7 @@ class ExportMarkdownView(APIView):
 
         # --- Convert to Markdown ---
         try:
-            generated = html_to_markdown(source_html, title, selectors=selectors)
+            generated = html_to_markdown(source_html, title, selectors=selectors, ai_cleanup=ai_cleanup)
         except MarkdownGenerationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception:
@@ -494,6 +498,7 @@ class ExportStructuredJsonView(APIView):
         html_snapshot = serializer.validated_data.get("html_snapshot")
         base_url = serializer.validated_data.get("base_url") or url
         selectors = serializer.validated_data.get("selectors") or []
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
 
         # --- Fetch HTML if no snapshot provided ---
         try:
@@ -525,6 +530,7 @@ class ExportStructuredJsonView(APIView):
                 title,
                 source_url=base_url,
                 selectors=selectors,
+                ai_cleanup=ai_cleanup,
             )
         except StructuredJsonGenerationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -597,6 +603,7 @@ class ExportScreenshotView(APIView):
         base_url = serializer.validated_data.get("base_url")
         selectors = serializer.validated_data.get("selectors") or []
         width = serializer.validated_data.get("width", 1440)
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
 
         # --- Generate screenshot ---
         try:
@@ -606,12 +613,14 @@ class ExportScreenshotView(APIView):
                     base_url,
                     selectors=selectors,
                     width=width,
+                    ai_cleanup=ai_cleanup,
                 )
             else:
                 generated = generate_screenshot_from_url(
                     url,
                     selectors=selectors,
                     width=width,
+                    ai_cleanup=ai_cleanup,
                 )
         except ScreenshotGenerationError as exc:
             return Response(
@@ -667,6 +676,7 @@ class BulkExportPdfView(APIView):
         urls = serializer.validated_data["urls"]
         output_mode = serializer.validated_data["output_mode"]
         use_print_css = serializer.validated_data.get("use_print_css", False)
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
         # Check credits upfront
@@ -681,10 +691,10 @@ class BulkExportPdfView(APIView):
 
         try:
             if output_mode == "combined":
-                title, relative_path = generate_combined_pdf(urls, use_print_css=use_print_css)
+                title, relative_path = generate_combined_pdf(urls, use_print_css=use_print_css, ai_cleanup=ai_cleanup)
                 file_ext = "pdf"
             else:
-                _titles, relative_path = generate_bulk_pdfs_zip(urls, use_print_css=use_print_css)
+                _titles, relative_path = generate_bulk_pdfs_zip(urls, use_print_css=use_print_css, ai_cleanup=ai_cleanup)
                 title = "Bulk PDF Export"
                 file_ext = "zip"
         except PdfGenerationError as exc:
@@ -722,6 +732,7 @@ class BulkExportMarkdownView(APIView):
 
         urls = serializer.validated_data["urls"]
         output_mode = serializer.validated_data["output_mode"]
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
         from .services.credits import credit_cost, has_credits
@@ -736,10 +747,10 @@ class BulkExportMarkdownView(APIView):
         try:
             from .services.markdown_generator import MarkdownGenerationError
             if output_mode == "combined":
-                title, relative_path = generate_combined_markdown(urls)
+                title, relative_path = generate_combined_markdown(urls, ai_cleanup=ai_cleanup)
                 file_ext = "md"
             else:
-                _titles, relative_path = generate_bulk_markdown_zip(urls)
+                _titles, relative_path = generate_bulk_markdown_zip(urls, ai_cleanup=ai_cleanup)
                 title = "Bulk Markdown Export"
                 file_ext = "zip"
         except MarkdownGenerationError as exc:
@@ -776,6 +787,7 @@ class BulkExportStructuredJsonView(APIView):
 
         urls = serializer.validated_data["urls"]
         output_mode = serializer.validated_data["output_mode"]
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
         from .services.credits import credit_cost
@@ -789,10 +801,10 @@ class BulkExportStructuredJsonView(APIView):
 
         try:
             if output_mode == "combined":
-                title, relative_path = generate_combined_structured_json(urls)
+                title, relative_path = generate_combined_structured_json(urls, ai_cleanup=ai_cleanup)
                 file_ext = "json"
             else:
-                _titles, relative_path = generate_bulk_structured_json_zip(urls)
+                _titles, relative_path = generate_bulk_structured_json_zip(urls, ai_cleanup=ai_cleanup)
                 title = "Bulk JSON Export"
                 file_ext = "zip"
         except StructuredJsonGenerationError as exc:
@@ -829,6 +841,7 @@ class BulkExportScreenshotView(APIView):
 
         urls = serializer.validated_data["urls"]
         width = serializer.validated_data.get("width", 1440)
+        ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
         from .services.credits import credit_cost
@@ -841,7 +854,7 @@ class BulkExportScreenshotView(APIView):
             )
 
         try:
-            _titles, relative_path = generate_bulk_screenshots_zip(urls, width=width)
+            _titles, relative_path = generate_bulk_screenshots_zip(urls, width=width, ai_cleanup=ai_cleanup)
         except ScreenshotGenerationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception:

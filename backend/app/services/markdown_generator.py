@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 from markdownify import markdownify as md
 
+from .cleaner import AiCleanupError, apply_ai_cleanup_to_soup
+
 
 @dataclass
 class GeneratedMarkdown:
@@ -26,6 +28,7 @@ def html_to_markdown(
     html: str,
     title: str,
     selectors: list[str] | None = None,
+    ai_cleanup: bool = False,
 ) -> GeneratedMarkdown:
     """Convert an HTML string to Markdown, optionally removing matched elements."""
     try:
@@ -35,6 +38,9 @@ def html_to_markdown(
         for selector in selectors or []:
             for element in soup.select(selector):
                 element.decompose()
+
+        if ai_cleanup:
+            apply_ai_cleanup_to_soup(soup)
 
         # Remove scripts, styles, and navigation noise
         for tag in soup.find_all(["script", "style", "noscript", "iframe", "svg"]):
@@ -65,6 +71,8 @@ def html_to_markdown(
         content = "\n".join(cleaned).strip()
 
         return GeneratedMarkdown(title=title, content=content)
+    except AiCleanupError as exc:
+        raise MarkdownGenerationError(str(exc)) from exc
     except Exception as exc:
         raise MarkdownGenerationError("Failed to convert HTML to Markdown") from exc
 
@@ -78,7 +86,7 @@ def _safe_md_filename(title: str, index: int) -> str:
     return f"{index:02d}_{sanitized}.md"
 
 
-def generate_bulk_markdown_zip(urls: list[str]) -> tuple[list[str], str]:
+def generate_bulk_markdown_zip(urls: list[str], ai_cleanup: bool = False) -> tuple[list[str], str]:
     """Generate individual Markdown files for each URL and bundle into a ZIP.
 
     Returns (titles, zip_relative_path).
@@ -96,16 +104,18 @@ def generate_bulk_markdown_zip(urls: list[str]) -> tuple[list[str], str]:
         for i, url in enumerate(urls, 1):
             try:
                 extracted = extract_main_content(url)
-                generated = html_to_markdown(extracted.html, extracted.title, selectors=[])
+                generated = html_to_markdown(extracted.html, extracted.title, selectors=[], ai_cleanup=ai_cleanup)
                 titles.append(generated.title)
                 zf.writestr(_safe_md_filename(generated.title, i), generated.content.encode("utf-8"))
-            except (ContentExtractionError, MarkdownGenerationError, Exception):
+            except Exception:
+                if ai_cleanup:
+                    raise
                 titles.append(f"Page {i} (failed)")
 
     return titles, f"exports/{zip_filename}"
 
 
-def generate_combined_markdown(urls: list[str]) -> tuple[str, str]:
+def generate_combined_markdown(urls: list[str], ai_cleanup: bool = False) -> tuple[str, str]:
     """Generate a single Markdown file combining all articles with a cover and TOC.
 
     Returns (title, relative_path).
@@ -119,9 +129,11 @@ def generate_combined_markdown(urls: list[str]) -> tuple[str, str]:
     for url in urls:
         try:
             extracted = extract_main_content(url)
-            generated = html_to_markdown(extracted.html, extracted.title, selectors=[])
+            generated = html_to_markdown(extracted.html, extracted.title, selectors=[], ai_cleanup=ai_cleanup)
             articles.append({"title": generated.title, "url": url, "content": generated.content})
-        except (ContentExtractionError, MarkdownGenerationError, Exception):
+        except Exception:
+            if ai_cleanup:
+                raise
             pass
 
     if not articles:
