@@ -1541,6 +1541,19 @@ h2.subtitle {
 	flex: 0 0 auto;
 }
 
+.tool-sidebar-footer {
+	margin-top: auto;
+	display: grid;
+	justify-items: end;
+	gap: 0.55rem;
+	padding-top: 1rem;
+}
+
+.tool-sidebar-footer .tool-sidebar-label {
+	width: 100%;
+	text-align: right;
+}
+
 @media (max-width: 860px) {
 	.app-shell {
 		padding-top: 3.65rem;
