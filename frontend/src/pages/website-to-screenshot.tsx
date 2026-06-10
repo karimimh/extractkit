@@ -502,7 +502,7 @@ function WebsiteToScreenshot() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto w-full max-w-5xl px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
           <h1>Export Any Webpage to an Image</h1>
           <h2 className="subtitle">Generate pixel-perfect full-page screenshots from any URL</h2>

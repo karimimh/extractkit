@@ -1,5 +1,7 @@
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { useState } from "react";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AppNav } from "./components/app-nav";
+import { ToolSidebar } from "./components/tool-sidebar";
 import { BlogIndex, BlogPost } from "./pages/blog";
 import WebsiteToMarkdown from "./pages/website-to-markdown";
 import WebsiteToScreenshot from "./pages/website-to-screenshot";
@@ -9,10 +11,38 @@ import NotesTool from "./tools/notes/NotesTool";
 import StudyTool from "./tools/study/StudyTool";
 
 function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  const showToolSidebar =
+    location.pathname === "/" ||
+    location.pathname.startsWith("/web-to-") ||
+    location.pathname.startsWith("/blog");
+
   return (
     <div className="app-shell">
-      <AppNav />
-      <Outlet />
+      <AppNav
+        showSidebarToggle={showToolSidebar}
+        onOpenSidebar={() => setSidebarOpen(true)}
+      />
+      <div className={showToolSidebar ? "app-shell-content" : "app-shell-content no-sidebar"}>
+        {showToolSidebar && (
+          <>
+            <button
+              type="button"
+              className={sidebarOpen ? "tool-sidebar-backdrop open" : "tool-sidebar-backdrop"}
+              aria-label="Close tool sidebar"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <ToolSidebar
+              isOpen={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
+          </>
+        )}
+        <div className="app-shell-main">
+          <Outlet />
+        </div>
+      </div>
     </div>
   );
 }
