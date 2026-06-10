@@ -32,6 +32,7 @@ from .serializers import (
     LoginSerializer,
     PreviewRequestSerializer,
     RegisterSerializer,
+    WebsiteCrawlSerializer,
 )
 from .services.cleaner import clean_html
 from .services.custom_structured_extractor import (
@@ -39,6 +40,7 @@ from .services.custom_structured_extractor import (
     extract_custom_structured_data,
 )
 from .services.credits import InsufficientCredits, charge, get_balance, grant
+from .services.crawler import WebsiteCrawlError, crawl_website
 from .services.extractor import ContentExtractionError, extract_main_content
 from .services.markdown_generator import MarkdownGenerationError, html_to_markdown
 from .services.markdown_generator import (
@@ -362,6 +364,44 @@ class PreviewPageView(APIView):
                 "title": extracted_title,
                 "html": safe_html,
                 "base_url": url,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class WebsiteCrawlView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=["Export"], request=WebsiteCrawlSerializer)
+    def post(self, request):
+        serializer = WebsiteCrawlSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            values = serializer.validated_data
+            result = crawl_website(
+                values["url"],
+                max_pages=values["max_pages"],
+                max_depth=values["max_depth"],
+                include_patterns=values["include_patterns"],
+                exclude_patterns=values["exclude_patterns"],
+                sitemap_only=values["sitemap_only"],
+            )
+        except WebsiteCrawlError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response(
+                {"detail": "Failed to crawl website."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {
+                "urls": result.urls,
+                "count": len(result.urls),
+                "source": result.source,
+                "truncated": result.truncated,
+                "failed_urls": result.failed_urls,
             },
             status=status.HTTP_200_OK,
         )

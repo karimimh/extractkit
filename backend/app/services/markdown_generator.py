@@ -142,13 +142,13 @@ def generate_combined_markdown(urls: list[str], ai_cleanup: bool = False) -> tup
     today = date.today().strftime("%B %d, %Y")
     toc_lines = ["## Table of Contents\n"]
     for i, article in enumerate(articles, 1):
-        slug = re.sub(r"[^a-z0-9]+", "-", article["title"].lower()).strip("-")[:60]
-        toc_lines.append(f"{i}. [{article['title']}](#{slug})")
+        toc_lines.append(f"{i}. [{article['title']}](#page-{i})")
 
     combined = f"# Bulk Export\n\n*Generated on {today} — {len(articles)} articles*\n\n"
     combined += "\n".join(toc_lines) + "\n\n---\n\n"
 
-    for article in articles:
+    for i, article in enumerate(articles, 1):
+        combined += f'<a id="page-{i}"></a>\n\n'
         combined += f"# {article['title']}\n\n"
         combined += f"*Source: {article['url']}*\n\n"
         combined += article["content"] + "\n\n---\n\n"

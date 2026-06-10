@@ -23,6 +23,7 @@ from .views import (
     RegisterView,
     ResetPasswordView,
     UserMeView,
+    WebsiteCrawlView,
 )
 
 urlpatterns = [
@@ -36,6 +37,7 @@ urlpatterns = [
     path("export/bulk-json/", BulkExportStructuredJsonView.as_view(), name="bulk-export-structured-json"),
     path("export/bulk-screenshot/", BulkExportScreenshotView.as_view(), name="bulk-export-screenshot"),
     path("preview/", PreviewPageView.as_view(), name="preview-page"),
+    path("crawl/", WebsiteCrawlView.as_view(), name="website-crawl"),
     # Auth
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),

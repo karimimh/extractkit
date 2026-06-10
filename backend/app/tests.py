@@ -1,11 +1,15 @@
 import json
 import os
+import tempfile
 import zipfile
 from io import BytesIO
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import requests
 from bs4 import BeautifulSoup
+from django.conf import settings
 from django.test import TestCase as DjangoTestCase
 from rest_framework.test import APIClient
 
@@ -25,8 +29,161 @@ from .services.custom_structured_extractor import (
     extract_custom_structured_data,
     validate_json_schema,
 )
-from .services.extractor import ExtractedContent
+from .services.crawler import CrawlResult, _normalize_url, _parse_sitemap, crawl_website
+from .services.extractor import ExtractedContent, _decoded_response_html, extract_main_content
+from .services.markdown_generator import generate_combined_markdown
 from .services.tabular_exporter import build_csv, build_xlsx, records_from_data
+
+
+class ContentExtractorTests(TestCase):
+    def test_decodes_utf8_when_server_omits_charset(self):
+        response = requests.Response()
+        response.status_code = 200
+        response._content = "DistillPage – Tools".encode("utf-8")
+        response.encoding = "ISO-8859-1"
+
+        self.assertEqual(_decoded_response_html(response), "DistillPage – Tools")
+
+    @patch(
+        "app.services.extractor._render_page",
+        return_value=ExtractedContent(
+            title="Rendered route",
+            html="<html><body><article>Rendered article content</article></body></html>",
+        ),
+    )
+    @patch("app.services.extractor.requests.get")
+    def test_renders_client_side_html_shell(self, get, render_page):
+        response = MagicMock()
+        response.encoding = "utf-8"
+        response.text = "<html><head><title>Shared shell</title></head><body><div id='root'></div><script src='/app.js'></script></body></html>"
+        get.return_value = response
+
+        result = extract_main_content("https://example.com/blog/article")
+
+        self.assertEqual(result.title, "Rendered route")
+        render_page.assert_called_once_with("https://example.com/blog/article")
+
+
+class CombinedMarkdownTests(TestCase):
+    @patch(
+        "app.services.extractor.extract_main_content",
+        side_effect=[
+            ExtractedContent(title="Repeated title", html="<body><p>First article content long enough to export.</p></body>"),
+            ExtractedContent(title="Repeated title", html="<body><p>Second article content long enough to export.</p></body>"),
+        ],
+    )
+    def test_combined_export_uses_unique_page_anchors(self, _extract):
+        with tempfile.TemporaryDirectory() as media_root:
+            with patch.object(settings, "MEDIA_ROOT", media_root):
+                _title, relative_path = generate_combined_markdown(
+                    ["https://example.com/one", "https://example.com/two"]
+                )
+                content = (Path(media_root) / relative_path).read_text(encoding="utf-8")
+
+        self.assertIn("[Repeated title](#page-1)", content)
+        self.assertIn("[Repeated title](#page-2)", content)
+        self.assertIn('<a id="page-1"></a>', content)
+        self.assertIn('<a id="page-2"></a>', content)
+
+
+class WebsiteCrawlerTests(TestCase):
+    def test_normalizes_fragments_and_trailing_slashes(self):
+        self.assertEqual(
+            _normalize_url("HTTPS://Example.com/docs/page/#section"),
+            "https://example.com/docs/page",
+        )
+
+    def test_parses_sitemap_index_and_urlset(self):
+        urls, nested = _parse_sitemap(
+            '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<sitemap><loc>https://example.com/posts.xml</loc></sitemap></sitemapindex>"
+        )
+        self.assertEqual(urls, [])
+        self.assertEqual(nested, ["https://example.com/posts.xml"])
+
+        urls, nested = _parse_sitemap(
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://example.com/a</loc></url></urlset>"
+        )
+        self.assertEqual(urls, ["https://example.com/a"])
+        self.assertEqual(nested, [])
+
+    @patch("app.services.crawler.requests.Session")
+    def test_accepts_a_sitemap_url_as_the_start_url(self, session_class):
+        sitemap_response = MagicMock()
+        sitemap_response.text = (
+            "<urlset><url><loc>https://example.com/a</loc></url>"
+            "<url><loc>https://example.com/b</loc></url></urlset>"
+        )
+        session_class.return_value.get.return_value = sitemap_response
+
+        result = crawl_website("https://example.com/custom-sitemap.xml", sitemap_only=True)
+
+        self.assertEqual(result.urls, ["https://example.com/a", "https://example.com/b"])
+        session_class.return_value.get.assert_called_once()
+        self.assertEqual(
+            session_class.return_value.get.call_args.args[0],
+            "https://example.com/custom-sitemap.xml",
+        )
+
+    @patch("app.services.crawler.requests.Session")
+    def test_crawls_internal_links_with_depth_and_path_filters(self, session_class):
+        sitemap_response = MagicMock()
+        sitemap_response.raise_for_status.side_effect = __import__("requests").HTTPError()
+        home_response = MagicMock()
+        home_response.headers = {"content-type": "text/html"}
+        home_response.text = """
+            <a href="/docs/start/">Docs</a>
+            <a href="/admin/private">Admin</a>
+            <a href="https://outside.example/page">Outside</a>
+        """
+        docs_response = MagicMock()
+        docs_response.headers = {"content-type": "text/html"}
+        docs_response.text = '<a href="/docs/deep">Deep</a>'
+        session_class.return_value.get.side_effect = [
+            sitemap_response,
+            home_response,
+            docs_response,
+        ]
+
+        result = crawl_website(
+            "https://example.com",
+            max_pages=10,
+            max_depth=1,
+            include_patterns=["/docs/*"],
+            exclude_patterns=["/admin/*"],
+        )
+
+        self.assertEqual(result.urls, ["https://example.com/docs/start"])
+        self.assertNotIn("https://example.com/docs/deep", result.urls)
+
+
+class WebsiteCrawlerViewTests(DjangoTestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_crawl_requires_authentication(self):
+        response = self.client.post("/api/crawl/", {"url": "https://example.com"}, format="json")
+        self.assertEqual(response.status_code, 401)
+
+    @patch(
+        "app.views.crawl_website",
+        return_value=CrawlResult(["https://example.com", "https://example.com/about"], "links", False, []),
+    )
+    def test_returns_discovered_pages(self, crawl):
+        from django.contrib.auth.models import User
+
+        user = User.objects.create_user(username="crawler@example.com", password="password123")
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            "/api/crawl/",
+            {"url": "https://example.com", "max_pages": 10, "max_depth": 2},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 2)
+        crawl.assert_called_once()
 
 
 class AiCleanupTests(TestCase):

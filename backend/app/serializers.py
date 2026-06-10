@@ -14,6 +14,25 @@ class PreviewRequestSerializer(serializers.Serializer):
     use_print_css = serializers.BooleanField(required=False, default=False)
 
 
+class WebsiteCrawlSerializer(serializers.Serializer):
+    url = serializers.URLField(required=True)
+    max_pages = serializers.IntegerField(required=False, default=50, min_value=1, max_value=50)
+    max_depth = serializers.IntegerField(required=False, default=2, min_value=0, max_value=5)
+    include_patterns = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False,
+        default=list,
+        max_length=20,
+    )
+    exclude_patterns = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False,
+        default=list,
+        max_length=20,
+    )
+    sitemap_only = serializers.BooleanField(required=False, default=False)
+
+
 # ---------------------------------------------------------------------------
 # Bulk export serializers
 # ---------------------------------------------------------------------------

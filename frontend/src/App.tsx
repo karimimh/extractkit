@@ -8,6 +8,7 @@ import WebsiteToMarkdown from "./pages/website-to-markdown";
 import WebsiteToScreenshot from "./pages/website-to-screenshot";
 import WebsiteToTabular from "./pages/website-to-tabular";
 import WebsiteToPdf from "./pages/website-to-pdf";
+import WebsiteCrawler from "./pages/website-crawler";
 import ImagesTool from "./tools/images/ImagesTool";
 import NotesTool from "./tools/notes/NotesTool";
 import StudyTool from "./tools/study/StudyTool";
@@ -18,6 +19,7 @@ function Layout() {
   const showToolSidebar =
     location.pathname === "/" ||
     location.pathname.startsWith("/web-to-") ||
+    location.pathname === "/website-crawler" ||
     location.pathname.startsWith("/blog");
 
   return (
@@ -60,6 +62,7 @@ function App() {
         <Route path="/web-to-csv" element={<WebsiteToTabular format="csv" />} />
         <Route path="/web-to-excel" element={<WebsiteToTabular format="xlsx" />} />
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
+        <Route path="/website-crawler" element={<WebsiteCrawler />} />
         <Route path="/blog" element={<BlogIndex />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         {!import.meta.env.PROD && (
