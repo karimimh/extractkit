@@ -159,3 +159,72 @@ class ExportSchedule(models.Model):
 
     def __str__(self):
         return f"{self.name or self.tool} — {self.frequency} — {self.public_id}"
+
+
+class WebpageMonitor(models.Model):
+    TEXT = "text"
+    SELECTED = "selected"
+    STRUCTURED = "structured"
+    VISUAL = "visual"
+    MODE_CHOICES = [
+        (TEXT, "Cleaned text"),
+        (SELECTED, "Selected elements"),
+        (STRUCTURED, "Structured JSON fields"),
+        (VISUAL, "Visual screenshot"),
+    ]
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="webpage_monitors")
+    name = models.CharField(max_length=120, blank=True)
+    url = models.URLField()
+    mode = models.CharField(max_length=12, choices=MODE_CHOICES, default=TEXT)
+    selectors = models.JSONField(default=list, blank=True)
+    fields = models.JSONField(default=list, blank=True)
+    ai_cleanup = models.BooleanField(default=False)
+    frequency = models.CharField(max_length=12, choices=ExportSchedule.FREQUENCY_CHOICES)
+    webhook_url = models.URLField(blank=True)
+    webhook_secret = models.CharField(max_length=128, blank=True)
+    notify_email = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    next_run_at = models.DateTimeField()
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_changed_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["next_run_at"]
+        indexes = [models.Index(fields=["is_active", "next_run_at"], name="app_monitor_is_acti_next_idx")]
+
+    def __str__(self):
+        return f"{self.name or self.url} — {self.mode}"
+
+
+class MonitorSnapshot(models.Model):
+    monitor = models.ForeignKey(WebpageMonitor, on_delete=models.CASCADE, related_name="snapshots")
+    title = models.CharField(max_length=300, blank=True)
+    content_hash = models.CharField(max_length=64)
+    data = models.JSONField(default=dict)
+    image_path = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class MonitorChange(models.Model):
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    monitor = models.ForeignKey(WebpageMonitor, on_delete=models.CASCADE, related_name="changes")
+    before = models.ForeignKey(MonitorSnapshot, on_delete=models.CASCADE, related_name="+")
+    after = models.ForeignKey(MonitorSnapshot, on_delete=models.CASCADE, related_name="+")
+    summary = models.TextField()
+    diff = models.TextField(blank=True)
+    changed_percent = models.FloatField(default=0)
+    diff_image_path = models.CharField(max_length=500, blank=True)
+    webhook_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    notification_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

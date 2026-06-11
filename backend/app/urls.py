@@ -33,6 +33,13 @@ from .views_jobs import (
     ExportScheduleDetailView,
     ExportScheduleListCreateView,
 )
+from .views_monitoring import (
+    MonitorChangeDownloadView,
+    MonitorChangeListView,
+    WebpageMonitorDetailView,
+    WebpageMonitorListCreateView,
+    WebpageMonitorRunView,
+)
 
 urlpatterns = [
     path("jobs/", ExportJobListCreateView.as_view(), name="export-jobs"),
@@ -41,6 +48,11 @@ urlpatterns = [
     path("jobs/<uuid:public_id>/download/", ExportJobDownloadView.as_view(), name="export-job-download"),
     path("schedules/", ExportScheduleListCreateView.as_view(), name="export-schedules"),
     path("schedules/<uuid:public_id>/", ExportScheduleDetailView.as_view(), name="export-schedule-detail"),
+    path("monitors/", WebpageMonitorListCreateView.as_view(), name="webpage-monitors"),
+    path("monitors/<uuid:public_id>/", WebpageMonitorDetailView.as_view(), name="webpage-monitor-detail"),
+    path("monitors/<uuid:public_id>/run/", WebpageMonitorRunView.as_view(), name="webpage-monitor-run"),
+    path("monitors/<uuid:public_id>/changes/", MonitorChangeListView.as_view(), name="monitor-changes"),
+    path("monitor-changes/<uuid:public_id>/download/", MonitorChangeDownloadView.as_view(), name="monitor-change-download"),
     path("export/", ExportPdfView.as_view(), name="export-pdf"),
     path("export-markdown/", ExportMarkdownView.as_view(), name="export-markdown"),
     path("export-json/", ExportStructuredJsonView.as_view(), name="export-structured-json"),

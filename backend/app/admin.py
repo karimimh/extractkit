@@ -1,6 +1,16 @@
 from django.contrib import admin
 
-from .models import AnonymousDownload, CreditTransaction, CryptoPayment, ExportJob, ExportSchedule, UserProfile
+from .models import (
+    AnonymousDownload,
+    CreditTransaction,
+    CryptoPayment,
+    ExportJob,
+    ExportSchedule,
+    MonitorChange,
+    MonitorSnapshot,
+    UserProfile,
+    WebpageMonitor,
+)
 
 
 @admin.register(CryptoPayment)
@@ -39,3 +49,8 @@ class ExportScheduleAdmin(admin.ModelAdmin):
     list_filter = ("frequency", "is_active")
     search_fields = ("name", "user__email", "webhook_url")
     readonly_fields = ("public_id", "created_at", "updated_at", "last_run_at")
+
+
+admin.site.register(WebpageMonitor)
+admin.site.register(MonitorSnapshot)
+admin.site.register(MonitorChange)

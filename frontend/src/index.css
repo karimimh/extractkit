@@ -522,6 +522,152 @@ h2.subtitle {
 	font-weight: 700;
 }
 
+.monitor-change-summary {
+	color: var(--text-main) !important;
+}
+
+.monitor-page-grid {
+	display: grid;
+	grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.4fr);
+	gap: 1.25rem;
+	margin-top: 1.9rem;
+	align-items: start;
+}
+
+.monitor-create-card,
+.monitor-list-section,
+.monitor-empty-card,
+.monitor-card {
+	border: 1px solid var(--border);
+	border-radius: 16px;
+	background: var(--card);
+}
+
+.monitor-create-card,
+.monitor-list-section {
+	padding: 1rem;
+}
+
+.monitor-create-card {
+	position: sticky;
+	top: 5.5rem;
+}
+
+.monitor-section-heading {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.9rem;
+}
+
+.monitor-form-grid {
+	display: grid;
+	gap: 0.7rem;
+}
+
+.monitor-form-grid label {
+	display: grid;
+	gap: 0.35rem;
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.monitor-form-grid input,
+.monitor-form-grid select {
+	width: 100%;
+	padding: 0.6rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--page-bg);
+	color: var(--text-main);
+}
+
+.monitor-form-grid .monitor-check {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 0.5rem;
+	direction: ltr;
+}
+
+.monitor-form-grid .monitor-check input[type="checkbox"] {
+	flex: 0 0 auto;
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+	padding: 0;
+}
+
+.monitor-primary-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35rem;
+	border: 0;
+	border-radius: 999px;
+	padding: 0.65rem 0.9rem;
+	background: var(--inverse-bg);
+	color: var(--inverse-text);
+	font-weight: 700;
+}
+
+.monitor-primary-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.monitor-card-list {
+	display: grid;
+	gap: 0.8rem;
+}
+
+.monitor-card,
+.monitor-empty-card {
+	padding: 0.9rem;
+}
+
+.monitor-card small {
+	display: block;
+	margin: 0.25rem 0 0.7rem;
+	color: var(--muted);
+}
+
+.monitor-card .export-history-actions {
+	flex-wrap: wrap;
+}
+
+.monitor-card .export-history-actions button,
+.monitor-card .export-history-actions a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.42rem 0.65rem;
+	background: var(--page-bg);
+	color: var(--text-main);
+	text-decoration: none;
+}
+
+.monitor-empty-card {
+	color: var(--muted);
+}
+
+.monitor-empty-card p {
+	margin-top: 0;
+}
+
+@media (max-width: 900px) {
+	.monitor-page-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.monitor-create-card {
+		position: static;
+	}
+}
+
 .export-history-panel {
 	position: fixed;
 	inset: 0 0 0 auto;

@@ -15,7 +15,7 @@ from django.test import TestCase as DjangoTestCase, TransactionTestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import ExportJob, ExportSchedule
+from .models import ExportJob, ExportSchedule, MonitorChange, MonitorSnapshot, WebpageMonitor
 from .serializers import ExportStructuredJsonSerializer
 from .services.cleaner import (
     AiCleanupError,
@@ -400,6 +400,139 @@ class ExportScheduleRunnerTests(DjangoTestCase):
         self.assertGreater(schedule.next_run_at, timezone.now())
         self.assertEqual(job.request_data, schedule.request_data)
         enqueue.assert_called_once_with(job.id)
+
+
+class WebpageMonitorViewTests(DjangoTestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+
+        self.client = APIClient()
+        self.user = User.objects.create_user(username="monitor@example.com", password="password123")
+        self.client.force_authenticate(user=self.user)
+
+    @patch("app.views_monitoring.enqueue_monitor")
+    def test_creates_monitor_and_queues_initial_capture(self, enqueue_monitor):
+        response = self.client.post(
+            "/api/monitors/",
+            {
+                "name": "Pricing",
+                "url": "https://example.com/pricing",
+                "mode": "selected",
+                "selectors": [".price"],
+                "frequency": "daily",
+                "next_run_at": (timezone.now() + timedelta(days=1)).isoformat(),
+                "webhook_url": "https://hooks.example.com/change",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        monitor = WebpageMonitor.objects.get(user=self.user)
+        self.assertTrue(monitor.webhook_secret)
+        enqueue_monitor.assert_called_once_with(monitor.id)
+
+    def test_monitor_api_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.get("/api/monitors/").status_code, 401)
+
+    def test_selected_monitor_requires_selector(self):
+        response = self.client.post(
+            "/api/monitors/",
+            {
+                "url": "https://example.com/pricing",
+                "mode": "selected",
+                "frequency": "daily",
+                "next_run_at": (timezone.now() + timedelta(days=1)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+class WebpageMonitorRunnerTests(TransactionTestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+
+        self.user = User.objects.create_user(
+            username="monitor-runner@example.com",
+            email="monitor-runner@example.com",
+            password="password123",
+        )
+        self.monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            name="Article",
+            url="https://example.com/article",
+            mode=WebpageMonitor.TEXT,
+            frequency=ExportSchedule.DAILY,
+            next_run_at=timezone.now(),
+            webhook_url="https://hooks.example.com/change",
+            webhook_secret="secret",
+            notify_email=True,
+        )
+
+    @patch("app.monitoring.send_mail")
+    @patch("app.monitoring.requests.post")
+    @patch("app.monitoring.extract_main_content")
+    def test_baseline_then_change_creates_event_and_notifies(self, extract, post, send_mail):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        post.return_value.status_code = 204
+        post.return_value.raise_for_status.return_value = None
+        extract.side_effect = [
+            ExtractedContent("Article", "<html><body><main>Original price is $10</main></body></html>"),
+            ExtractedContent("Article", "<html><body><main>Updated price is $12</main></body></html>"),
+        ]
+
+        run_monitor(self.monitor.id)
+        self.assertEqual(MonitorSnapshot.objects.filter(monitor=self.monitor).count(), 1)
+        self.assertEqual(MonitorChange.objects.count(), 0)
+
+        run_monitor(self.monitor.id)
+        change = MonitorChange.objects.get(monitor=self.monitor)
+
+        self.assertIn("changed by", change.summary)
+        self.assertIn("Updated price", change.diff)
+        self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
+        send_mail.assert_called_once()
+
+    @patch("app.monitoring.enqueue_monitor")
+    def test_due_monitor_advances_and_queues(self, enqueue_monitor):
+        from .monitoring import run_due_monitors
+
+        self.assertEqual(run_due_monitors(), 1)
+        self.monitor.refresh_from_db()
+        self.assertGreater(self.monitor.next_run_at, timezone.now())
+        enqueue_monitor.assert_called_once_with(self.monitor.id)
+
+    def test_visual_comparison_creates_pixel_diff(self):
+        from PIL import Image
+        from .monitoring import _visual_comparison
+
+        with tempfile.TemporaryDirectory() as media_root:
+            exports = Path(media_root) / "exports"
+            exports.mkdir()
+            Image.new("RGB", (2, 2), "white").save(exports / "before.png")
+            changed = Image.new("RGB", (2, 2), "white")
+            changed.putpixel((0, 0), (0, 0, 0))
+            changed.save(exports / "after.png")
+            before = MonitorSnapshot.objects.create(
+                monitor=self.monitor,
+                content_hash="before",
+                image_path="exports/before.png",
+            )
+            after = MonitorSnapshot.objects.create(
+                monitor=self.monitor,
+                content_hash="after",
+                image_path="exports/after.png",
+            )
+
+            with patch.object(settings, "MEDIA_ROOT", media_root):
+                summary, _diff, percent, diff_path = _visual_comparison(before, after)
+
+            self.assertEqual(percent, 25)
+            self.assertIn("Visual capture changed", summary)
+            self.assertTrue((Path(media_root) / diff_path).exists())
 
 
 class AiCleanupTests(TestCase):

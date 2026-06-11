@@ -9,6 +9,7 @@ A unified platform for working with web content. Multiple tools, one account, on
 | **Web → JSON** | `/web-to-json` | Extract standard page fields or custom prompt/schema-driven structured data |
 | **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
 | **Website Crawler** | `/website-crawler` | Discover same-domain pages from sitemaps and internal links, then export the selected site pages |
+| **Change Monitoring** | `/change-monitoring` | Monitor webpage text, selected elements, structured fields, or visual captures and receive change notifications |
 | **Web → CSV** | `/web-to-csv` | Export webpage tables, listings, or custom extracted records as CSV |
 | **Web → Excel** | `/web-to-excel` | Export records plus metadata, links, images, and tables as an Excel workbook |
 | **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
@@ -152,6 +153,11 @@ GET  /api/schedules/                   List recurring export schedules
 POST /api/schedules/                   Create a recurring export schedule
 PATCH /api/schedules/{id}/             Pause, resume, or update a schedule
 DELETE /api/schedules/{id}/            Delete a schedule
+GET  /api/monitors/                    List webpage change monitors
+POST /api/monitors/                    Create a change monitor and baseline
+PATCH /api/monitors/{id}/              Pause, resume, or update a monitor
+POST /api/monitors/{id}/run/           Queue an immediate monitor check
+GET  /api/monitors/{id}/changes/       List detected changes
 POST /api/auth/register/               Create account
 POST /api/auth/login/                  Sign in
 POST /api/auth/google/                 Google sign-in
@@ -188,6 +194,8 @@ python manage.py run_scheduled_exports --loop --interval 60
 ```
 
 Webhook deliveries use the `export.completed` or `export.failed` event name. When a webhook is configured, the schedule creation response returns its signing secret once. Verify the raw request body using HMAC-SHA256 against the `X-DistillPage-Signature: sha256=...` header. Deliveries also include `X-DistillPage-Event` and `X-DistillPage-Job-Id`.
+
+Webpage monitors use the same scheduler process. They support cleaned text, selected CSS elements, structured JSON fields, and visual screenshots. The first check creates a baseline; later changes create downloadable before/after comparisons and send the `monitor.changed` webhook event. Generic webhooks, Slack webhooks, Discord webhooks, and account-email notifications are supported.
 
 ---
 
