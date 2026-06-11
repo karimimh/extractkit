@@ -267,7 +267,8 @@ class GoogleAuthSerializer(serializers.Serializer):
 class UserSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     email = serializers.EmailField()
-    download_credits = serializers.IntegerField()
+    balance_cents = serializers.IntegerField()
+    balance_usd = serializers.CharField()
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +279,7 @@ class CreatePaymentSerializer(serializers.Serializer):
     package_id = serializers.IntegerField()
 
     def validate_package_id(self, value):
-        packages = {pkg["id"]: pkg for pkg in settings.CREDIT_PACKAGES}
+        packages = {pkg["id"]: pkg for pkg in settings.WALLET_PACKAGES}
         if value not in packages:
             raise serializers.ValidationError("Invalid package ID.")
         return value

@@ -5,7 +5,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000
 export type AuthUser = {
   id: number;
   email: string;
-  download_credits: number;
+  balance_cents: number;
+  balance_usd: string;
 };
 
 type AuthContextType = {

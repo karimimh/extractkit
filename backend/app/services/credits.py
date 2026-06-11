@@ -10,16 +10,16 @@ class InsufficientCredits(Exception):
         self.required = required
         self.available = available
         super().__init__(
-            f"Insufficient credits for '{action}': requires {required}, has {available}."
+            f"Insufficient balance for '{action}': requires {required} cents, has {available} cents."
         )
 
 
 def credit_cost(action):
-    costs = getattr(settings, "CREDIT_COSTS", {})
+    costs = getattr(settings, "USAGE_PRICES_CENTS", {})
     try:
         return int(costs[action])
     except KeyError:
-        raise KeyError(f"No credit cost configured for action '{action}'.")
+        raise KeyError(f"No usage price configured for action '{action}'.")
 
 
 def get_balance(user):

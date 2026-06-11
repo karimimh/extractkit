@@ -8,6 +8,7 @@ import { BulkUrlInput } from "../components/bulk-url-input";
 import { ThemeProvider } from "../tools/notes/context/ThemeContext";
 import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const MD_TOOL_SEO = {
@@ -407,7 +408,7 @@ function WebsiteToMarkdown() {
         const detail = (payload as ErrorPayload).detail;
         if (response.status === 402) {
           setErrorType("no_credits");
-          setError(detail ?? "No download credits remaining.");
+          setError(detail ?? "Insufficient balance.");
         } else if (response.status === 403) {
           setErrorType("anon_limit");
           setError(detail ?? "Free download limit reached.");
@@ -474,7 +475,7 @@ function WebsiteToMarkdown() {
         const detail = (payload as ErrorPayload).detail;
         if (response.status === 402) {
           setErrorType("no_credits");
-          setError(detail ?? "Not enough credits.");
+          setError(detail ?? "Insufficient balance.");
         } else if (response.status === 403) {
           setErrorType("anon_limit");
           setError(detail ?? "Sign in to use bulk export.");
@@ -494,10 +495,9 @@ function WebsiteToMarkdown() {
     }
   };
 
-  const creditCostPerUrl = 1;
   const validBulkUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
-  const totalCreditCost = validBulkUrls.length * creditCostPerUrl;
-  const hasEnoughCredits = !user || user.download_credits >= totalCreditCost;
+  const totalCostCents = validBulkUrls.length * PRICE_PER_ACTION_CENTS;
+  const hasEnoughBalance = !user || user.balance_cents >= totalCostCents;
 
   return (
     <main className="app-tool-page min-h-screen">
@@ -654,8 +654,8 @@ function WebsiteToMarkdown() {
                   <div className="message error">
                     <span>{error}</span>
                     {errorType === "no_credits" && (
-                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Buy Credits
+                        <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                        Add Funds
                       </button>
                     )}
                     {errorType === "anon_limit" && (
@@ -735,14 +735,14 @@ function WebsiteToMarkdown() {
                 </div>
 
                 {validBulkUrls.length > 0 && (
-                  <div className={`credit-cost-info ${!hasEnoughCredits ? "insufficient" : ""}`}>
+                  <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
                     <span>
-                      This will use <strong>{totalCreditCost} credit{totalCreditCost !== 1 ? "s" : ""}</strong>
-                      {user ? ` (you have ${user.download_credits})` : ""}
+                      This will cost <strong>{formatUsd(totalCostCents)}</strong>
+                      {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
                     </span>
-                    {!hasEnoughCredits && (
+                    {!hasEnoughBalance && (
                       <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Buy Credits
+                        Add Funds
                       </button>
                     )}
                   </div>
@@ -752,7 +752,7 @@ function WebsiteToMarkdown() {
                   <button
                     type="button"
                     onClick={onBulkSubmit}
-                    disabled={isLoading || !hasEnoughCredits || validBulkUrls.length === 0}
+                    disabled={isLoading || !hasEnoughBalance || validBulkUrls.length === 0}
                     className={isLoading ? "export-loading" : ""}
                   >
                     {isLoading ? "Converting to Markdown..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to Markdown`}
@@ -764,7 +764,7 @@ function WebsiteToMarkdown() {
                     <span>{error}</span>
                     {errorType === "no_credits" && (
                       <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Buy Credits
+                        Add Funds
                       </button>
                     )}
                     {errorType === "anon_limit" && (

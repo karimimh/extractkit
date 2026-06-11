@@ -4,6 +4,7 @@ import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 type ExportFormat = "markdown" | "pdf" | "json" | "screenshot";
@@ -124,7 +125,8 @@ export default function WebsiteBulkExport() {
       current.includes(pageUrl) ? current.filter((item) => item !== pageUrl) : [...current, pageUrl]
     );
   };
-  const hasEnoughCredits = !user || user.download_credits >= selectedUrls.length;
+  const totalCostCents = selectedUrls.length * PRICE_PER_ACTION_CENTS;
+  const hasEnoughBalance = !user || user.balance_cents >= totalCostCents;
 
   return (
     <main className="app-tool-page min-h-screen">
@@ -216,12 +218,15 @@ export default function WebsiteBulkExport() {
                     <button type="button" className={aiCleanup ? "active" : ""} onClick={() => setAiCleanup(true)}>AI Cleanup</button>
                   </div>
                 </div>
-                <div className={`credit-cost-info ${!hasEnoughCredits ? "insufficient" : ""}`}>
-                  <span>Exporting {selectedUrls.length} page{selectedUrls.length !== 1 ? "s" : ""} uses <strong>{selectedUrls.length} credits</strong>{user ? ` (you have ${user.download_credits})` : ""}</span>
-                  {!hasEnoughCredits && <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>Buy Credits</button>}
+                <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
+                  <span>
+                    Exporting {selectedUrls.length} page{selectedUrls.length !== 1 ? "s" : ""} costs <strong>{formatUsd(totalCostCents)}</strong>
+                    {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
+                  </span>
+                  {!hasEnoughBalance && <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>Add Funds</button>}
                 </div>
                 <div className="export-actions">
-                  <button type="button" onClick={() => void exportPages()} disabled={isExporting || !selectedUrls.length || !hasEnoughCredits} className={isExporting ? "export-loading" : ""}>
+                  <button type="button" onClick={() => void exportPages()} disabled={isExporting || !selectedUrls.length || !hasEnoughBalance} className={isExporting ? "export-loading" : ""}>
                     {isExporting ? "Exporting website..." : `Export ${selectedUrls.length} selected pages`}
                   </button>
                 </div>

@@ -10,7 +10,7 @@ from app.services.credits import InsufficientCredits, charge, has_credits
 
 def _no_credits_response(action):
     return Response(
-        {'error': 'No credits remaining. Please purchase more to use AI features.'},
+        {'error': 'Insufficient balance. Please add funds to use AI features.'},
         status=status.HTTP_402_PAYMENT_REQUIRED)
 
 

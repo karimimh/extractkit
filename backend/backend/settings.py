@@ -221,14 +221,13 @@ NOWPAYMENTS_IPN_CALLBACK_URL = _env('NOWPAYMENTS_IPN_CALLBACK_URL', '')
 NOWPAYMENTS_SUCCESS_URL = _env('NOWPAYMENTS_SUCCESS_URL', 'http://localhost:5173?payment=success')
 NOWPAYMENTS_CANCEL_URL = _env('NOWPAYMENTS_CANCEL_URL', 'http://localhost:5173?payment=cancelled')
 
-CREDIT_PACKAGES = [
-    {'id': 1, 'downloads': 10,    'price_usd': 2.00},
-    {'id': 2, 'downloads': 25,    'price_usd': 5.00},
-    {'id': 3, 'downloads': 50,    'price_usd': 10.00},
-    {'id': 4, 'downloads': 100,   'price_usd': 20.00},
-    {'id': 5, 'downloads': 500,   'price_usd': 100.00},
-    {'id': 6, 'downloads': 1000,  'price_usd': 200.00},
-    {'id': 7, 'downloads': 10000, 'price_usd': 2000.00},
+WALLET_PACKAGES = [
+    {'id': 1, 'balance_cents': 500, 'price_usd': 5.00},
+    {'id': 2, 'balance_cents': 1000, 'price_usd': 10.00},
+    {'id': 3, 'balance_cents': 2500, 'price_usd': 25.00},
+    {'id': 4, 'balance_cents': 5000, 'price_usd': 50.00},
+    {'id': 5, 'balance_cents': 10000, 'price_usd': 100.00},
+    {'id': 6, 'balance_cents': 25000, 'price_usd': 250.00},
 ]
 
 SPECTACULAR_SETTINGS = {
@@ -249,17 +248,17 @@ MAX_PDF_UPLOAD_BYTES = int(_env('MAX_PDF_UPLOAD_BYTES', str(50 * 1024 * 1024)))
 LLM_PROVIDER = _env('LLM_PROVIDER', 'openai')
 USE_REAL_LLM = _env('USE_REAL_LLM', 'false').lower() in ('true', '1', 'yes')
 
-# Credit cost per metered action. Tune without migrations.
-CREDIT_COSTS = {
-    'pdf.export': 1,
-    'markdown.export': 1,
-    'structured_json.export': 1,
-    'tabular.export': 1,
-    'screenshot.export': 1,
-    'notes.ai_generate': 1,
-    'notes.ai_summarize': 1,
-    'notes.ai_translate': 1,
-    'notes.ai_assistant': 1,
+# Metered pricing in USD cents. Tune without migrations.
+USAGE_PRICES_CENTS = {
+    'pdf.export': 20,
+    'markdown.export': 20,
+    'structured_json.export': 20,
+    'tabular.export': 20,
+    'screenshot.export': 20,
+    'notes.ai_generate': 20,
+    'notes.ai_summarize': 20,
+    'notes.ai_translate': 20,
+    'notes.ai_assistant': 20,
     # study.* and image.* added later
 }
 

@@ -134,7 +134,7 @@ class UserStorageStatsInline(admin.StackedInline):
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
-    verbose_name_plural = "Credits"
+    verbose_name_plural = "Wallet"
     fields = ("download_credits",)
 
 

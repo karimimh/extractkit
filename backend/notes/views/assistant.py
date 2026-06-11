@@ -178,7 +178,7 @@ Be helpful, concise, and friendly. If you don't know something or can't find rel
 
         if not has_credits(request.user, 'notes.ai_assistant'):
             return Response(
-                {'error': 'No credits remaining. Please purchase more to use AI features.'},
+                {'error': 'Insufficient balance. Please add funds to use AI features.'},
                 status=status.HTTP_402_PAYMENT_REQUIRED)
 
         try:

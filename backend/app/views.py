@@ -39,7 +39,7 @@ from .services.custom_structured_extractor import (
     CustomStructuredExtractionError,
     extract_custom_structured_data,
 )
-from .services.credits import InsufficientCredits, charge, get_balance, grant
+from .services.credits import InsufficientCredits, charge, credit_cost, get_balance, grant, has_credits
 from .services.crawler import WebsiteCrawlError, crawl_website
 from .services.extractor import ContentExtractionError, extract_main_content
 from .services.markdown_generator import MarkdownGenerationError, html_to_markdown
@@ -89,6 +89,22 @@ def get_tokens_for_user(user):
     }
 
 
+def format_usd_cents(cents):
+    return f"${cents / 100:.2f}"
+
+
+def balance_shortfall_detail():
+    return "Insufficient balance. Please add funds to continue."
+
+
+def bulk_balance_shortfall_detail(total_cost, units, cost_per):
+    return (
+        "Insufficient balance. "
+        f"This export requires {format_usd_cents(total_cost)} "
+        f"({units} URL{'s' if units != 1 else ''} x {format_usd_cents(cost_per)})."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Auth views
 # ---------------------------------------------------------------------------
@@ -134,7 +150,8 @@ class UserMeView(APIView):
         return Response({
             "id": request.user.id,
             "email": request.user.email,
-            "download_credits": profile.download_credits,
+            "balance_cents": profile.download_credits,
+            "balance_usd": f"{profile.download_credits / 100:.2f}",
         })
 
 
@@ -207,7 +224,7 @@ class ExportPdfView(APIView):
         responses={
             200: OpenApiResponse(description="PDF generated successfully"),
             400: OpenApiResponse(description="Validation error"),
-            402: OpenApiResponse(description="No download credits remaining"),
+            402: OpenApiResponse(description="Insufficient wallet balance"),
             403: OpenApiResponse(description="Free anonymous download limit reached"),
             500: OpenApiResponse(description="PDF generation error"),
         },
@@ -230,9 +247,9 @@ class ExportPdfView(APIView):
     def post(self, request):
         # --- Access control ---
         if request.user.is_authenticated:
-            if get_balance(request.user) < 1:
+            if not has_credits(request.user, "pdf.export"):
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -297,7 +314,7 @@ class ExportPdfView(APIView):
                 charge(request.user, "pdf.export")
             except InsufficientCredits:
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -418,7 +435,7 @@ class ExportMarkdownView(APIView):
         responses={
             200: OpenApiResponse(description="Markdown generated successfully"),
             400: OpenApiResponse(description="Validation error"),
-            402: OpenApiResponse(description="No download credits remaining"),
+            402: OpenApiResponse(description="Insufficient wallet balance"),
             403: OpenApiResponse(description="Free anonymous download limit reached"),
             500: OpenApiResponse(description="Markdown generation error"),
         },
@@ -426,9 +443,9 @@ class ExportMarkdownView(APIView):
     def post(self, request):
         # --- Access control ---
         if request.user.is_authenticated:
-            if get_balance(request.user) < 1:
+            if not has_credits(request.user, "markdown.export"):
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -488,7 +505,7 @@ class ExportMarkdownView(APIView):
                 charge(request.user, "markdown.export")
             except InsufficientCredits:
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -515,7 +532,7 @@ class ExportStructuredJsonView(APIView):
         responses={
             200: OpenApiResponse(description="Structured JSON generated successfully"),
             400: OpenApiResponse(description="Validation error"),
-            402: OpenApiResponse(description="No download credits remaining"),
+            402: OpenApiResponse(description="Insufficient wallet balance"),
             403: OpenApiResponse(description="Free anonymous download limit reached"),
             500: OpenApiResponse(description="Structured JSON generation error"),
         },
@@ -523,9 +540,9 @@ class ExportStructuredJsonView(APIView):
     def post(self, request):
         # --- Access control ---
         if request.user.is_authenticated:
-            if get_balance(request.user) < 1:
+            if not has_credits(request.user, "structured_json.export"):
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -611,7 +628,7 @@ class ExportStructuredJsonView(APIView):
                 charge(request.user, "structured_json.export")
             except InsufficientCredits:
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -635,9 +652,9 @@ class ExportTabularView(APIView):
     @extend_schema(tags=["Export"], request=ExportTabularSerializer)
     def post(self, request):
         if request.user.is_authenticated:
-            if get_balance(request.user) < 1:
+            if not has_credits(request.user, "tabular.export"):
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -694,7 +711,7 @@ class ExportTabularView(APIView):
             try:
                 charge(request.user, "tabular.export")
             except InsufficientCredits:
-                return Response({"detail": "No download credits remaining."}, status=status.HTTP_402_PAYMENT_REQUIRED)
+                return Response({"detail": balance_shortfall_detail()}, status=status.HTTP_402_PAYMENT_REQUIRED)
         else:
             AnonymousDownload.objects.create(ip_address=get_client_ip(request))
 
@@ -717,7 +734,7 @@ class ExportScreenshotView(APIView):
         responses={
             200: OpenApiResponse(description="Screenshot generated successfully"),
             400: OpenApiResponse(description="Validation error"),
-            402: OpenApiResponse(description="No download credits remaining"),
+            402: OpenApiResponse(description="Insufficient wallet balance"),
             403: OpenApiResponse(description="Free anonymous download limit reached"),
             500: OpenApiResponse(description="Screenshot generation error"),
         },
@@ -725,9 +742,9 @@ class ExportScreenshotView(APIView):
     def post(self, request):
         # --- Access control ---
         if request.user.is_authenticated:
-            if get_balance(request.user) < 1:
+            if not has_credits(request.user, "screenshot.export"):
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -783,7 +800,7 @@ class ExportScreenshotView(APIView):
                 charge(request.user, "screenshot.export")
             except InsufficientCredits:
                 return Response(
-                    {"detail": "No download credits remaining. Please purchase more."},
+                    {"detail": balance_shortfall_detail()},
                     status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
         else:
@@ -823,13 +840,11 @@ class BulkExportPdfView(APIView):
         ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
-        # Check credits upfront
-        from .services.credits import credit_cost, has_credits
         cost_per = credit_cost("pdf.export")
         total_cost = cost_per * n
         if get_balance(request.user) < total_cost:
             return Response(
-                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                {"detail": bulk_balance_shortfall_detail(total_cost, n, cost_per)},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -846,12 +861,11 @@ class BulkExportPdfView(APIView):
         except Exception:
             return Response({"detail": "Failed to generate bulk PDFs"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Charge for successfully generated URLs only (charge n credits)
         try:
             charge(request.user, "pdf.export", units=n)
         except InsufficientCredits:
             return Response(
-                {"detail": "No download credits remaining. Please purchase more."},
+                {"detail": balance_shortfall_detail()},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -879,12 +893,11 @@ class BulkExportMarkdownView(APIView):
         ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
-        from .services.credits import credit_cost, has_credits
         cost_per = credit_cost("markdown.export")
         total_cost = cost_per * n
         if get_balance(request.user) < total_cost:
             return Response(
-                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                {"detail": bulk_balance_shortfall_detail(total_cost, n, cost_per)},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -906,7 +919,7 @@ class BulkExportMarkdownView(APIView):
             charge(request.user, "markdown.export", units=n)
         except InsufficientCredits:
             return Response(
-                {"detail": "No download credits remaining. Please purchase more."},
+                {"detail": balance_shortfall_detail()},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -934,12 +947,11 @@ class BulkExportStructuredJsonView(APIView):
         ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
-        from .services.credits import credit_cost
         cost_per = credit_cost("structured_json.export")
         total_cost = cost_per * n
         if get_balance(request.user) < total_cost:
             return Response(
-                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                {"detail": bulk_balance_shortfall_detail(total_cost, n, cost_per)},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -960,7 +972,7 @@ class BulkExportStructuredJsonView(APIView):
             charge(request.user, "structured_json.export", units=n)
         except InsufficientCredits:
             return Response(
-                {"detail": "No download credits remaining. Please purchase more."},
+                {"detail": balance_shortfall_detail()},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -988,12 +1000,11 @@ class BulkExportScreenshotView(APIView):
         ai_cleanup = serializer.validated_data.get("ai_cleanup", False)
         n = len(urls)
 
-        from .services.credits import credit_cost
         cost_per = credit_cost("screenshot.export")
         total_cost = cost_per * n
         if get_balance(request.user) < total_cost:
             return Response(
-                {"detail": f"Not enough credits. This export requires {total_cost} credits ({n} URLs × {cost_per})."},
+                {"detail": bulk_balance_shortfall_detail(total_cost, n, cost_per)},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -1008,7 +1019,7 @@ class BulkExportScreenshotView(APIView):
             charge(request.user, "screenshot.export", units=n)
         except InsufficientCredits:
             return Response(
-                {"detail": "No download credits remaining. Please purchase more."},
+                {"detail": balance_shortfall_detail()},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -1032,7 +1043,7 @@ class CreatePaymentView(APIView):
         serializer.is_valid(raise_exception=True)
 
         package_id = serializer.validated_data["package_id"]
-        packages = {pkg["id"]: pkg for pkg in settings.CREDIT_PACKAGES}
+        packages = {pkg["id"]: pkg for pkg in settings.WALLET_PACKAGES}
         package = packages[package_id]
 
         base_url = (
@@ -1045,7 +1056,7 @@ class CreatePaymentView(APIView):
             "price_amount": package["price_usd"],
             "price_currency": "usd",
             "order_id": f"user-{request.user.id}-pkg-{package_id}",
-            "order_description": f"{package['downloads']} PDF downloads",
+            "order_description": f"DistillPage wallet top-up of {format_usd_cents(package['balance_cents'])}",
         }
         if settings.NOWPAYMENTS_IPN_CALLBACK_URL:
             invoice_payload["ipn_callback_url"] = settings.NOWPAYMENTS_IPN_CALLBACK_URL
@@ -1075,7 +1086,7 @@ class CreatePaymentView(APIView):
         payment = CryptoPayment.objects.create(
             user=request.user,
             nowpayments_payment_id=str(data["id"]),
-            download_credits=package["downloads"],
+            download_credits=package["balance_cents"],
             amount_usd=package["price_usd"],
             status="pending",
         )
@@ -1146,7 +1157,7 @@ class PaymentWebhookView(APIView):
         try:
             payment = CryptoPayment.objects.get(nowpayments_payment_id=invoice_id)
             logger.info(
-                "DB record found — CryptoPayment id=%s user=%s status=%s credits=%s",
+                "DB record found — CryptoPayment id=%s user=%s status=%s balance_cents=%s",
                 payment.id,
                 payment.user.email,
                 payment.status,
@@ -1187,10 +1198,10 @@ class PaymentWebhookView(APIView):
                 reference=str(payment.nowpayments_payment_id),
             )
             logger.info(
-                "Credits APPLIED — %s credits added to user %s (total now: %s)",
-                payment.download_credits,
+                "Funds APPLIED — %s added to user %s (total now: %s)",
+                format_usd_cents(payment.download_credits),
                 payment.user.email,
-                new_balance,
+                format_usd_cents(new_balance),
             )
         elif payment_status in ("finished", "confirmed"):
             logger.info(
@@ -1199,7 +1210,7 @@ class PaymentWebhookView(APIView):
             )
         else:
             logger.info(
-                "payment_status=%r does not trigger credit award — no action taken",
+                "payment_status=%r does not trigger wallet funding — no action taken",
                 payment_status,
             )
 
@@ -1232,12 +1243,14 @@ class PaymentDebugView(APIView):
             "db_pk": payment.id,
             "nowpayments_payment_id": payment.nowpayments_payment_id,
             "db_status": payment.status,
-            "download_credits": payment.download_credits,
+            "balance_cents": payment.download_credits,
+            "balance_usd": f"{payment.download_credits / 100:.2f}",
             "amount_usd": str(payment.amount_usd),
             "created_at": payment.created_at.isoformat(),
             "confirmed_at": payment.confirmed_at.isoformat() if payment.confirmed_at else None,
             "user_email": payment.user.email,
-            "user_current_credits": profile.download_credits,
+            "user_current_balance_cents": profile.download_credits,
+            "user_current_balance_usd": f"{profile.download_credits / 100:.2f}",
         }
 
         # Poll the NOWPayments invoice endpoint for live status
@@ -1272,7 +1285,7 @@ class PaymentDebugView(APIView):
 class PaymentForceConfirmView(APIView):
     """
     POST /api/payments/<payment_id>/force-confirm/
-    Staff-only: manually applies credits for a payment that the IPN never delivered.
+    Staff-only: manually applies wallet funds for a payment that the IPN never delivered.
     """
 
     permission_classes = [IsAuthenticated]
@@ -1290,32 +1303,35 @@ class PaymentForceConfirmView(APIView):
         if payment.status in ("finished", "confirmed"):
             return Response(
                 {
-                    "detail": "Payment already confirmed — credits were already applied.",
+                    "detail": "Payment already confirmed — funds were already applied.",
                     "status": payment.status,
                 }
             )
 
-        profile, _ = UserProfile.objects.get_or_create(user=payment.user)
-        profile.download_credits += payment.download_credits
-        profile.save()
+        new_balance = grant(
+            payment.user,
+            payment.download_credits,
+            action="topup",
+            reference=str(payment.nowpayments_payment_id),
+        )
 
         payment.status = "finished"
         payment.confirmed_at = timezone.now()
         payment.save()
 
         logger.info(
-            "FORCE-CONFIRM by staff %s — payment_id=%s user=%s credits=%s (total now %s)",
+            "FORCE-CONFIRM by staff %s — payment_id=%s user=%s amount=%s (total now %s)",
             request.user.email,
             payment_id,
             payment.user.email,
-            payment.download_credits,
-            profile.download_credits,
+            format_usd_cents(payment.download_credits),
+            format_usd_cents(new_balance),
         )
 
         return Response(
             {
-                "detail": "Credits applied successfully.",
-                "credits_added": payment.download_credits,
-                "user_total_credits": profile.download_credits,
+                "detail": "Funds applied successfully.",
+                "balance_added_cents": payment.download_credits,
+                "user_total_balance_cents": new_balance,
             }
         )

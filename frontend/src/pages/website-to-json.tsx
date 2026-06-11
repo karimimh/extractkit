@@ -6,6 +6,7 @@ import { BulkUrlInput } from "../components/bulk-url-input";
 import { PaymentModal } from "../components/payment-modal";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const JSON_TOOL_SEO = {
@@ -255,8 +256,8 @@ function WebsiteToJson() {
 
   const formattedJson = result ? JSON.stringify(result.data, null, 2) : "";
   const validBulkUrls = bulkUrls.split("\n").map((bulkUrl) => bulkUrl.trim()).filter(Boolean);
-  const totalCreditCost = validBulkUrls.length;
-  const hasEnoughCredits = !user || user.download_credits >= totalCreditCost;
+  const totalCostCents = validBulkUrls.length * PRICE_PER_ACTION_CENTS;
+  const hasEnoughBalance = !user || user.balance_cents >= totalCostCents;
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -445,7 +446,7 @@ function WebsiteToJson() {
         const detail = (payload as ErrorPayload).detail;
         if (response.status === 402) {
           setErrorType("no_credits");
-          setError(detail ?? "No download credits remaining.");
+          setError(detail ?? "Insufficient balance.");
         } else if (response.status === 403) {
           setErrorType("anon_limit");
           setError(detail ?? "Free download limit reached.");
@@ -495,7 +496,7 @@ function WebsiteToJson() {
         const detail = (payload as ErrorPayload).detail;
         if (response.status === 402) {
           setErrorType("no_credits");
-          setError(detail ?? "Not enough credits.");
+          setError(detail ?? "Insufficient balance.");
         } else if (response.status === 403) {
           setErrorType("anon_limit");
           setError(detail ?? "Sign in to use bulk export.");
@@ -736,7 +737,7 @@ function WebsiteToJson() {
                     <span>{error}</span>
                     {errorType === "no_credits" && (
                       <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Buy Credits
+                        Add Funds
                       </button>
                     )}
                     {errorType === "anon_limit" && (
@@ -809,14 +810,14 @@ function WebsiteToJson() {
                 </div>
 
                 {validBulkUrls.length > 0 && (
-                  <div className={`credit-cost-info ${!hasEnoughCredits ? "insufficient" : ""}`}>
+                  <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
                     <span>
-                      This will use <strong>{totalCreditCost} credit{totalCreditCost !== 1 ? "s" : ""}</strong>
-                      {user ? ` (you have ${user.download_credits})` : ""}
+                      This will cost <strong>{formatUsd(totalCostCents)}</strong>
+                      {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
                     </span>
-                    {!hasEnoughCredits && (
+                    {!hasEnoughBalance && (
                       <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Buy Credits
+                        Add Funds
                       </button>
                     )}
                   </div>
@@ -826,7 +827,7 @@ function WebsiteToJson() {
                   <button
                     type="button"
                     onClick={onBulkSubmit}
-                    disabled={isLoading || !hasEnoughCredits || validBulkUrls.length === 0}
+                    disabled={isLoading || !hasEnoughBalance || validBulkUrls.length === 0}
                     className={isLoading ? "export-loading" : ""}
                   >
                     {isLoading ? "Extracting JSON..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to JSON`}
@@ -838,7 +839,7 @@ function WebsiteToJson() {
                     <span>{error}</span>
                     {errorType === "no_credits" && (
                       <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Buy Credits
+                        Add Funds
                       </button>
                     )}
                     {errorType === "anon_limit" && (

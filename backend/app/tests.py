@@ -15,7 +15,7 @@ from django.test import TestCase as DjangoTestCase, TransactionTestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import ExportJob, ExportSchedule, MonitorChange, MonitorSnapshot, WebpageMonitor
+from .models import CreditTransaction, CryptoPayment, ExportJob, ExportSchedule, MonitorChange, MonitorSnapshot, UserProfile, WebpageMonitor
 from .serializers import ExportStructuredJsonSerializer
 from .services.cleaner import (
     AiCleanupError,
@@ -187,6 +187,95 @@ class WebsiteCrawlerViewTests(DjangoTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 2)
         crawl.assert_called_once()
+
+
+class WalletBillingTests(DjangoTestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="wallet@example.com",
+            email="wallet@example.com",
+            password="password123",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_auth_me_returns_wallet_balance_fields(self):
+        UserProfile.objects.update_or_create(user=self.user, defaults={"download_credits": 740})
+
+        response = self.client.get("/api/auth/me/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["balance_cents"], 740)
+        self.assertEqual(response.json()["balance_usd"], "7.40")
+
+    @patch("app.views.http_requests.post")
+    def test_create_payment_creates_wallet_topup_invoice(self, post):
+        post.return_value.json.return_value = {
+            "id": "invoice-123",
+            "invoice_url": "https://nowpayments.example/invoice-123",
+        }
+        post.return_value.raise_for_status.return_value = None
+
+        response = self.client.post("/api/payments/create/", {"package_id": 2}, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        payment = CryptoPayment.objects.get(nowpayments_payment_id="invoice-123")
+        self.assertEqual(payment.download_credits, 1000)
+        self.assertEqual(str(payment.amount_usd), "10.00")
+        self.assertEqual(response.json()["invoice_url"], "https://nowpayments.example/invoice-123")
+
+        payload = post.call_args.kwargs["json"]
+        self.assertEqual(payload["price_amount"], 10.0)
+        self.assertEqual(payload["price_currency"], "usd")
+        self.assertIn("$10.00", payload["order_description"])
+
+    @patch("app.views.settings.NOWPAYMENTS_IPN_SECRET", "test-secret")
+    def test_payment_webhook_grants_balance_once(self):
+        payment = CryptoPayment.objects.create(
+            user=self.user,
+            nowpayments_payment_id="invoice-123",
+            download_credits=500,
+            amount_usd="5.00",
+            status="pending",
+        )
+        body = {
+            "invoice_id": "invoice-123",
+            "payment_id": "crypto-456",
+            "payment_status": "finished",
+        }
+        raw = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        sig = __import__("hmac").new(
+            b"test-secret",
+            raw,
+            __import__("hashlib").sha512,
+        ).hexdigest()
+
+        response = self.client.post(
+            "/api/payments/webhook/",
+            data=body,
+            format="json",
+            HTTP_X_NOWPAYMENTS_SIG=sig,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertEqual(payment.status, "finished")
+        self.assertEqual(profile.download_credits, 500)
+        self.assertEqual(CreditTransaction.objects.filter(user=self.user, action="topup").count(), 1)
+
+        second = self.client.post(
+            "/api/payments/webhook/",
+            data=body,
+            format="json",
+            HTTP_X_NOWPAYMENTS_SIG=sig,
+        )
+        profile.refresh_from_db()
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(profile.download_credits, 500)
+        self.assertEqual(CreditTransaction.objects.filter(user=self.user, action="topup").count(), 1)
 
 
 class ExportJobViewTests(DjangoTestCase):

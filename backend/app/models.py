@@ -9,7 +9,7 @@ class UserProfile(models.Model):
     download_credits = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        return f"{self.user.email} — {self.download_credits} credits"
+        return f"{self.user.email} — ${self.download_credits / 100:.2f} balance"
 
 
 class AnonymousDownload(models.Model):
@@ -41,7 +41,7 @@ class CryptoPayment(models.Model):
     confirmed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.user.email} — {self.download_credits} credits — {self.status}"
+        return f"{self.user.email} — ${self.download_credits / 100:.2f} top-up — {self.status}"
 
 
 class CreditTransaction(models.Model):
@@ -67,7 +67,7 @@ class CreditTransaction(models.Model):
         indexes = [models.Index(fields=["user", "-created_at"])]
 
     def __str__(self):
-        return f"{self.user.email} — {self.kind} {self.amount} ({self.balance_after} left)"
+        return f"{self.user.email} — {self.kind} {self.amount} cents ({self.balance_after} cents left)"
 
 
 class ExportJob(models.Model):

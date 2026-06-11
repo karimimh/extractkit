@@ -1,18 +1,9 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/auth-context";
+import { formatUsd, WALLET_PACKAGES } from "../lib/billing";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-
-const PACKAGES = [
-  { id: 1, downloads: 10,    price: 2 },
-  { id: 2, downloads: 25,    price: 5 },
-  { id: 3, downloads: 50,    price: 10 },
-  { id: 4, downloads: 100,   price: 20 },
-  { id: 5, downloads: 500,   price: 100 },
-  { id: 6, downloads: 1000,  price: 200 },
-  { id: 7, downloads: 10000, price: 2000 },
-] as const;
 
 type Props = {
   onClose: () => void;
@@ -50,7 +41,7 @@ export function PaymentModal({ onClose }: Props) {
     }
   };
 
-  // When user navigates back to the page, refresh credits
+  // When user navigates back to the page, refresh wallet balance
   const handleClose = async () => {
     await refreshUser();
     onClose();
@@ -64,14 +55,14 @@ export function PaymentModal({ onClose }: Props) {
         </button>
 
         <div className="modal-header">
-          <h2>Buy Download Credits</h2>
-          <p className="modal-subtitle">Pay with crypto · Credits never expire</p>
+          <h2>Add Funds</h2>
+          <p className="modal-subtitle">Pay with crypto · Prepaid wallet balance</p>
         </div>
 
         {error && <p className="message error">{error}</p>}
 
         <div className="packages-grid">
-          {PACKAGES.map((pkg) => (
+          {WALLET_PACKAGES.map((pkg) => (
             <button
               key={pkg.id}
               type="button"
@@ -79,9 +70,9 @@ export function PaymentModal({ onClose }: Props) {
               onClick={() => handleSelect(pkg.id)}
               disabled={loadingId !== null}
             >
-              <span className="package-downloads">{pkg.downloads.toLocaleString()}</span>
-              <span className="package-unit">downloads</span>
-              <span className="package-price">${pkg.price}</span>
+              <span className="package-downloads">{formatUsd(pkg.balanceCents)}</span>
+              <span className="package-unit">wallet balance</span>
+              <span className="package-price">${pkg.priceUsd}</span>
               {loadingId === pkg.id && <span className="package-spinner" />}
             </button>
           ))}
@@ -89,7 +80,7 @@ export function PaymentModal({ onClose }: Props) {
 
         <p className="modal-footnote">
           You will be redirected to NOWPayments to complete the purchase.
-          Credits are added automatically after payment confirmation.
+          Funds are added automatically after payment confirmation.
         </p>
       </div>
     </div>,

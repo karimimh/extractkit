@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
+import { formatUsd } from "../lib/billing";
 import { listExportJobs } from "../lib/export-jobs";
 import { AuthModal } from "./auth-modal";
 import { PaymentModal } from "./payment-modal";
@@ -76,7 +77,7 @@ export function UserHeader() {
           aria-expanded={profileOpen}
         >
           <span className="app-nav-account-avatar">{user ? user.email.charAt(0).toUpperCase() : <User size={15} />}</span>
-          <span className="app-nav-account-label">{user ? `${user.download_credits} credits` : "Sign in"}</span>
+          <span className="app-nav-account-label">{user ? formatUsd(user.balance_cents) : "Sign in"}</span>
           <ChevronDown size={14} />
           {runningExports > 0 && (
             <span className="app-nav-running-badge" title={`${runningExports} export${runningExports === 1 ? "" : "s"} running`}>
@@ -90,11 +91,11 @@ export function UserHeader() {
               <>
                 <div className="popover-email">{user.email}</div>
                 <div className="popover-credits">
-                  <span className="credit-badge">{user.download_credits} {user.download_credits === 1 ? "credit" : "credits"}</span>
+                  <span className="credit-badge">{formatUsd(user.balance_cents)} balance</span>
                 </div>
                 <div className="popover-actions">
                   <button type="button" className="btn-buy" onClick={() => { setShowPaymentModal(true); setProfileOpen(false); }}>
-                    <WalletCards size={15} /> Buy Credits
+                    <WalletCards size={15} /> Add Funds
                   </button>
                   <button type="button" className="btn-ghost" onClick={() => { navigate("/export-history"); setProfileOpen(false); }}>
                     <History size={15} /> Export History
