@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AuthModal } from "../components/auth-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
 import { PaymentModal } from "../components/payment-modal";
+import { Switch } from "../components/shared/switch";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
 import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
@@ -552,26 +553,20 @@ function WebsiteToJson() {
 
         <div className="card-grid" style={{ marginTop: "1.9rem" }}>
           <div className="control-stack">
-            <div className="toggle-group">
-              <span>Export mode</span>
-              <div className="toggle-buttons">
-                <button
-                  type="button"
-                  className={toolMode === "single" ? "active" : ""}
-                  onClick={() => { setToolMode("single"); setError(null); setBulkResult(null); }}
-                >
-                  Single URL
-                </button>
-                <button
-                  type="button"
-                  className={toolMode === "bulk" ? "active flex-button" : "flex-button"}
-                  onClick={() => { setToolMode("bulk"); setError(null); setResult(null); }}
-                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                >
-                  <Layers size={14} /> Bulk URLs
-                </button>
-              </div>
-            </div>
+            <Switch
+              label="Export mode"
+              value={toolMode}
+              options={[
+                { value: "single", label: "Single URL" },
+                { value: "bulk", label: <><Layers size={14} /> Bulk URLs</> },
+              ]}
+              onChange={(mode) => {
+                setToolMode(mode);
+                setError(null);
+                if (mode === "single") setBulkResult(null);
+                else setResult(null);
+              }}
+            />
 
             {toolMode === "single" ? (
               <>
