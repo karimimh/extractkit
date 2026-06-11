@@ -11,6 +11,7 @@ import WebsiteToPdf from "./pages/website-to-pdf";
 import WebsiteBulkExport from "./pages/website-bulk-export";
 import ChangeMonitors from "./pages/change-monitors";
 import ExportHistory from "./pages/export-history";
+import DeveloperAPI from "./pages/developer-api";
 import ImagesTool from "./tools/images/ImagesTool";
 import NotesTool from "./tools/notes/NotesTool";
 import StudyTool from "./tools/study/StudyTool";
@@ -29,6 +30,7 @@ function Layout() {
     location.pathname === "/website-bulk-export" ||
     location.pathname === "/change-monitoring" ||
     location.pathname === "/export-history" ||
+    location.pathname === "/developer-api" ||
     location.pathname.startsWith("/blog");
 
   return (
@@ -74,6 +76,7 @@ function App() {
         <Route path="/website-bulk-export" element={<WebsiteBulkExport />} />
         <Route path="/change-monitoring" element={<ChangeMonitors />} />
         <Route path="/export-history" element={<ExportHistory />} />
+        <Route path="/developer-api" element={<DeveloperAPI />} />
         <Route path="/blog" element={<BlogIndex />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         {!import.meta.env.PROD && (

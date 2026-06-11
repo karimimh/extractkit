@@ -3,6 +3,7 @@ import secrets
 
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -12,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .jobs import _view_classes, enqueue, serialize_job, tool_for
-from .models import ExportJob, ExportSchedule
+from .models import DeveloperAPIKey, ExportJob, ExportSchedule
 from .views import get_client_ip
 
 
@@ -92,16 +93,52 @@ class ExportJobListCreateView(APIView):
         payload = request.data.get("payload", {})
         if endpoint not in _view_classes() or not isinstance(payload, dict):
             return Response({"detail": "Invalid job request."}, status=status.HTTP_400_BAD_REQUEST)
-        job = ExportJob.objects.create(
-            user=request.user if request.user.is_authenticated else None,
-            client_ip=get_client_ip(request),
-            tool=tool_for(endpoint, payload),
-            endpoint=endpoint,
-            origin=request.build_absolute_uri("/").rstrip("/"),
-            request_data=payload,
-        )
+        idempotency_key = request.headers.get("Idempotency-Key", "").strip()
+        if len(idempotency_key) > 200:
+            return Response({"detail": "Idempotency-Key must be 200 characters or fewer."}, status=status.HTTP_400_BAD_REQUEST)
+        if idempotency_key and not request.user.is_authenticated:
+            return Response({"detail": "Authentication is required when using Idempotency-Key."}, status=status.HTTP_401_UNAUTHORIZED)
+        if idempotency_key:
+            existing = ExportJob.objects.filter(user=request.user, idempotency_key=idempotency_key).first()
+            if existing:
+                return Response({**serialize_job(existing), "idempotent_replay": True}, status=status.HTTP_202_ACCEPTED)
+
+        webhook_url = str(request.data.get("webhook_url", "")).strip()
+        webhook_secret = str(request.data.get("webhook_secret", "")).strip()
+        if webhook_url and not request.user.is_authenticated:
+            return Response({"detail": "Authentication is required when using webhooks."}, status=status.HTTP_401_UNAUTHORIZED)
+        if webhook_url:
+            try:
+                URLValidator(schemes=["http", "https"])(webhook_url)
+            except ValidationError:
+                return Response({"detail": "Webhook URL must be a valid HTTP or HTTPS URL."}, status=status.HTTP_400_BAD_REQUEST)
+            webhook_secret = webhook_secret or secrets.token_urlsafe(32)
+        if len(webhook_secret) > 128:
+            return Response({"detail": "Webhook secret must be 128 characters or fewer."}, status=status.HTTP_400_BAD_REQUEST)
+
+        values = {
+            "user": request.user if request.user.is_authenticated else None,
+            "api_key": request.auth if isinstance(request.auth, DeveloperAPIKey) else None,
+            "client_ip": get_client_ip(request),
+            "idempotency_key": idempotency_key,
+            "tool": tool_for(endpoint, payload),
+            "endpoint": endpoint,
+            "origin": request.build_absolute_uri("/").rstrip("/"),
+            "request_data": payload,
+            "webhook_url": webhook_url,
+            "webhook_secret": webhook_secret,
+        }
+        try:
+            with transaction.atomic():
+                job = ExportJob.objects.create(**values)
+        except IntegrityError:
+            existing = ExportJob.objects.get(user=request.user, idempotency_key=idempotency_key)
+            return Response({**serialize_job(existing), "idempotent_replay": True}, status=status.HTTP_202_ACCEPTED)
         enqueue(job.id)
-        return Response(serialize_job(job), status=status.HTTP_202_ACCEPTED)
+        data = serialize_job(job)
+        if webhook_url:
+            data["webhook_secret"] = webhook_secret
+        return Response(data, status=status.HTTP_202_ACCEPTED)
 
 
 class ExportJobDetailView(APIView):

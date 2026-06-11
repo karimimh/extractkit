@@ -62,6 +62,8 @@ def serialize_job(job):
         "result": result if job.status == ExportJob.COMPLETED else None,
         "download_url": f"/api/jobs/{job.public_id}/download/" if job.status == ExportJob.COMPLETED else None,
         "schedule_id": str(job.schedule.public_id) if job.schedule_id else None,
+        "idempotency_key": job.idempotency_key,
+        "webhook_configured": bool(job.webhook_url or (job.schedule_id and job.schedule.webhook_url)),
         "webhook_status": job.webhook_status,
         "webhook_error": job.webhook_error,
         "webhook_delivered_at": job.webhook_delivered_at,
@@ -76,7 +78,9 @@ def enqueue(job_id):
 
 
 def deliver_webhook(job):
-    if not job.schedule_id or not job.schedule.webhook_url:
+    webhook_url = job.webhook_url or (job.schedule.webhook_url if job.schedule_id else "")
+    webhook_secret = job.webhook_secret or (job.schedule.webhook_secret if job.schedule_id else "")
+    if not webhook_url:
         return
 
     body = json.dumps(
@@ -89,13 +93,13 @@ def deliver_webhook(job):
         "X-DistillPage-Event": f"export.{job.status}",
         "X-DistillPage-Job-Id": str(job.public_id),
     }
-    if job.schedule.webhook_secret:
+    if webhook_secret:
         headers["X-DistillPage-Signature"] = "sha256=" + hmac.new(
-            job.schedule.webhook_secret.encode(), body, hashlib.sha256
+            webhook_secret.encode(), body, hashlib.sha256
         ).hexdigest()
 
     try:
-        response = requests.post(job.schedule.webhook_url, data=body, headers=headers, timeout=10)
+        response = requests.post(webhook_url, data=body, headers=headers, timeout=10)
         job.webhook_status = response.status_code
         response.raise_for_status()
         job.webhook_delivered_at = timezone.now()

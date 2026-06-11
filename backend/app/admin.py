@@ -4,6 +4,7 @@ from .models import (
     AnonymousDownload,
     CreditTransaction,
     CryptoPayment,
+    DeveloperAPIKey,
     ExportJob,
     ExportSchedule,
     MonitorChange,
@@ -41,6 +42,13 @@ class ExportJobAdmin(admin.ModelAdmin):
     list_filter = ("tool", "status", "created_at")
     search_fields = ("public_id", "user__email", "title")
     readonly_fields = ("public_id", "created_at", "started_at", "finished_at")
+
+
+@admin.register(DeveloperAPIKey)
+class DeveloperAPIKeyAdmin(admin.ModelAdmin):
+    list_display = ("name", "prefix", "user", "last_used_at", "created_at", "revoked_at")
+    search_fields = ("name", "prefix", "user__email")
+    readonly_fields = ("public_id", "prefix", "key_hash", "last_used_at", "created_at", "revoked_at")
 
 
 @admin.register(ExportSchedule)

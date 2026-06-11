@@ -33,6 +33,12 @@ from .views_jobs import (
     ExportScheduleDetailView,
     ExportScheduleListCreateView,
 )
+from .views_developer import (
+    DeveloperAPIKeyDetailView,
+    DeveloperAPIKeyListCreateView,
+    DeveloperIntegrationsView,
+    DeveloperUsageView,
+)
 from .views_monitoring import (
     MonitorChangeDownloadView,
     MonitorChangeListView,
@@ -40,8 +46,14 @@ from .views_monitoring import (
     WebpageMonitorListCreateView,
     WebpageMonitorRunView,
 )
+from .views_mcp import MCPView
 
 urlpatterns = [
+    path("developer/keys/", DeveloperAPIKeyListCreateView.as_view(), name="developer-api-keys"),
+    path("developer/keys/<uuid:public_id>/", DeveloperAPIKeyDetailView.as_view(), name="developer-api-key-detail"),
+    path("developer/usage/", DeveloperUsageView.as_view(), name="developer-usage"),
+    path("developer/integrations/", DeveloperIntegrationsView.as_view(), name="developer-integrations"),
+    path("mcp/", MCPView.as_view(), name="mcp"),
     path("jobs/", ExportJobListCreateView.as_view(), name="export-jobs"),
     path("jobs/<uuid:public_id>/", ExportJobDetailView.as_view(), name="export-job-detail"),
     path("jobs/<uuid:public_id>/rerun/", ExportJobRerunView.as_view(), name="export-job-rerun"),

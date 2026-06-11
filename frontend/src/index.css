@@ -653,6 +653,62 @@ h2.subtitle {
 	}
 }
 
+.developer-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1.25rem;
+	margin-top: 1.9rem;
+	align-items: start;
+}
+
+.developer-wide { grid-column: 1 / -1; }
+.developer-stats, .integration-cards {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+.developer-stats div, .integration-cards article {
+	display: grid;
+	gap: 0.25rem;
+	padding: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+}
+.developer-stats strong { font-size: 1.5rem; }
+.developer-stats span, .integration-cards span, .developer-tool-usage, .developer-doc-link { color: var(--muted); font-size: 0.82rem; }
+.developer-key-form, .developer-secret, .developer-key-list article, .developer-code {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+.developer-key-form input { flex: 1; min-width: 0; }
+.developer-key-form button, .developer-key-list button, .developer-secret button, .developer-code button {
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	padding: 0.55rem 0.7rem;
+	background: var(--input-bg);
+	color: var(--text);
+}
+.developer-secret, .developer-key-list article, .developer-code {
+	justify-content: space-between;
+	margin-top: 0.75rem;
+	padding: 0.75rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--input-bg);
+}
+.developer-secret code, .developer-key-list code { overflow-wrap: anywhere; font-size: 0.78rem; }
+.developer-key-list article div { display: grid; gap: 0.2rem; }
+.developer-code { align-items: flex-start; overflow: auto; }
+.developer-code pre { margin: 0; overflow: auto; font-size: 0.78rem; }
+.integration-cards article p { margin: 0; color: var(--muted); font-size: 0.84rem; }
+
+@media (max-width: 900px) {
+	.developer-grid { grid-template-columns: 1fr; }
+	.developer-wide { grid-column: auto; }
+	.developer-stats, .integration-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .export-history-row,
 .export-history-actions {
 	display: flex;

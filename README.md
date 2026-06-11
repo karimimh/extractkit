@@ -150,6 +150,10 @@ POST /api/export/bulk-screenshot/      Generate bulk screenshot output
 POST /api/crawl/                       Discover same-domain website pages
 GET  /api/jobs/                        List export job history
 POST /api/jobs/                        Queue an asynchronous export
+GET  /api/developer/keys/              List developer API keys
+POST /api/developer/keys/              Create a developer API key
+GET  /api/developer/usage/             Get 30-day API usage
+POST /api/mcp/                         MCP JSON-RPC endpoint for AI agents
 GET  /api/schedules/                   List recurring export schedules
 POST /api/schedules/                   Create a recurring export schedule
 PATCH /api/schedules/{id}/             Pause, resume, or update a schedule
@@ -195,6 +199,8 @@ python manage.py run_scheduled_exports --loop --interval 60
 ```
 
 Webhook deliveries use the `export.completed` or `export.failed` event name. When a webhook is configured, the schedule creation response returns its signing secret once. Verify the raw request body using HMAC-SHA256 against the `X-DistillPage-Signature: sha256=...` header. Deliveries also include `X-DistillPage-Event` and `X-DistillPage-Job-Id`.
+
+Developer API keys use the `X-API-Key` header. Async job requests support an `Idempotency-Key` header and optional `webhook_url` / `webhook_secret` fields. The MCP endpoint exposes create, get, and list export-job tools over authenticated JSON-RPC.
 
 Webpage monitors use the same scheduler process. They support cleaned text, selected CSS elements, structured JSON fields, and visual screenshots. The first check creates a baseline; later changes create downloadable before/after comparisons and send the `monitor.changed` webhook event. Generic webhooks, Slack webhooks, Discord webhooks, and account-email notifications are supported.
 

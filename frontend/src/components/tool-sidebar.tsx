@@ -1,4 +1,4 @@
-import { BookOpen, History, X } from "lucide-react";
+import { BookOpen, Code2, History, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ThemeSwitcher } from "./theme-switcher";
 import { AUTOMATION_TOOLS, CONVERSION_TOOLS } from "./tool-nav-items";
@@ -64,6 +64,10 @@ export function ToolSidebar({ isOpen = false, onClose }: ToolSidebarProps) {
           <NavLink to="/export-history" className={({ isActive }) => isActive ? "tool-sidebar-link active" : "tool-sidebar-link"} onClick={onClose}>
             <History size={18} aria-hidden="true" />
             <span>Export History</span>
+          </NavLink>
+          <NavLink to="/developer-api" className={({ isActive }) => isActive ? "tool-sidebar-link active" : "tool-sidebar-link"} onClick={onClose}>
+            <Code2 size={18} aria-hidden="true" />
+            <span>Developer API</span>
           </NavLink>
         </nav>
       </div>

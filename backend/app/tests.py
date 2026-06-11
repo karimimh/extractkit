@@ -15,7 +15,7 @@ from django.test import TestCase as DjangoTestCase, TransactionTestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import CreditTransaction, CryptoPayment, ExportJob, ExportSchedule, MonitorChange, MonitorSnapshot, UserProfile, WebpageMonitor
+from .models import CreditTransaction, CryptoPayment, DeveloperAPIKey, ExportJob, ExportSchedule, MonitorChange, MonitorSnapshot, UserProfile, WebpageMonitor
 from .serializers import ExportStructuredJsonSerializer
 from .services.cleaner import (
     AiCleanupError,
@@ -346,6 +346,113 @@ class ExportJobViewTests(DjangoTestCase):
         self.assertEqual(response.content, b"# Example")
         self.assertIn(".md", response["Content-Disposition"])
 
+    @patch("app.views_jobs.enqueue")
+    def test_idempotency_key_replays_original_job(self, enqueue):
+        first = self.client.post(
+            "/api/jobs/",
+            {"endpoint": "pdf", "payload": {"url": "https://example.com"}},
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="export-123",
+        )
+        second = self.client.post(
+            "/api/jobs/",
+            {"endpoint": "pdf", "payload": {"url": "https://different.example.com"}},
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="export-123",
+        )
+
+        self.assertEqual(first.status_code, 202)
+        self.assertEqual(second.status_code, 202)
+        self.assertEqual(second.json()["id"], first.json()["id"])
+        self.assertTrue(second.json()["idempotent_replay"])
+        self.assertEqual(ExportJob.objects.filter(user=self.user).count(), 1)
+        enqueue.assert_called_once()
+
+
+class DeveloperAPIViewTests(DjangoTestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+
+        self.client = APIClient()
+        self.user = User.objects.create_user(username="developer@example.com", password="password123")
+        self.client.force_authenticate(user=self.user)
+
+    def test_creates_lists_and_revokes_api_key_without_persisting_secret(self):
+        created = self.client.post("/api/developer/keys/", {"name": "Production"}, format="json")
+
+        self.assertEqual(created.status_code, 201)
+        raw_key = created.json()["key"]
+        key = DeveloperAPIKey.objects.get(user=self.user)
+        self.assertTrue(raw_key.startswith("dp_live_"))
+        self.assertNotEqual(key.key_hash, raw_key)
+        self.assertNotIn("key", self.client.get("/api/developer/keys/").json()[0])
+
+        revoked = self.client.delete(f"/api/developer/keys/{key.public_id}/")
+        self.assertEqual(revoked.status_code, 204)
+        key.refresh_from_db()
+        self.assertIsNotNone(key.revoked_at)
+
+    @patch("app.views_jobs.enqueue")
+    def test_api_key_authenticates_async_job_and_tracks_key(self, enqueue):
+        key, raw_key = DeveloperAPIKey.create_key(user=self.user, name="Automation")
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post(
+            "/api/jobs/",
+            {"endpoint": "markdown", "payload": {"url": "https://example.com"}},
+            format="json",
+            HTTP_X_API_KEY=raw_key,
+        )
+
+        self.assertEqual(response.status_code, 202)
+        job = ExportJob.objects.get(user=self.user)
+        self.assertEqual(job.api_key, key)
+        key.refresh_from_db()
+        self.assertIsNotNone(key.last_used_at)
+
+    def test_usage_dashboard_aggregates_recent_jobs(self):
+        ExportJob.objects.create(user=self.user, tool="pdf", endpoint="pdf", status=ExportJob.COMPLETED)
+        ExportJob.objects.create(user=self.user, tool="pdf", endpoint="pdf", status=ExportJob.FAILED)
+
+        response = self.client.get("/api/developer/usage/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total_jobs"], 2)
+        self.assertEqual(response.json()["successful_jobs"], 1)
+        self.assertEqual(response.json()["failed_jobs"], 1)
+
+    @patch("app.views_mcp.enqueue")
+    def test_mcp_lists_tools_and_creates_job(self, enqueue):
+        _, raw_key = DeveloperAPIKey.create_key(user=self.user, name="Agent")
+        self.client.force_authenticate(user=None)
+
+        listed = self.client.post(
+            "/api/mcp/",
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            format="json",
+            HTTP_X_API_KEY=raw_key,
+        )
+        created = self.client.post(
+            "/api/mcp/",
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "create_export_job",
+                    "arguments": {"endpoint": "pdf", "payload": {"url": "https://example.com"}},
+                },
+            },
+            format="json",
+            HTTP_X_API_KEY=raw_key,
+        )
+
+        self.assertEqual(listed.status_code, 200)
+        self.assertIn("create_export_job", [tool["name"] for tool in listed.json()["result"]["tools"]])
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(ExportJob.objects.get().user, self.user)
+        enqueue.assert_called_once()
+
 
 class ExportJobRunnerTests(TransactionTestCase):
     @patch(
@@ -411,6 +518,34 @@ class ExportJobRunnerTests(TransactionTestCase):
         self.assertIsNotNone(job.webhook_delivered_at)
         body = post.call_args.kwargs["data"]
         self.assertIn(b'"event":"export.completed"', body)
+        self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
+
+    @patch("app.jobs.requests.post")
+    @patch(
+        "app.views.crawl_website",
+        return_value=CrawlResult(["https://example.com"], "links", False, []),
+    )
+    def test_runner_delivers_signed_direct_job_webhook(self, crawl, post):
+        from django.contrib.auth.models import User
+        from .jobs import run_job
+
+        post.return_value.status_code = 204
+        post.return_value.raise_for_status.return_value = None
+        user = User.objects.create_user(username="direct-webhook@example.com", password="password123")
+        job = ExportJob.objects.create(
+            user=user,
+            tool="crawl",
+            endpoint="crawl",
+            origin="https://distillpage.com",
+            request_data={"url": "https://example.com"},
+            webhook_url="https://hooks.example.com/export",
+            webhook_secret="direct-secret",
+        )
+
+        run_job(job.id)
+        job.refresh_from_db()
+
+        self.assertEqual(job.webhook_status, 204)
         self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
 
 

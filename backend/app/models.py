@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 import uuid
 
 from django.contrib.auth.models import User
@@ -70,6 +72,34 @@ class CreditTransaction(models.Model):
         return f"{self.user.email} — {self.kind} {self.amount} cents ({self.balance_after} cents left)"
 
 
+class DeveloperAPIKey(models.Model):
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="developer_api_keys")
+    name = models.CharField(max_length=120)
+    prefix = models.CharField(max_length=20, unique=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @classmethod
+    def create_key(cls, *, user, name):
+        raw_key = f"dp_live_{secrets.token_urlsafe(32)}"
+        key = cls.objects.create(
+            user=user,
+            name=name,
+            prefix=raw_key[:16],
+            key_hash=hashlib.sha256(raw_key.encode()).hexdigest(),
+        )
+        return key, raw_key
+
+    def __str__(self):
+        return f"{self.name} — {self.prefix}…"
+
+
 class ExportJob(models.Model):
     PENDING = "pending"
     RUNNING = "running"
@@ -97,7 +127,15 @@ class ExportJob(models.Model):
         on_delete=models.SET_NULL,
         related_name="jobs",
     )
+    api_key = models.ForeignKey(
+        DeveloperAPIKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="jobs",
+    )
     client_ip = models.GenericIPAddressField(null=True, blank=True)
+    idempotency_key = models.CharField(max_length=200, blank=True)
     tool = models.CharField(max_length=32)
     endpoint = models.CharField(max_length=64)
     origin = models.URLField(blank=True)
@@ -110,6 +148,8 @@ class ExportJob(models.Model):
     webhook_status = models.PositiveSmallIntegerField(null=True, blank=True)
     webhook_error = models.TextField(blank=True)
     webhook_delivered_at = models.DateTimeField(null=True, blank=True)
+    webhook_url = models.URLField(blank=True)
+    webhook_secret = models.CharField(max_length=128, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
@@ -119,6 +159,13 @@ class ExportJob(models.Model):
         indexes = [
             models.Index(fields=["user", "-created_at"]),
             models.Index(fields=["status", "created_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="unique_user_export_idempotency_key",
+            ),
         ]
 
     def __str__(self):
