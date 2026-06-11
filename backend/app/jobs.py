@@ -1,7 +1,11 @@
+import hashlib
+import hmac
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
+import requests
 from django.db import close_old_connections
 from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
@@ -57,6 +61,10 @@ def serialize_job(job):
         "response_status": job.response_status,
         "result": result if job.status == ExportJob.COMPLETED else None,
         "download_url": f"/api/jobs/{job.public_id}/download/" if job.status == ExportJob.COMPLETED else None,
+        "schedule_id": str(job.schedule.public_id) if job.schedule_id else None,
+        "webhook_status": job.webhook_status,
+        "webhook_error": job.webhook_error,
+        "webhook_delivered_at": job.webhook_delivered_at,
         "created_at": job.created_at,
         "started_at": job.started_at,
         "finished_at": job.finished_at,
@@ -65,6 +73,36 @@ def serialize_job(job):
 
 def enqueue(job_id):
     executor.submit(run_job, job_id)
+
+
+def deliver_webhook(job):
+    if not job.schedule_id or not job.schedule.webhook_url:
+        return
+
+    body = json.dumps(
+        {"event": f"export.{job.status}", "job": serialize_job(job)},
+        default=str,
+        separators=(",", ":"),
+    ).encode()
+    headers = {
+        "Content-Type": "application/json",
+        "X-DistillPage-Event": f"export.{job.status}",
+        "X-DistillPage-Job-Id": str(job.public_id),
+    }
+    if job.schedule.webhook_secret:
+        headers["X-DistillPage-Signature"] = "sha256=" + hmac.new(
+            job.schedule.webhook_secret.encode(), body, hashlib.sha256
+        ).hexdigest()
+
+    try:
+        response = requests.post(job.schedule.webhook_url, data=body, headers=headers, timeout=10)
+        job.webhook_status = response.status_code
+        response.raise_for_status()
+        job.webhook_delivered_at = timezone.now()
+        job.webhook_error = ""
+    except requests.RequestException as exc:
+        job.webhook_error = str(exc)[:1000]
+    job.save(update_fields=["webhook_status", "webhook_delivered_at", "webhook_error"])
 
 
 def run_job(job_id):
@@ -78,7 +116,7 @@ def run_job(job_id):
         )
         if not claimed:
             return
-        job = ExportJob.objects.select_related("user").get(pk=job_id)
+        job = ExportJob.objects.select_related("user", "schedule").get(pk=job_id)
 
         factory = APIRequestFactory()
         origin = urlsplit(job.origin)
@@ -106,7 +144,7 @@ def run_job(job_id):
             job.error = payload.get("detail", "Job failed.") if isinstance(payload, dict) else "Job failed."
     except Exception:
         logger.exception("Export job %s failed", job_id)
-        job = job or ExportJob.objects.get(pk=job_id)
+        job = job or ExportJob.objects.select_related("schedule").get(pk=job_id)
         job.status = ExportJob.FAILED
         job.response_status = 500
         job.error = "The export job failed unexpectedly."
@@ -114,4 +152,5 @@ def run_job(job_id):
         if job:
             job.finished_at = timezone.now()
             job.save(update_fields=["status", "title", "result", "error", "response_status", "finished_at"])
+            deliver_webhook(job)
         close_old_connections()

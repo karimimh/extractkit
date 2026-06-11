@@ -1,13 +1,18 @@
 import json
+import secrets
 
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.http import HttpResponse, HttpResponseRedirect
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .jobs import _view_classes, enqueue, serialize_job, tool_for
-from .models import ExportJob
+from .models import ExportJob, ExportSchedule
 from .views import get_client_ip
 
 
@@ -18,6 +23,61 @@ def _get_visible_job(request, public_id):
     if job.user_id and (not request.user.is_authenticated or job.user_id != request.user.id):
         return None
     return job
+
+
+def _serialize_schedule(schedule, reveal_secret=False):
+    data = {
+        "id": str(schedule.public_id),
+        "name": schedule.name,
+        "tool": schedule.tool,
+        "endpoint": schedule.endpoint,
+        "payload": schedule.request_data,
+        "frequency": schedule.frequency,
+        "webhook_url": schedule.webhook_url,
+        "webhook_configured": bool(schedule.webhook_url),
+        "is_active": schedule.is_active,
+        "next_run_at": schedule.next_run_at,
+        "last_run_at": schedule.last_run_at,
+        "created_at": schedule.created_at,
+    }
+    if reveal_secret:
+        data["webhook_secret"] = schedule.webhook_secret
+    return data
+
+
+def _validated_schedule_data(data, partial=False):
+    result = {}
+    if not partial or "frequency" in data:
+        frequency = data.get("frequency")
+        if frequency not in dict(ExportSchedule.FREQUENCY_CHOICES):
+            raise ValueError("Frequency must be hourly, daily, weekly, or monthly.")
+        result["frequency"] = frequency
+    if not partial or "next_run_at" in data:
+        value = data.get("next_run_at")
+        next_run_at = parse_datetime(value) if isinstance(value, str) else value
+        if not next_run_at:
+            raise ValueError("A valid next_run_at date and time is required.")
+        if timezone.is_naive(next_run_at):
+            next_run_at = timezone.make_aware(next_run_at)
+        result["next_run_at"] = next_run_at
+    if "name" in data:
+        result["name"] = str(data.get("name", ""))[:120]
+    if "is_active" in data:
+        result["is_active"] = bool(data["is_active"])
+    if "webhook_url" in data:
+        webhook_url = str(data.get("webhook_url", "")).strip()
+        if webhook_url:
+            try:
+                URLValidator(schemes=["http", "https"])(webhook_url)
+            except ValidationError as exc:
+                raise ValueError("Webhook URL must be a valid HTTP or HTTPS URL.") from exc
+        result["webhook_url"] = webhook_url
+    if "webhook_secret" in data:
+        webhook_secret = str(data.get("webhook_secret", "")).strip()
+        if len(webhook_secret) > 128:
+            raise ValueError("Webhook secret must be 128 characters or fewer.")
+        result["webhook_secret"] = webhook_secret
+    return result
 
 
 class ExportJobListCreateView(APIView):
@@ -90,3 +150,76 @@ class ExportJobDownloadView(APIView):
             extension = "json"
         response["Content-Disposition"] = f'attachment; filename="{job.tool}-{job.public_id}.{extension}"'
         return response
+
+
+class ExportScheduleListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        schedules = ExportSchedule.objects.filter(user=request.user)
+        return Response([_serialize_schedule(schedule) for schedule in schedules])
+
+    def post(self, request):
+        try:
+            values = _validated_schedule_data(request.data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        source_job_id = request.data.get("source_job_id")
+        if source_job_id:
+            source = ExportJob.objects.filter(public_id=source_job_id, user=request.user).first()
+            if not source:
+                return Response({"detail": "Source job not found."}, status=status.HTTP_404_NOT_FOUND)
+            endpoint, payload, tool, origin = source.endpoint, source.request_data, source.tool, source.origin
+        else:
+            endpoint = request.data.get("endpoint", "")
+            payload = request.data.get("payload", {})
+            if endpoint not in _view_classes() or not isinstance(payload, dict):
+                return Response({"detail": "Invalid scheduled export request."}, status=status.HTTP_400_BAD_REQUEST)
+            tool = tool_for(endpoint, payload)
+            origin = request.build_absolute_uri("/").rstrip("/")
+
+        webhook_secret = values.pop("webhook_secret", "")
+        if values.get("webhook_url"):
+            webhook_secret = webhook_secret or secrets.token_urlsafe(32)
+        schedule = ExportSchedule.objects.create(
+            user=request.user,
+            endpoint=endpoint,
+            request_data=payload,
+            tool=tool,
+            origin=origin,
+            webhook_secret=webhook_secret,
+            **values,
+        )
+        return Response(_serialize_schedule(schedule, reveal_secret=True), status=status.HTTP_201_CREATED)
+
+
+class ExportScheduleDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, request, public_id):
+        return ExportSchedule.objects.filter(public_id=public_id, user=request.user).first()
+
+    def patch(self, request, public_id):
+        schedule = self._get(request, public_id)
+        if not schedule:
+            return Response({"detail": "Schedule not found."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            values = _validated_schedule_data(request.data, partial=True)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        if values.get("webhook_url") and not values.get("webhook_secret") and not schedule.webhook_secret:
+            values["webhook_secret"] = secrets.token_urlsafe(32)
+        if "webhook_url" in values and not values["webhook_url"]:
+            values["webhook_secret"] = ""
+        for key, value in values.items():
+            setattr(schedule, key, value)
+        schedule.save()
+        return Response(_serialize_schedule(schedule, reveal_secret="webhook_secret" in values))
+
+    def delete(self, request, public_id):
+        schedule = self._get(request, public_id)
+        if not schedule:
+            return Response({"detail": "Schedule not found."}, status=status.HTTP_404_NOT_FOUND)
+        schedule.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

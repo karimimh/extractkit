@@ -146,6 +146,12 @@ POST /api/export/bulk-markdown/        Generate bulk Markdown output
 POST /api/export/bulk-json/            Generate bulk JSON output
 POST /api/export/bulk-screenshot/      Generate bulk screenshot output
 POST /api/crawl/                       Discover same-domain website pages
+GET  /api/jobs/                        List export job history
+POST /api/jobs/                        Queue an asynchronous export
+GET  /api/schedules/                   List recurring export schedules
+POST /api/schedules/                   Create a recurring export schedule
+PATCH /api/schedules/{id}/             Pause, resume, or update a schedule
+DELETE /api/schedules/{id}/            Delete a schedule
 POST /api/auth/register/               Create account
 POST /api/auth/login/                  Sign in
 POST /api/auth/google/                 Google sign-in
@@ -173,6 +179,15 @@ GET  /api/images/super-resolution/     Super-resolution (Real-ESRGAN)
 ```
 
 All web conversion export endpoints accept `ai_cleanup: true` to enable AI Cleanup. Single-page endpoints also accept `selectors` for Manual Interaction exports. Omitting both produces a Full Page export.
+
+Scheduled exports require a continuously running scheduler process:
+
+```bash
+cd backend
+python manage.py run_scheduled_exports --loop --interval 60
+```
+
+Webhook deliveries use the `export.completed` or `export.failed` event name. When a webhook is configured, the schedule creation response returns its signing secret once. Verify the raw request body using HMAC-SHA256 against the `X-DistillPage-Signature: sha256=...` header. Deliveries also include `X-DistillPage-Event` and `X-DistillPage-Job-Id`.
 
 ---
 

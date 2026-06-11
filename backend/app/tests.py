@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import zipfile
+from datetime import timedelta
 from io import BytesIO
 from pathlib import Path
 from unittest import TestCase
@@ -11,9 +12,10 @@ import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.test import TestCase as DjangoTestCase, TransactionTestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import ExportJob
+from .models import ExportJob, ExportSchedule
 from .serializers import ExportStructuredJsonSerializer
 from .services.cleaner import (
     AiCleanupError,
@@ -281,6 +283,123 @@ class ExportJobRunnerTests(TransactionTestCase):
         self.assertEqual(job.response_status, 200)
         self.assertEqual(job.result["urls"], ["https://example.com"])
         crawl.assert_called_once()
+
+    @patch("app.jobs.requests.post")
+    @patch(
+        "app.views.crawl_website",
+        return_value=CrawlResult(["https://example.com"], "links", False, []),
+    )
+    def test_runner_delivers_signed_schedule_webhook(self, crawl, post):
+        from django.contrib.auth.models import User
+        from .jobs import run_job
+
+        post.return_value.status_code = 204
+        post.return_value.raise_for_status.return_value = None
+        user = User.objects.create_user(username="webhook@example.com", password="password123")
+        schedule = ExportSchedule.objects.create(
+            user=user,
+            tool="crawl",
+            endpoint="crawl",
+            request_data={"url": "https://example.com"},
+            frequency=ExportSchedule.DAILY,
+            next_run_at=timezone.now(),
+            webhook_url="https://hooks.example.com/export",
+            webhook_secret="test-secret",
+        )
+        job = ExportJob.objects.create(
+            user=user,
+            schedule=schedule,
+            tool="crawl",
+            endpoint="crawl",
+            origin="https://distillpage.com",
+            request_data={"url": "https://example.com"},
+        )
+
+        run_job(job.id)
+        job.refresh_from_db()
+
+        self.assertEqual(job.webhook_status, 204)
+        self.assertIsNotNone(job.webhook_delivered_at)
+        body = post.call_args.kwargs["data"]
+        self.assertIn(b'"event":"export.completed"', body)
+        self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
+
+
+class ExportScheduleViewTests(DjangoTestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+
+        self.client = APIClient()
+        self.user = User.objects.create_user(username="schedules@example.com", password="password123")
+        self.client.force_authenticate(user=self.user)
+        self.job = ExportJob.objects.create(
+            user=self.user,
+            tool="markdown",
+            endpoint="markdown",
+            request_data={"url": "https://example.com"},
+        )
+
+    def test_creates_schedule_from_export_job_and_generates_webhook_secret(self):
+        response = self.client.post(
+            "/api/schedules/",
+            {
+                "source_job_id": str(self.job.public_id),
+                "frequency": "daily",
+                "next_run_at": (timezone.now() + timedelta(hours=1)).isoformat(),
+                "webhook_url": "https://hooks.example.com/export",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        schedule = ExportSchedule.objects.get(user=self.user)
+        self.assertEqual(schedule.request_data, self.job.request_data)
+        self.assertTrue(schedule.webhook_secret)
+        self.assertEqual(response.json()["webhook_secret"], schedule.webhook_secret)
+
+    def test_schedule_api_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.get("/api/schedules/").status_code, 401)
+
+    def test_rejects_overlong_webhook_secret(self):
+        response = self.client.post(
+            "/api/schedules/",
+            {
+                "source_job_id": str(self.job.public_id),
+                "frequency": "daily",
+                "next_run_at": (timezone.now() + timedelta(hours=1)).isoformat(),
+                "webhook_url": "https://hooks.example.com/export",
+                "webhook_secret": "x" * 129,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+
+class ExportScheduleRunnerTests(DjangoTestCase):
+    @patch("app.schedules.enqueue")
+    def test_due_schedule_creates_job_and_advances_next_run(self, enqueue):
+        from django.contrib.auth.models import User
+        from .schedules import run_due_schedules
+
+        user = User.objects.create_user(username="due@example.com", password="password123")
+        due_at = timezone.now() - timedelta(minutes=5)
+        schedule = ExportSchedule.objects.create(
+            user=user,
+            tool="pdf",
+            endpoint="pdf",
+            request_data={"url": "https://example.com"},
+            frequency=ExportSchedule.HOURLY,
+            next_run_at=due_at,
+        )
+
+        self.assertEqual(run_due_schedules(), 1)
+        schedule.refresh_from_db()
+        job = ExportJob.objects.get(schedule=schedule)
+        self.assertGreater(schedule.next_run_at, timezone.now())
+        self.assertEqual(job.request_data, schedule.request_data)
+        enqueue.assert_called_once_with(job.id)
 
 
 class AiCleanupTests(TestCase):

@@ -90,6 +90,13 @@ class ExportJob(models.Model):
         on_delete=models.CASCADE,
         related_name="export_jobs",
     )
+    schedule = models.ForeignKey(
+        "ExportSchedule",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="jobs",
+    )
     client_ip = models.GenericIPAddressField(null=True, blank=True)
     tool = models.CharField(max_length=32)
     endpoint = models.CharField(max_length=64)
@@ -100,6 +107,9 @@ class ExportJob(models.Model):
     result = models.JSONField(null=True, blank=True)
     error = models.TextField(blank=True)
     response_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    webhook_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    webhook_error = models.TextField(blank=True)
+    webhook_delivered_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
@@ -113,3 +123,39 @@ class ExportJob(models.Model):
 
     def __str__(self):
         return f"{self.tool} — {self.status} — {self.public_id}"
+
+
+class ExportSchedule(models.Model):
+    HOURLY = "hourly"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    FREQUENCY_CHOICES = [
+        (HOURLY, "Hourly"),
+        (DAILY, "Daily"),
+        (WEEKLY, "Weekly"),
+        (MONTHLY, "Monthly"),
+    ]
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="export_schedules")
+    name = models.CharField(max_length=120, blank=True)
+    tool = models.CharField(max_length=32)
+    endpoint = models.CharField(max_length=64)
+    origin = models.URLField(blank=True)
+    request_data = models.JSONField(default=dict)
+    frequency = models.CharField(max_length=12, choices=FREQUENCY_CHOICES)
+    webhook_url = models.URLField(blank=True)
+    webhook_secret = models.CharField(max_length=128, blank=True)
+    is_active = models.BooleanField(default=True)
+    next_run_at = models.DateTimeField()
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["next_run_at"]
+        indexes = [models.Index(fields=["is_active", "next_run_at"], name="app_exports_is_acti_f7afe5_idx")]
+
+    def __str__(self):
+        return f"{self.name or self.tool} — {self.frequency} — {self.public_id}"

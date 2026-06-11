@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AnonymousDownload, CreditTransaction, CryptoPayment, ExportJob, UserProfile
+from .models import AnonymousDownload, CreditTransaction, CryptoPayment, ExportJob, ExportSchedule, UserProfile
 
 
 @admin.register(CryptoPayment)
@@ -31,3 +31,11 @@ class ExportJobAdmin(admin.ModelAdmin):
     list_filter = ("tool", "status", "created_at")
     search_fields = ("public_id", "user__email", "title")
     readonly_fields = ("public_id", "created_at", "started_at", "finished_at")
+
+
+@admin.register(ExportSchedule)
+class ExportScheduleAdmin(admin.ModelAdmin):
+    list_display = ("name", "user", "tool", "frequency", "is_active", "next_run_at", "last_run_at")
+    list_filter = ("frequency", "is_active")
+    search_fields = ("name", "user__email", "webhook_url")
+    readonly_fields = ("public_id", "created_at", "updated_at", "last_run_at")
