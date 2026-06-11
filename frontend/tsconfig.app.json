@@ -15,12 +15,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    "paths": {
-      "@study/*": ["./src/tools/study/*"],
-      "@images/*": ["./src/tools/images/*"],
-      "@notes/*": ["./src/tools/notes/*"]
-    },
-
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,

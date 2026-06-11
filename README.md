@@ -1,6 +1,6 @@
 # DistillPage
 
-A unified platform for working with web content. Multiple tools, one account, one credits balance.
+A platform for extracting, transforming, exporting, and monitoring webpages.
 
 | Tool | Route | Description |
 |------|-------|-------------|
@@ -13,70 +13,62 @@ A unified platform for working with web content. Multiple tools, one account, on
 | **Export History** | `/export-history` | Review, download, rerun, and schedule previous exports |
 | **Web → CSV** | `/web-to-csv` | Export webpage tables, listings, or custom extracted records as CSV |
 | **Web → Excel** | `/web-to-excel` | Export records plus metadata, links, images, and tables as an Excel workbook |
-| **Study** | `/study` | Upload a PDF and generate summaries, quizzes, and flashcard decks powered by an LLM |
-| **Notes** | `/notes` | Markdown note-taking with labels, history, AI generation/summarisation/translation, and an AI assistant |
-| **Images** | `/images` | Client-side canvas image editor with adjustments, filters, white-balance correction, and super-resolution |
+| **Developer API** | `/developer-api` | Manage API keys, usage, webhooks, and integrations |
 
 ---
 
 ## Architecture
 
 ```
-frontend/          React 19 + Vite 8 SPA (single build for all tools)
+frontend/          React 19 + Vite 8 SPA
   src/
-    App.tsx        Router — /web-to-pdf /web-to-markdown /web-to-json /web-to-screenshot /study /notes /images + layout
-    components/    AppNav, UserHeader (auth + buy-credits modal)
-    pages/         WebsiteToPdf
-    context/       AuthContext (shared JWT)
-    tools/
-      study/       Readeb UI (ported from Next.js)
-      notes/       Note-cards UI (Vite/React)
-      images/      Picnice canvas UI (Vite/React)
+    App.tsx        Router and shared layout
+    components/    Navigation, auth, billing, and shared UI
+    context/       Shared authentication context
+    lib/           API clients and shared utilities
+    pages/         Webpage tools, history, monitoring, developer API, and blog
 
-backend/           Django 5 + DRF (single project, all tools as apps)
-  app/             Core: auth, payments, PDF export, credits ledger
-  study/           PDF → study materials (quiz, flashcards, summary)
-  notes/           Notes CRUD + AI endpoints (Gemini)
-  customer_support/ Support tickets
-  project/         Image project management
-  vision/          CV backend (brightness, white-balance, super-resolution)
+backend/           Django 5 + Django REST Framework
+  app/             Web extraction, exports, jobs, monitoring, auth, and billing
   backend/
     settings.py    Single settings module
-    urls.py        /api/ /api/study/ /api/notes/ /api/images/ /api/support/
+    urls.py        API, admin, schema, and Swagger routes
 ```
 
 ---
 
 ## Auth & Billing
 
-**Authentication** is shared across all tools — one account, one session.
+**Authentication** provides one account and session across the webpage tools.
 
 - `POST /api/auth/register/` — email + password → JWT pair
 - `POST /api/auth/login/` — email + password → JWT pair
 - `POST /api/auth/google/` — Google ID token → JWT pair
 - `POST /api/auth/refresh/` — rotate access token
-- `GET  /api/auth/me/` — current user + credit balance
+- `GET  /api/auth/me/` — current user + wallet balance
 
-**Credits** are the single billing currency (NOWPayments, 100+ cryptos). 1 credit = 1 action.
+**Billing** uses a USD-cent wallet funded through NOWPayments.
 
 | Action | Cost |
 |--------|------|
-| Web → PDF export | 1 credit |
-| Notes AI: generate / summarise / translate / assistant | 1 credit each |
-| Anonymous PDF export | 1 free (per IP) |
+| PDF export | $0.20 per URL |
+| Markdown export | $0.20 per URL |
+| Structured JSON export | $0.20 per URL |
+| CSV or Excel export | $0.20 per URL |
+| Screenshot export | $0.20 per URL |
 
-Credit costs are tunable in `settings.CREDIT_COSTS` without migrations.
+Prices are configurable in `settings.USAGE_PRICES_CENTS` without migrations.
 
-**Packages** (5 credits/$1, minimum $2):
+**Wallet packages:**
 
-| Package | Credits | Price |
-|---------|---------|-------|
-| Starter | 10 | $2 |
-| Basic | 25 | $5 |
-| Standard | 50 | $10 |
-| Pro | 100 | $20 |
-| Business | 500 | $100 |
-| Enterprise | 1,000 | $200 |
+| Wallet balance | Price |
+|----------------|-------|
+| $5 | $5 |
+| $10 | $10 |
+| $25 | $25 |
+| $50 | $50 |
+| $100 | $100 |
+| $250 | $250 |
 
 ---
 
@@ -95,38 +87,6 @@ and fields to extract, optionally provide an object-rooted JSON Schema, and the 
 uses `CUSTOM_EXTRACTION_MODEL` (default `gpt-4o-mini`) to produce and validate the result.
 
 AI Cleanup uses `OPENAI_API_KEY` and defaults to `gpt-4o-mini`. Override the model with `AI_CLEANUP_MODEL`. The model receives a bounded DOM outline rather than the full raw page, and returns candidate IDs to remove. AI Cleanup fails with a clear API error when the key is missing or OpenAI cannot analyze the page; it does not silently remove elements using heuristics.
-
----
-
-## Study tool
-
-1. Upload a PDF (up to 50 MB by default).
-2. Backend extracts text and runs it through the LLM pipeline (`study_assistant`).
-3. Returns: chapter summary, multiple-choice quiz, and flashcard deck.
-4. Results are cached on disk (`LLM_CACHE_DIR`) to avoid redundant API calls.
-
-LLM provider is configurable via `LLM_PROVIDER` (openai / gemini) and `USE_REAL_LLM`. Falls back to a deterministic offline generator when disabled.
-
----
-
-## Notes tool
-
-Full-featured markdown note editor:
-
-- CRUD with labels, pinning, bulk reorder, version history
-- Download notes as PDF / Markdown
-- AI actions (each costs 1 credit): generate from prompt, summarise, translate, free-form assistant
-- Support ticket system
-
----
-
-## Images tool
-
-Client-side canvas editor (no server round-trips for most operations):
-
-- Layers, selections, transform
-- Adjustments, colour filters, white-balance correction
-- AI super-resolution and auto-brightness via backend vision endpoints (`/api/images/`)
 
 ---
 
@@ -167,26 +127,10 @@ POST /api/auth/register/               Create account
 POST /api/auth/login/                  Sign in
 POST /api/auth/google/                 Google sign-in
 POST /api/auth/refresh/                Refresh JWT
-GET  /api/auth/me/                     Current user + credits
+GET  /api/auth/me/                     Current user + wallet balance
 POST /api/auth/change-password/        Change password
 POST /api/payments/create/             Create NOWPayments invoice
 POST /api/payments/webhook/            NOWPayments IPN callback
-
-GET  /api/study/documents/             List uploaded PDFs
-POST /api/study/documents/             Upload PDF
-GET  /api/study/documents/{id}/        Document + generated materials
-
-GET  /api/notes/                       List notes
-POST /api/notes/                       Create note
-POST /api/notes/generate/              AI: generate note
-POST /api/notes/{id}/summarize/        AI: summarise
-POST /api/notes/{id}/translate/        AI: translate
-POST /api/notes/assistant/             AI: free-form assistant
-GET  /api/notes/labels/                Labels CRUD
-
-GET  /api/images/auto-brightness/      Auto-brightness
-GET  /api/images/auto-white-balance/   White-balance correction
-GET  /api/images/super-resolution/     Super-resolution (Real-ESRGAN)
 ```
 
 All web conversion export endpoints accept `ai_cleanup: true` to enable AI Cleanup. Single-page endpoints also accept `selectors` for Manual Interaction exports. Omitting both produces a Full Page export.

@@ -15,30 +15,5 @@ markdownify==1.2.2
 psycopg[binary]==3.2.9
 djangorestframework-simplejwt
 google-auth
-
-# Study tool (PDF → study materials)
-python-dotenv==1.0.1
-pydantic>=2.7
-pymupdf>=1.24
-pdfplumber>=0.11
-tenacity>=8.5
 openai>=1.40
-anthropic>=0.34
-google-generativeai>=0.7
-graphviz>=0.20
-
-# Images tool (AI image processing) — heavy ML stack, only needed at runtime
-torch>=2.0.0
-torchvision>=0.15.0
-opencv-python>=4.8.0
-basicsr>=1.4.2
-realesrgan>=0.3.0
-numpy>=1.24.0,<2.0.0
-scipy>=1.10.0
 Pillow>=10.0.0
-
-# Notes tool (note taking + support)
-drf-yasg>=1.21
-Markdown>=3.7
-bleach>=6.2
-reportlab>=4.0

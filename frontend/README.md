@@ -1,6 +1,6 @@
 # DistillPage — Frontend
 
-React 19 + Vite 8 single-page application for all four DistillPage tools.
+React 19 + Vite 8 single-page application for DistillPage's webpage tools.
 
 ## Structure
 
@@ -8,13 +8,11 @@ React 19 + Vite 8 single-page application for all four DistillPage tools.
 src/
   App.tsx          Router + layout shell
   main.tsx         Entry point (BrowserRouter, AuthProvider, GoogleOAuthProvider)
-  components/      AppNav, UserHeader
+  components/      Navigation, auth, billing, shared UI, and Markdown renderer
   context/         Shared AuthContext (JWT, auto-refresh)
-  pages/           WebsiteToPdf
-  tools/
-    study/         Study tool (ported from readeb / Next.js)
-    notes/         Notes tool (ported from note-cards)
-    images/        Image editor (ported from picnice)
+  hooks/           Shared React hooks
+  lib/             Backend API clients and utilities
+  pages/           Webpage exports, monitoring, history, developer API, and blog
   index.css        Global styles + Tailwind v4 theme tokens
 ```
 
@@ -31,7 +29,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 npm run build   # outputs to dist/
 ```
 
-Type-check the app shell (excludes vendored tools, which are transpiled by esbuild):
+Type-check the application:
 
 ```bash
 npx tsc -b

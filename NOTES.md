@@ -17,7 +17,7 @@ You already have reusable foundations:
 - AI cleanup and manual selectors
 - Bulk processing
 - Structured extraction
-- Authentication, credits, and billing
+- Authentication, wallet, and billing
 
 ## Recommended Roadmap
 
@@ -192,40 +192,32 @@ Sources: [Firecrawl Crawl](https://docs.firecrawl.dev/features/crawl), [Firecraw
 
 ## VISION
 
-Instead of becoming “a collection of converters,” DistillPage could become:
+DistillPage should become:
 
-“The operating system for web knowledge.”
+“The operating system for webpage extraction and monitoring.”
 
 A user gives a URL and chooses an output:
 
 - PDF
 - Markdown
 - Screenshot
-- Summary
-- Notes
-- Flashcards
-- Mind Map
-- Audio
-- Slides
-- Report
-- FAQ
-- Newsletter
 - JSON
+- CSV
+- Excel
 
 ## VISION 2
 
 A stronger vision could be:
 
-DistillPage = Your Knowledge Workspace
+DistillPage = Webpage Operations Workspace
 
 Users can:
 
-- Capture websites
-- Save notes
-- Store PDFs
-- Create summaries
-- Generate flashcards
-- Build study materials
-- Search everything
+- Export individual webpages
+- Crawl and export websites in bulk
+- Extract structured records
+- Schedule recurring exports
+- Monitor content and visual changes
+- Integrate through API, MCP, and webhooks
 
-This is much more valuable than a collection of unrelated converters.
+This keeps the product focused on reliable webpage rendering, cleanup, extraction, export, and monitoring.

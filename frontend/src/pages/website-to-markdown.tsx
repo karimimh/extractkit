@@ -5,9 +5,8 @@ import { useAuth } from "../context/auth-context";
 import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
+import MarkdownRenderer from "../components/markdown";
 import { Switch } from "../components/shared/switch";
-import { ThemeProvider } from "../tools/notes/context/ThemeContext";
-import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
 import { usePageSeo } from "../hooks/use-page-seo";
 import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
@@ -682,9 +681,7 @@ function WebsiteToMarkdown() {
                         overflowY: "auto",
                       }}
                     >
-                      <ThemeProvider>
-                        <MarkdownRenderer content={result.content} disableSyntaxHighlighting={false} />
-                      </ThemeProvider>
+                      <MarkdownRenderer content={result.content} disableSyntaxHighlighting={false} />
                     </div>
                   </div>
                 )}

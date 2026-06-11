@@ -12,9 +12,6 @@ import WebsiteBulkExport from "./pages/website-bulk-export";
 import ChangeMonitors from "./pages/change-monitors";
 import ExportHistory from "./pages/export-history";
 import DeveloperAPI from "./pages/developer-api";
-import ImagesTool from "./tools/images/ImagesTool";
-import NotesTool from "./tools/notes/NotesTool";
-import StudyTool from "./tools/study/StudyTool";
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,13 +76,6 @@ function App() {
         <Route path="/developer-api" element={<DeveloperAPI />} />
         <Route path="/blog" element={<BlogIndex />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
-        {!import.meta.env.PROD && (
-          <>
-            <Route path="/study/*" element={<StudyTool />} />
-            <Route path="/notes/*" element={<NotesTool />} />
-            <Route path="/images" element={<ImagesTool />} />
-          </>
-        )}
         <Route path="*" element={<Navigate to="/web-to-pdf" replace />} />
       </Route>
     </Routes>

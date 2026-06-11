@@ -8,9 +8,6 @@ const ROUTE_TITLES = [
   { to: "/export-history", label: "Export History" },
   { to: "/developer-api", label: "Developer API" },
   { to: "/blog", label: "Blog" },
-  // { to: "/study", label: "PDF → Study" },
-  // { to: "/notes", label: "NoteMD" },
-  // { to: "/images", label: "Image Tools" },
 ];
 
 type AppNavProps = {

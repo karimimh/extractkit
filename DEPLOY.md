@@ -76,22 +76,12 @@ NOWPAYMENTS_IPN_CALLBACK_URL=https://distillpage.com/api/payments/webhook/
 NOWPAYMENTS_SUCCESS_URL=https://distillpage.com?payment=success
 NOWPAYMENTS_CANCEL_URL=https://distillpage.com?payment=cancelled
 
-# Notes tool — AI features (Gemini)
-GEMINI_API_KEY=<your-gemini-api-key>
-
 # Web conversion tools — AI Cleanup
 OPENAI_API_KEY=<your-openai-api-key>
 AI_CLEANUP_MODEL=gpt-4o-mini
+CUSTOM_EXTRACTION_MODEL=gpt-4o-mini
 AI_CLEANUP_RENDER_WAIT_MS=5000
 # OPENAI_BASE_URL=<optional-compatible-api-base-url>
-
-# Study tool — LLM pipeline
-# Set USE_REAL_LLM=true and supply an API key to enable real LLM generation.
-# When false, a deterministic offline generator is used instead.
-USE_REAL_LLM=false
-LLM_PROVIDER=openai          # openai | gemini
-# OPENAI_API_KEY is also used when LLM_PROVIDER=openai and USE_REAL_LLM=true
-# MAX_PDF_UPLOAD_BYTES=52428800   # optional; default 50 MB
 ```
 
 ---
@@ -156,7 +146,7 @@ npm ci
 VITE_API_BASE_URL='' npm run build   # empty = relative paths, Nginx handles proxying
 ```
 
-> **Why empty?** All API calls become `/api/...` (relative), which Nginx proxies to Gunicorn. The same build works for all four tools regardless of the server IP or domain.
+> **Why empty?** All API calls become `/api/...` (relative), which Nginx proxies to Gunicorn. The same build works regardless of the server IP or domain.
 
 ---
 

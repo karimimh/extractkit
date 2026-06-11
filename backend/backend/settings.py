@@ -80,12 +80,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'drf_spectacular',
     'app',
-    # Tools
-    'study',
-    'project',
-    'vision',
-    'notes',
-    'customer_support',
 ]
 
 MIDDLEWARE = [
@@ -233,21 +227,9 @@ WALLET_PACKAGES = [
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'DistillPage API',
-    'DESCRIPTION': 'Unified API for DistillPage tools: web-to-PDF, study materials, notes, and image processing.',
+    'DESCRIPTION': 'API for extracting, transforming, exporting, and monitoring webpages.',
     'VERSION': '1.0.0',
 }
-
-# ── Study tool (PDF → study materials) ──────────────────────────────────────
-# Editable prompt templates and on-disk LLM response cache, vendored alongside
-# the study_assistant pipeline package.
-PROMPTS_DIR = Path(_env('STUDY_PROMPTS_DIR', str(BASE_DIR / 'study_prompts')))
-LLM_CACHE_DIR = Path(_env('LLM_CACHE_DIR', str(BASE_DIR / '.llm_cache')))
-# Max upload size for PDFs (bytes). Default 50 MB.
-MAX_PDF_UPLOAD_BYTES = int(_env('MAX_PDF_UPLOAD_BYTES', str(50 * 1024 * 1024)))
-# LLM provider for study generation; falls back to an offline deterministic
-# generator when USE_REAL_LLM is false or no API key is configured.
-LLM_PROVIDER = _env('LLM_PROVIDER', 'openai')
-USE_REAL_LLM = _env('USE_REAL_LLM', 'false').lower() in ('true', '1', 'yes')
 
 # Metered pricing in USD cents. Tune without migrations.
 USAGE_PRICES_CENTS = {
@@ -256,11 +238,6 @@ USAGE_PRICES_CENTS = {
     'structured_json.export': 20,
     'tabular.export': 20,
     'screenshot.export': 20,
-    'notes.ai_generate': 20,
-    'notes.ai_summarize': 20,
-    'notes.ai_translate': 20,
-    'notes.ai_assistant': 20,
-    # study.* and image.* added later
 }
 
 # Logging — payments log goes to both console and a file for debugging
