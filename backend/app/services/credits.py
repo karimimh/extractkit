@@ -24,7 +24,7 @@ def credit_cost(action):
 
 def get_balance(user):
     profile, _ = UserProfile.objects.get_or_create(user=user)
-    return profile.download_credits
+    return profile.balance_cents
 
 
 def has_credits(user, action, units=1):
@@ -37,21 +37,21 @@ def charge(user, action, units=1, *, reference=""):
     profile = (
         UserProfile.objects.select_for_update().get_or_create(user=user)[0]
     )
-    if profile.download_credits < amount:
-        raise InsufficientCredits(action, amount, profile.download_credits)
+    if profile.balance_cents < amount:
+        raise InsufficientCredits(action, amount, profile.balance_cents)
 
-    profile.download_credits -= amount
-    profile.save(update_fields=["download_credits"])
+    profile.balance_cents -= amount
+    profile.save(update_fields=["balance_cents"])
 
     CreditTransaction.objects.create(
         user=user,
         kind=CreditTransaction.SPEND,
         action=action,
         amount=-amount,
-        balance_after=profile.download_credits,
+        balance_after=profile.balance_cents,
         reference=reference,
     )
-    return profile.download_credits
+    return profile.balance_cents
 
 
 @transaction.atomic
@@ -60,15 +60,15 @@ def grant(user, credits, *, action="", reference="", kind=CreditTransaction.GRAN
     profile = (
         UserProfile.objects.select_for_update().get_or_create(user=user)[0]
     )
-    profile.download_credits += credits
-    profile.save(update_fields=["download_credits"])
+    profile.balance_cents += credits
+    profile.save(update_fields=["balance_cents"])
 
     CreditTransaction.objects.create(
         user=user,
         kind=kind,
         action=action,
         amount=credits,
-        balance_after=profile.download_credits,
+        balance_after=profile.balance_cents,
         reference=reference,
     )
-    return profile.download_credits
+    return profile.balance_cents

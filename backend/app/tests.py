@@ -11,7 +11,9 @@ from unittest.mock import MagicMock, patch
 import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.test import TestCase as DjangoTestCase, TransactionTestCase
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -239,7 +241,7 @@ class WalletBillingTests(DjangoTestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_auth_me_returns_wallet_balance_fields(self):
-        UserProfile.objects.update_or_create(user=self.user, defaults={"download_credits": 740})
+        UserProfile.objects.update_or_create(user=self.user, defaults={"balance_cents": 740})
 
         response = self.client.get("/api/auth/me/")
 
@@ -259,7 +261,7 @@ class WalletBillingTests(DjangoTestCase):
 
         self.assertEqual(response.status_code, 201)
         payment = CryptoPayment.objects.get(nowpayments_payment_id="invoice-123")
-        self.assertEqual(payment.download_credits, 1000)
+        self.assertEqual(payment.balance_cents, 1000)
         self.assertEqual(str(payment.amount_usd), "10.00")
         self.assertEqual(response.json()["invoice_url"], "https://nowpayments.example/invoice-123")
 
@@ -273,7 +275,7 @@ class WalletBillingTests(DjangoTestCase):
         payment = CryptoPayment.objects.create(
             user=self.user,
             nowpayments_payment_id="invoice-123",
-            download_credits=500,
+            balance_cents=500,
             amount_usd="5.00",
             status="pending",
         )
@@ -300,7 +302,7 @@ class WalletBillingTests(DjangoTestCase):
         payment.refresh_from_db()
         profile = UserProfile.objects.get(user=self.user)
         self.assertEqual(payment.status, "finished")
-        self.assertEqual(profile.download_credits, 500)
+        self.assertEqual(profile.balance_cents, 500)
         self.assertEqual(CreditTransaction.objects.filter(user=self.user, action="topup").count(), 1)
 
         second = self.client.post(
@@ -311,8 +313,45 @@ class WalletBillingTests(DjangoTestCase):
         )
         profile.refresh_from_db()
         self.assertEqual(second.status_code, 200)
-        self.assertEqual(profile.download_credits, 500)
+        self.assertEqual(profile.balance_cents, 500)
         self.assertEqual(CreditTransaction.objects.filter(user=self.user, action="topup").count(), 1)
+
+
+class WalletAdminTests(DjangoTestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="password123",
+        )
+        self.user = User.objects.create_user(
+            username="wallet-user",
+            email="wallet-user@example.com",
+            password="password123",
+        )
+        self.profile = UserProfile.objects.get(user=self.user)
+        self.client.force_login(self.admin_user)
+
+    def test_admin_can_update_user_profile_balance(self):
+        response = self.client.post(
+            reverse("admin:app_userprofile_change", args=[self.profile.pk]),
+            {
+                "user": self.user.pk,
+                "balance_cents": 1250,
+                "_save": "Save",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.balance_cents, 1250)
+
+    def test_user_admin_shows_wallet_inline(self):
+        response = self.client.get(reverse("admin:auth_user_change", args=[self.user.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "balance_cents")
 
 
 class ExportJobViewTests(DjangoTestCase):

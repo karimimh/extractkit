@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
 
 from .models import (
     AnonymousDownload,
@@ -14,9 +16,32 @@ from .models import (
 )
 
 
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    extra = 0
+    verbose_name_plural = "Wallet"
+    fields = ("balance_cents",)
+
+
+class DistillPageUserAdmin(UserAdmin):
+    inlines = UserAdmin.inlines + (UserProfileInline,)
+
+
+admin.site.unregister(User)
+admin.site.register(User, DistillPageUserAdmin)
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "balance_cents")
+    search_fields = ("user__email", "user__username")
+    autocomplete_fields = ("user",)
+
+
 @admin.register(CryptoPayment)
 class CryptoPaymentAdmin(admin.ModelAdmin):
-    list_display = ("user", "download_credits", "amount_usd", "status", "created_at", "confirmed_at")
+    list_display = ("user", "balance_cents", "amount_usd", "status", "created_at", "confirmed_at")
     list_filter = ("status",)
     search_fields = ("user__email", "nowpayments_payment_id")
 

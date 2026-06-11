@@ -173,8 +173,8 @@ class UserMeView(APIView):
         return Response({
             "id": request.user.id,
             "email": request.user.email,
-            "balance_cents": profile.download_credits,
-            "balance_usd": f"{profile.download_credits / 100:.2f}",
+            "balance_cents": profile.balance_cents,
+            "balance_usd": f"{profile.balance_cents / 100:.2f}",
         })
 
 
@@ -1109,7 +1109,7 @@ class CreatePaymentView(APIView):
         payment = CryptoPayment.objects.create(
             user=request.user,
             nowpayments_payment_id=str(data["id"]),
-            download_credits=package["balance_cents"],
+            balance_cents=package["balance_cents"],
             amount_usd=package["price_usd"],
             status="pending",
         )
@@ -1184,7 +1184,7 @@ class PaymentWebhookView(APIView):
                 payment.id,
                 payment.user.email,
                 payment.status,
-                payment.download_credits,
+                payment.balance_cents,
             )
         except CryptoPayment.DoesNotExist:
             logger.error(
@@ -1216,13 +1216,13 @@ class PaymentWebhookView(APIView):
 
             new_balance = grant(
                 payment.user,
-                payment.download_credits,
+                payment.balance_cents,
                 action="topup",
                 reference=str(payment.nowpayments_payment_id),
             )
             logger.info(
                 "Funds APPLIED — %s added to user %s (total now: %s)",
-                format_usd_cents(payment.download_credits),
+                format_usd_cents(payment.balance_cents),
                 payment.user.email,
                 format_usd_cents(new_balance),
             )
@@ -1266,14 +1266,14 @@ class PaymentDebugView(APIView):
             "db_pk": payment.id,
             "nowpayments_payment_id": payment.nowpayments_payment_id,
             "db_status": payment.status,
-            "balance_cents": payment.download_credits,
-            "balance_usd": f"{payment.download_credits / 100:.2f}",
+            "balance_cents": payment.balance_cents,
+            "balance_usd": f"{payment.balance_cents / 100:.2f}",
             "amount_usd": str(payment.amount_usd),
             "created_at": payment.created_at.isoformat(),
             "confirmed_at": payment.confirmed_at.isoformat() if payment.confirmed_at else None,
             "user_email": payment.user.email,
-            "user_current_balance_cents": profile.download_credits,
-            "user_current_balance_usd": f"{profile.download_credits / 100:.2f}",
+            "user_current_balance_cents": profile.balance_cents,
+            "user_current_balance_usd": f"{profile.balance_cents / 100:.2f}",
         }
 
         # Poll the NOWPayments invoice endpoint for live status
@@ -1333,7 +1333,7 @@ class PaymentForceConfirmView(APIView):
 
         new_balance = grant(
             payment.user,
-            payment.download_credits,
+            payment.balance_cents,
             action="topup",
             reference=str(payment.nowpayments_payment_id),
         )
@@ -1347,14 +1347,14 @@ class PaymentForceConfirmView(APIView):
             request.user.email,
             payment_id,
             payment.user.email,
-            format_usd_cents(payment.download_credits),
+            format_usd_cents(payment.balance_cents),
             format_usd_cents(new_balance),
         )
 
         return Response(
             {
                 "detail": "Funds applied successfully.",
-                "balance_added_cents": payment.download_credits,
+                "balance_added_cents": payment.balance_cents,
                 "user_total_balance_cents": new_balance,
             }
         )
