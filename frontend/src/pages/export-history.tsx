@@ -1,6 +1,8 @@
-import { CalendarClock, Download, History, Pause, Play, RefreshCw, Trash2, X } from "lucide-react";
+import { CalendarClock, Download, History, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { AuthModal } from "../components/auth-modal";
 import { useAuth } from "../context/auth-context";
+import { usePageSeo } from "../hooks/use-page-seo";
 import {
   createExportSchedule,
   deleteExportSchedule,
@@ -13,9 +15,14 @@ import {
   type ExportSchedule,
 } from "../lib/export-jobs";
 
-export function ExportHistory() {
+export default function ExportHistory() {
   const { token, user } = useAuth();
-  const [open, setOpen] = useState(false);
+  usePageSeo({
+    title: "Export History – DistillPage",
+    description: "Review, download, rerun, and schedule your DistillPage exports.",
+    canonical: "https://distillpage.com/export-history",
+  });
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [jobs, setJobs] = useState<ExportJob[]>([]);
   const [schedules, setSchedules] = useState<ExportSchedule[]>([]);
   const [sourceJob, setSourceJob] = useState<ExportJob | null>(null);
@@ -47,8 +54,6 @@ export function ExportHistory() {
     };
   }, [load]);
 
-  if (!user || !token) return null;
-
   const beginSchedule = (job: ExportJob) => {
     const firstRun = new Date(Date.now() + 24 * 60 * 60 * 1000);
     firstRun.setSeconds(0, 0);
@@ -79,16 +84,44 @@ export function ExportHistory() {
   };
 
   return (
-    <>
-      <button type="button" className="export-history-trigger" onClick={() => setOpen(true)}>
-        <History size={17} /> Export history
-      </button>
-      {open && (
-        <aside className="export-history-panel" aria-label="Export history">
-          <header>
-            <div><History size={18} /><strong>Export history</strong></div>
-            <button type="button" aria-label="Close export history" onClick={() => setOpen(false)}><X size={18} /></button>
-          </header>
+    <main className="app-tool-page min-h-screen">
+      <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
+        <header className="card-header">
+          <h1>Export History</h1>
+          <h2 className="subtitle">Download, rerun, and automate your exports</h2>
+          <p className="subtitle">Review recent export jobs and manage recurring export schedules from one place.</p>
+        </header>
+        {!user || !token ? (
+          <section className="history-empty-card">
+            <History size={24} />
+            <p>Sign in to view your export history and schedules.</p>
+            <button type="button" className="history-primary-button" onClick={() => setShowAuthModal(true)}>Sign in</button>
+          </section>
+        ) : (
+          <div className="history-page-grid">
+            <section className="history-page-section">
+              <div className="history-section-heading"><History size={18} /><strong>Recent exports</strong></div>
+              <div className="export-history-list">
+                {!jobs.length && <p className="export-history-empty">No exports yet.</p>}
+                {jobs.map((job) => (
+                  <article key={job.id}>
+                    <div className="export-history-row">
+                      <strong>{job.title || job.tool.toUpperCase()}</strong>
+                      <span className={`job-status ${job.status}`}>{job.status}</span>
+                    </div>
+                    <small>{job.tool.toUpperCase()} · {new Date(job.created_at).toLocaleString()}</small>
+                    {job.error && <p>{job.error}</p>}
+                    <div className="export-history-actions">
+                      {job.status === "completed" && <a href={exportJobDownloadUrl(job)} download><Download size={14} /> Download</a>}
+                      <button type="button" onClick={() => void rerunExportJob(job.id, token)}><RefreshCw size={14} /> Rerun</button>
+                      <button type="button" onClick={() => beginSchedule(job)}><CalendarClock size={14} /> Schedule</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+            <section className="history-page-section">
+              <div className="history-section-heading"><CalendarClock size={18} /><strong>Schedules</strong></div>
           {sourceJob && (
             <section className="export-schedule-form">
               <strong>Schedule {sourceJob.title || sourceJob.tool.toUpperCase()}</strong>
@@ -113,9 +146,9 @@ export function ExportHistory() {
             </section>
           )}
           {scheduleMessage && <p className="export-schedule-message">{scheduleMessage}</p>}
-          {!!schedules.length && (
-            <section className="export-schedule-list">
-              <h3>Schedules</h3>
+              {!schedules.length && !sourceJob && <p className="export-history-empty">No schedules yet. Schedule any export from its history card.</p>}
+              {!!schedules.length && (
+                <div className="export-schedule-list">
               {schedules.map((schedule) => (
                 <article key={schedule.id}>
                   <div className="export-history-row">
@@ -133,28 +166,13 @@ export function ExportHistory() {
                   </div>
                 </article>
               ))}
+                </div>
+              )}
             </section>
-          )}
-          <div className="export-history-list">
-            {!jobs.length && <p className="export-history-empty">No exports yet.</p>}
-            {jobs.map((job) => (
-              <article key={job.id}>
-                <div className="export-history-row">
-                  <strong>{job.title || job.tool.toUpperCase()}</strong>
-                  <span className={`job-status ${job.status}`}>{job.status}</span>
-                </div>
-                <small>{job.tool.toUpperCase()} · {new Date(job.created_at).toLocaleString()}</small>
-                {job.error && <p>{job.error}</p>}
-                <div className="export-history-actions">
-                  {job.status === "completed" && <a href={exportJobDownloadUrl(job)} download><Download size={14} /> Download</a>}
-                  <button type="button" onClick={() => void rerunExportJob(job.id, token)}><RefreshCw size={14} /> Rerun</button>
-                  <button type="button" onClick={() => beginSchedule(job)}><CalendarClock size={14} /> Schedule</button>
-                </div>
-              </article>
-            ))}
           </div>
-        </aside>
-      )}
-    </>
+        )}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      </div>
+    </main>
   );
 }

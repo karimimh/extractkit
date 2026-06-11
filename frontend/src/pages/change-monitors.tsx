@@ -16,7 +16,7 @@ import {
 export default function ChangeMonitors() {
   const { token, user } = useAuth();
   usePageSeo({
-    title: "Webpage Change Monitoring – DistillPage",
+    title: "Webpage Monitoring – DistillPage",
     description: "Monitor webpage text, selected elements, structured data, and visual screenshots for changes.",
     canonical: "https://distillpage.com/change-monitoring",
   });
@@ -87,7 +87,7 @@ export default function ChangeMonitors() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Webpage Change Monitoring</h1>
+          <h1>Webpage Monitoring</h1>
           <h2 className="subtitle">Track meaningful webpage changes automatically</h2>
           <p className="subtitle">Monitor cleaned text, selected elements, structured fields, or visual captures and receive notifications when they change.</p>
         </header>

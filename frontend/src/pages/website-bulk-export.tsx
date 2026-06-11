@@ -22,11 +22,11 @@ function parsePatterns(value: string) {
   return value.split("\n").map((pattern) => pattern.trim()).filter(Boolean);
 }
 
-export default function WebsiteCrawler() {
+export default function WebsiteBulkExport() {
   usePageSeo({
-    title: "Website Crawler – DistillPage",
+    title: "Website Bulk Export – DistillPage",
     description: "Discover and export every page from a website.",
-    canonical: "https://distillpage.com/website-crawler",
+    canonical: "https://distillpage.com/website-bulk-export",
   });
   const { user, token, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -53,7 +53,7 @@ export default function WebsiteCrawler() {
     setExportResult(null);
     if (!token) {
       setShowAuthModal(true);
-      setError("Sign in to crawl and export an entire website.");
+      setError("Sign in to discover and export an entire website.");
       return;
     }
     setIsCrawling(true);
@@ -130,7 +130,7 @@ export default function WebsiteCrawler() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Website Crawler</h1>
+          <h1>Website Bulk Export</h1>
           <h2 className="subtitle">Discover and export an entire website</h2>
           <p className="subtitle">Find same-domain pages from the sitemap and internal links, choose what to include, then export them together.</p>
         </header>

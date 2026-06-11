@@ -44,7 +44,7 @@ This is significantly more useful than your current fixed JSON structure in [str
 
 ---
 
-### 2. Website Crawler
+### 2. Website Bulk Export
 
 Instead of requiring users to paste URLs individually:
 
@@ -180,7 +180,7 @@ Before adding several new pages, I would add these shared capabilities:
 
 1. **Custom-schema JSON extraction**
 2. **CSV and Excel outputs**
-3. **Site crawler**
+3. **Website bulk export**
 4. **Job history and asynchronous processing**
 5. **Scheduled monitoring and change alerts**
 6. **Developer API, webhooks, and integrations**

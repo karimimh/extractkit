@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AppNav } from "./components/app-nav";
-import { ExportHistory } from "./components/export-history";
 import { ToolSidebar } from "./components/tool-sidebar";
 import { BlogIndex, BlogPost } from "./pages/blog";
 import WebsiteToJson from "./pages/website-to-json";
@@ -9,8 +8,9 @@ import WebsiteToMarkdown from "./pages/website-to-markdown";
 import WebsiteToScreenshot from "./pages/website-to-screenshot";
 import WebsiteToTabular from "./pages/website-to-tabular";
 import WebsiteToPdf from "./pages/website-to-pdf";
-import WebsiteCrawler from "./pages/website-crawler";
+import WebsiteBulkExport from "./pages/website-bulk-export";
 import ChangeMonitors from "./pages/change-monitors";
+import ExportHistory from "./pages/export-history";
 import ImagesTool from "./tools/images/ImagesTool";
 import NotesTool from "./tools/notes/NotesTool";
 import StudyTool from "./tools/study/StudyTool";
@@ -18,11 +18,17 @@ import StudyTool from "./tools/study/StudyTool";
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   const showToolSidebar =
     location.pathname === "/" ||
     location.pathname.startsWith("/web-to-") ||
-    location.pathname === "/website-crawler" ||
+    location.pathname === "/website-bulk-export" ||
     location.pathname === "/change-monitoring" ||
+    location.pathname === "/export-history" ||
     location.pathname.startsWith("/blog");
 
   return (
@@ -49,7 +55,6 @@ function Layout() {
         <div className="app-shell-main">
           <Outlet />
         </div>
-        <ExportHistory />
       </div>
     </div>
   );
@@ -66,8 +71,9 @@ function App() {
         <Route path="/web-to-csv" element={<WebsiteToTabular format="csv" />} />
         <Route path="/web-to-excel" element={<WebsiteToTabular format="xlsx" />} />
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
-        <Route path="/website-crawler" element={<WebsiteCrawler />} />
+        <Route path="/website-bulk-export" element={<WebsiteBulkExport />} />
         <Route path="/change-monitoring" element={<ChangeMonitors />} />
+        <Route path="/export-history" element={<ExportHistory />} />
         <Route path="/blog" element={<BlogIndex />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         {!import.meta.env.PROD && (

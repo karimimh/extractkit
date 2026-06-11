@@ -322,8 +322,8 @@ const ARTICLES: Article[] = [
     description:
       "Discover same-domain pages from sitemaps and internal links, select the URLs you need, and export them together.",
     canonical: "https://distillpage.com/blog/crawl-and-export-a-website",
-    toolName: "Website Crawler",
-    toolPath: "/website-crawler",
+    toolName: "Website Bulk Export",
+    toolPath: "/website-bulk-export",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-11",
     intro:
@@ -332,7 +332,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How website discovery works",
         body: [
-          "The crawler starts with the site's sitemap when one is available, including nested sitemap indexes. It can then follow same-domain internal links up to the maximum depth and page limit you choose.",
+          "Website Bulk Export starts with the site's sitemap when one is available, including nested sitemap indexes. It can then follow same-domain internal links up to the maximum depth and page limit you choose.",
           "Use sitemap-only mode when you trust the site's published URL inventory and do not want link discovery. You can also start with a direct sitemap URL.",
         ],
       },
@@ -351,16 +351,100 @@ const ARTICLES: Article[] = [
         ],
       },
       {
-        heading: "Common crawler workflows",
+        heading: "Common bulk export workflows",
         body: [
           "Export a documentation site to Markdown for local search or LLM input, archive a blog as PDFs, collect standard JSON for analysis, or capture a set of pages as screenshots for QA and design review.",
-          "Crawler exports require sign-in, and each selected page uses one export credit. Start with a focused path pattern and page limit when testing a new site.",
+          "Website bulk exports require sign-in, and each selected page uses one export credit. Start with a focused path pattern and page limit when testing a new site.",
         ],
       },
       {
         heading: "How to crawl and export a website",
         body: [
-          "Open Website Crawler, enter the website or sitemap URL, set the page limit, link depth, and optional path patterns, then discover pages. Review the results, select the URLs you need, choose the format and cleanup method, and export them together.",
+          "Open Website Bulk Export, enter the website or sitemap URL, set the page limit, link depth, and optional path patterns, then discover pages. Review the results, select the URLs you need, choose the format and cleanup method, and export them together.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "schedule-webpage-exports-with-webhooks",
+    title: "How to Schedule Webpage Exports and Deliver Them by Webhook",
+    description:
+      "Turn a completed DistillPage export into a recurring job and receive signed webhook notifications when each run finishes.",
+    canonical: "https://distillpage.com/blog/schedule-webpage-exports-with-webhooks",
+    toolName: "Scheduled Exports",
+    toolPath: "/export-history",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    intro:
+      "A webpage export is often more useful when it runs automatically. DistillPage lets you rerun completed exports on an hourly, daily, weekly, or monthly schedule and optionally send the result status to your webhook.",
+    sections: [
+      {
+        heading: "When to schedule an export",
+        body: [
+          "Scheduled exports are useful for recurring archives, refreshed datasets, periodic reports, and content pipelines that need an up-to-date copy of the same webpage without manual work.",
+          "Create the first export with the settings you need, then schedule it from Export History. DistillPage reuses that job as the source for every recurring run.",
+        ],
+      },
+      {
+        heading: "Choose a frequency and first run",
+        body: [
+          "Schedules can run hourly, daily, weekly, or monthly. You choose the first run time, and DistillPage calculates the following runs from the selected frequency.",
+          "Active schedules can be paused, resumed, or deleted from Export History. Each completed run also appears in your recent exports, where it can be downloaded or rerun.",
+        ],
+      },
+      {
+        heading: "Deliver export events by webhook",
+        body: [
+          "Add an optional webhook URL when creating the schedule to receive an export.completed or export.failed event after each run. This lets another application start processing the result, record the status, or alert your team.",
+          "DistillPage signs webhook requests with HMAC-SHA256 and returns the signing secret once when the schedule is created. Verify the raw request body against the X-DistillPage-Signature header before trusting an event.",
+        ],
+      },
+      {
+        heading: "How to create a scheduled export",
+        body: [
+          "Complete and download an export, then open Export History and select Schedule on its history card. Choose the frequency and first run time, add an optional webhook URL, and create the schedule.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "monitor-webpage-changes",
+    title: "How to Monitor a Webpage for Changes",
+    description:
+      "Monitor webpage text, selected elements, structured fields, or screenshots and receive notifications when meaningful changes are detected.",
+    canonical: "https://distillpage.com/blog/monitor-webpage-changes",
+    toolName: "Webpage Monitoring",
+    toolPath: "/change-monitoring",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    intro:
+      "Webpage monitoring replaces repeated manual checks with scheduled comparisons. DistillPage establishes a baseline, checks the page on your chosen frequency, and notifies you when the monitored content changes.",
+    sections: [
+      {
+        heading: "Choose what to monitor",
+        body: [
+          "Monitor cleaned text when the main written content matters, selected CSS elements when you care about exact page regions, structured JSON fields when specific values matter, or visual screenshots when layout and appearance are important.",
+          "AI Cleanup can reduce noise from navigation, prompts, ads, and other unrelated page elements before text comparisons are made.",
+        ],
+      },
+      {
+        heading: "Track meaningful changes on a schedule",
+        body: [
+          "Choose an hourly, daily, weekly, or monthly frequency. The first check creates the baseline, and later checks compare the latest page state against it.",
+          "When a change is detected, DistillPage saves a downloadable before-and-after comparison. You can also run a check immediately, pause a monitor, or resume it later.",
+        ],
+      },
+      {
+        heading: "Receive change notifications",
+        body: [
+          "Change alerts can be delivered to your account email or to a generic webhook, Slack webhook, or Discord webhook. Webhook notifications use the monitor.changed event and include a signing secret for verification.",
+          "These notifications can feed review workflows, trigger automations, or alert a team when pricing, availability, documentation, policies, or visual content changes.",
+        ],
+      },
+      {
+        heading: "How to create a webpage monitor",
+        body: [
+          "Open Webpage Monitoring, enter a name and URL, select the monitoring mode and frequency, and add any CSS selectors or structured fields required by that mode. Choose email or webhook notifications, then create the monitor to queue its initial baseline check.",
         ],
       },
     ],
@@ -370,7 +454,7 @@ const ARTICLES: Article[] = [
 const BLOG_SEO = {
   title: "DistillPage Blog",
   description:
-    "Practical guides for webpage conversion, custom structured extraction, tabular exports, and website crawling.",
+    "Practical guides for webpage conversion, structured extraction, scheduled exports, webhooks, and webpage monitoring.",
   canonical: "https://distillpage.com/blog",
   jsonLd: {
     "@context": "https://schema.org",
@@ -378,7 +462,7 @@ const BLOG_SEO = {
     name: "DistillPage Blog",
     url: "https://distillpage.com/blog",
     description:
-      "Practical guides for webpage conversion, custom structured extraction, tabular exports, and website crawling.",
+      "Practical guides for webpage conversion, structured extraction, scheduled exports, webhooks, and webpage monitoring.",
   },
 };
 
@@ -412,8 +496,8 @@ export function BlogIndex() {
         <h1>Guides for cleaner webpage exports</h1>
         <p>
           Practical articles for turning webpages into focused PDFs, screenshots,
-          Markdown, custom structured JSON, CSV, and Excel, plus crawling and
-          exporting complete website sections.
+          Markdown, structured data, and complete website exports, plus scheduling
+          recurring exports and monitoring webpages for changes.
         </p>
       </section>
 
