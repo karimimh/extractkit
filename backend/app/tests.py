@@ -189,6 +189,43 @@ class WebsiteCrawlerViewTests(DjangoTestCase):
         crawl.assert_called_once()
 
 
+class GoogleAuthTests(DjangoTestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch("app.views.GoogleAuthSerializer.validate_id_token")
+    def test_google_auth_uses_canonical_username_match_when_present(self, validate_id_token):
+        from django.contrib.auth.models import User
+
+        email = "google@example.com"
+        canonical = User.objects.create_user(username=email, email="old@example.com", password="password123")
+        User.objects.create_user(username="legacy-user", email=email, password="password123")
+        validate_id_token.return_value = {"email": email}
+
+        response = self.client.post("/api/auth/google/", {"id_token": "token"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        canonical.refresh_from_db()
+        self.assertEqual(canonical.email, email)
+        self.assertEqual(User.objects.filter(email=email).count(), 2)
+
+    @patch("app.views.GoogleAuthSerializer.validate_id_token")
+    def test_google_auth_handles_duplicate_email_rows_without_crashing(self, validate_id_token):
+        from django.contrib.auth.models import User
+
+        email = "duplicate@example.com"
+        first = User.objects.create_user(username="first-user", email=email, password="password123")
+        User.objects.create_user(username="second-user", email=email, password="password123")
+        validate_id_token.return_value = {"email": email}
+
+        response = self.client.post("/api/auth/google/", {"id_token": "token"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(response.json().keys()), {"access", "refresh"})
+        self.assertEqual(User.objects.filter(email=email).count(), 2)
+        self.assertEqual(User.objects.filter(email=email).order_by("id").first().pk, first.pk)
+
+
 class WalletBillingTests(DjangoTestCase):
     def setUp(self):
         from django.contrib.auth.models import User

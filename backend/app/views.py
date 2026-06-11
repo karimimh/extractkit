@@ -105,6 +105,32 @@ def bulk_balance_shortfall_detail(total_cost, units, cost_per):
     )
 
 
+def get_or_create_google_user(email):
+    """
+    Google sign-in should map to one canonical local user per email.
+
+    Older data can contain duplicate rows with the same email because email is
+    not unique in the built-in User model. Prefer the canonical username=email
+    account, then fall back to the oldest matching row.
+    """
+    user = User.objects.filter(username=email).first()
+    if user is None:
+        user = User.objects.filter(email=email).order_by("id").first()
+    if user is None:
+        return User.objects.create_user(username=email, email=email)
+
+    updated_fields = []
+    if user.email != email:
+        user.email = email
+        updated_fields.append("email")
+    if user.username != email and not User.objects.exclude(pk=user.pk).filter(username=email).exists():
+        user.username = email
+        updated_fields.append("username")
+    if updated_fields:
+        user.save(update_fields=updated_fields)
+    return user
+
+
 # ---------------------------------------------------------------------------
 # Auth views
 # ---------------------------------------------------------------------------
@@ -134,10 +160,7 @@ class GoogleAuthView(APIView):
         serializer.is_valid(raise_exception=True)
         idinfo = serializer.validated_data["id_token"]
         email = idinfo["email"].lower()
-        user, _ = User.objects.get_or_create(
-            email=email,
-            defaults={"username": email},
-        )
+        user = get_or_create_google_user(email)
         return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
 
 
