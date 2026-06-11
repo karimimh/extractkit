@@ -25,8 +25,13 @@ from .views import (
     UserMeView,
     WebsiteCrawlView,
 )
+from .views_jobs import ExportJobDetailView, ExportJobDownloadView, ExportJobListCreateView, ExportJobRerunView
 
 urlpatterns = [
+    path("jobs/", ExportJobListCreateView.as_view(), name="export-jobs"),
+    path("jobs/<uuid:public_id>/", ExportJobDetailView.as_view(), name="export-job-detail"),
+    path("jobs/<uuid:public_id>/rerun/", ExportJobRerunView.as_view(), name="export-job-rerun"),
+    path("jobs/<uuid:public_id>/download/", ExportJobDownloadView.as_view(), name="export-job-download"),
     path("export/", ExportPdfView.as_view(), name="export-pdf"),
     path("export-markdown/", ExportMarkdownView.as_view(), name="export-markdown"),
     path("export-json/", ExportStructuredJsonView.as_view(), name="export-structured-json"),

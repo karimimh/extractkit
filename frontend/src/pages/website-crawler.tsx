@@ -4,8 +4,7 @@ import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+import { runExportJob } from "../lib/export-jobs";
 
 type ExportFormat = "markdown" | "pdf" | "json" | "screenshot";
 type OutputMode = "zip" | "combined";
@@ -59,18 +58,14 @@ export default function WebsiteCrawler() {
     }
     setIsCrawling(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/crawl/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
+      const response = await runExportJob("crawl", {
           url,
           max_pages: maxPages,
           max_depth: maxDepth,
           include_patterns: parsePatterns(includePatterns),
           exclude_patterns: parsePatterns(excludePatterns),
           sitemap_only: sitemapOnly,
-        }),
-      });
+        }, token);
       const payload = (await response.json()) as CrawlResult | ErrorPayload;
       if (!response.ok) {
         setError((payload as ErrorPayload).detail ?? "Failed to crawl website.");
@@ -105,15 +100,11 @@ export default function WebsiteCrawler() {
       screenshot: "bulk-screenshot",
     }[format];
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export/${endpoint}/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
+      const response = await runExportJob(endpoint, {
           urls: selectedUrls,
           output_mode: format === "screenshot" ? "zip" : outputMode,
           ai_cleanup: aiCleanup,
-        }),
-      });
+        }, token);
       const payload = (await response.json()) as ExportResult | ErrorPayload;
       if (!response.ok) {
         setError((payload as ErrorPayload).detail ?? "Failed to export website.");

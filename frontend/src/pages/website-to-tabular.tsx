@@ -2,12 +2,11 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { runExportJob } from "../lib/export-jobs";
 
 type ExportFormat = "csv" | "xlsx";
 type ExportResult = { title: string; file_url: string; file_ext: string };
 type ErrorPayload = { detail?: string | Record<string, unknown> };
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 function errorMessage(payload: ErrorPayload, fallback: string) {
   if (typeof payload.detail === "string") return payload.detail;
@@ -68,19 +67,13 @@ export default function WebsiteToTabular({ format }: { format: ExportFormat }) {
 
     setIsLoading(true);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const response = await fetch(`${API_BASE_URL}/api/export-tabular/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
+      const response = await runExportJob("tabular", {
           url: url.trim(),
           export_format: format,
           extraction_mode: "custom",
           extraction_prompt: extractionPrompt.trim(),
           json_schema: parsedSchema,
-        }),
-      });
+        }, token);
       const payload = (await response.json()) as ExportResult | ErrorPayload;
       if (!response.ok) {
         setError(errorMessage(payload as ErrorPayload, `Failed to export ${formatName}.`));

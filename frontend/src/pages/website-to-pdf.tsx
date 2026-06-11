@@ -6,6 +6,7 @@ import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { runExportJob } from "../lib/export-jobs";
 
 const PDF_TOOL_SEO = {
   title: "Web to PDF Converter – DistillPage",
@@ -483,14 +484,7 @@ function WebsiteToPdf() {
         exportPayload.base_url = previewBaseUrl;
       }
 
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/export/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(exportPayload),
-      });
+      const response = await runExportJob("pdf", exportPayload, token);
 
       const payload = (await response.json()) as ExportResult | ErrorPayload;
 
@@ -537,21 +531,12 @@ function WebsiteToPdf() {
 
     setIsLoading(true);
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-pdf/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
+      const response = await runExportJob("bulk-pdf", {
           urls: validUrls,
           output_mode: bulkOutputMode,
           use_print_css: renderMode === "print",
           ai_cleanup: bulkAiCleanup,
-        }),
-      });
+        }, token);
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
 

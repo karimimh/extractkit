@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AnonymousDownload, CreditTransaction, CryptoPayment, UserProfile
+from .models import AnonymousDownload, CreditTransaction, CryptoPayment, ExportJob, UserProfile
 
 
 @admin.register(CryptoPayment)
@@ -23,3 +23,11 @@ class AnonymousDownloadAdmin(admin.ModelAdmin):
     list_display = ("ip_address", "created_at")
     list_filter = ("created_at",)
     search_fields = ("ip_address",)
+
+
+@admin.register(ExportJob)
+class ExportJobAdmin(admin.ModelAdmin):
+    list_display = ("public_id", "user", "tool", "status", "created_at", "finished_at")
+    list_filter = ("tool", "status", "created_at")
+    search_fields = ("public_id", "user__email", "title")
+    readonly_fields = ("public_id", "created_at", "started_at", "finished_at")

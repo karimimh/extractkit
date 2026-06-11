@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AppNav } from "./components/app-nav";
+import { ExportHistory } from "./components/export-history";
 import { ToolSidebar } from "./components/tool-sidebar";
 import { BlogIndex, BlogPost } from "./pages/blog";
 import WebsiteToJson from "./pages/website-to-json";
@@ -46,6 +47,7 @@ function Layout() {
         <div className="app-shell-main">
           <Outlet />
         </div>
+        <ExportHistory />
       </div>
     </div>
   );

@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -66,3 +68,48 @@ class CreditTransaction(models.Model):
 
     def __str__(self):
         return f"{self.user.email} — {self.kind} {self.amount} ({self.balance_after} left)"
+
+
+class ExportJob(models.Model):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    STATUS_CHOICES = [
+        (PENDING, "Pending"),
+        (RUNNING, "Running"),
+        (COMPLETED, "Completed"),
+        (FAILED, "Failed"),
+    ]
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="export_jobs",
+    )
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    tool = models.CharField(max_length=32)
+    endpoint = models.CharField(max_length=64)
+    origin = models.URLField(blank=True)
+    request_data = models.JSONField(default=dict)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=PENDING)
+    title = models.CharField(max_length=300, blank=True)
+    result = models.JSONField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    response_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.tool} — {self.status} — {self.public_id}"

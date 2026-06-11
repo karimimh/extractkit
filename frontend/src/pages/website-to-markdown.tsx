@@ -8,6 +8,7 @@ import { BulkUrlInput } from "../components/bulk-url-input";
 import { ThemeProvider } from "../tools/notes/context/ThemeContext";
 import MarkdownRenderer from "../tools/notes/ui/markdown-renderer";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { runExportJob } from "../lib/export-jobs";
 
 const MD_TOOL_SEO = {
   title: "Web to Markdown Converter – DistillPage",
@@ -398,14 +399,7 @@ function WebsiteToMarkdown() {
         exportPayload.base_url = previewBaseUrl;
       }
 
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/export-markdown/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(exportPayload),
-      });
+      const response = await runExportJob("markdown", exportPayload, token);
 
       const payload = (await response.json()) as ExportResult | ErrorPayload;
 
@@ -468,11 +462,11 @@ function WebsiteToMarkdown() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-markdown/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validUrls, output_mode: bulkOutputMode, ai_cleanup: bulkAiCleanup }),
-      });
+      const response = await runExportJob(
+        "bulk-markdown",
+        { urls: validUrls, output_mode: bulkOutputMode, ai_cleanup: bulkAiCleanup },
+        token,
+      );
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
 

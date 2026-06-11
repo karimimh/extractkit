@@ -10,9 +10,10 @@ from unittest.mock import MagicMock, patch
 import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
-from django.test import TestCase as DjangoTestCase
+from django.test import TestCase as DjangoTestCase, TransactionTestCase
 from rest_framework.test import APIClient
 
+from .models import ExportJob
 from .serializers import ExportStructuredJsonSerializer
 from .services.cleaner import (
     AiCleanupError,
@@ -183,6 +184,102 @@ class WebsiteCrawlerViewTests(DjangoTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 2)
+        crawl.assert_called_once()
+
+
+class ExportJobViewTests(DjangoTestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+
+        self.client = APIClient()
+        self.user = User.objects.create_user(username="jobs@example.com", password="password123")
+        self.other_user = User.objects.create_user(username="other@example.com", password="password123")
+        self.client.force_authenticate(user=self.user)
+
+    @patch("app.views_jobs.enqueue")
+    def test_creates_async_job_and_lists_it_in_history(self, enqueue):
+        response = self.client.post(
+            "/api/jobs/",
+            {"endpoint": "pdf", "payload": {"url": "https://example.com"}},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        job = ExportJob.objects.get(user=self.user)
+        self.assertEqual(job.tool, "pdf")
+        self.assertEqual(job.status, ExportJob.PENDING)
+        enqueue.assert_called_once_with(job.id)
+
+        history = self.client.get("/api/jobs/")
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual(history.json()[0]["id"], str(job.public_id))
+
+    def test_job_detail_is_private_to_owner(self):
+        job = ExportJob.objects.create(
+            user=self.other_user,
+            tool="json",
+            endpoint="json",
+            request_data={"url": "https://example.com"},
+        )
+
+        response = self.client.get(f"/api/jobs/{job.public_id}/")
+        self.assertEqual(response.status_code, 404)
+
+    @patch("app.views_jobs.enqueue")
+    def test_rerun_copies_the_original_request(self, enqueue):
+        source = ExportJob.objects.create(
+            user=self.user,
+            tool="csv",
+            endpoint="tabular",
+            request_data={"url": "https://example.com", "export_format": "csv"},
+        )
+
+        response = self.client.post(f"/api/jobs/{source.public_id}/rerun/")
+        self.assertEqual(response.status_code, 202)
+        rerun = ExportJob.objects.exclude(pk=source.pk).get()
+        self.assertEqual(rerun.request_data, source.request_data)
+        enqueue.assert_called_once_with(rerun.id)
+
+    def test_download_serves_inline_markdown_result(self):
+        job = ExportJob.objects.create(
+            user=self.user,
+            tool="markdown",
+            endpoint="markdown",
+            request_data={"url": "https://example.com"},
+            status=ExportJob.COMPLETED,
+            result={"title": "Example", "content": "# Example"},
+        )
+
+        response = self.client.get(f"/api/jobs/{job.public_id}/download/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"# Example")
+        self.assertIn(".md", response["Content-Disposition"])
+
+
+class ExportJobRunnerTests(TransactionTestCase):
+    @patch(
+        "app.views.crawl_website",
+        return_value=CrawlResult(["https://example.com"], "links", False, []),
+    )
+    def test_runner_persists_successful_view_response(self, crawl):
+        from django.contrib.auth.models import User
+        from .jobs import run_job
+
+        user = User.objects.create_user(username="runner@example.com", password="password123")
+        job = ExportJob.objects.create(
+            user=user,
+            tool="crawl",
+            endpoint="crawl",
+            origin="https://distillpage.com",
+            request_data={"url": "https://example.com"},
+        )
+
+        run_job(job.id)
+        job.refresh_from_db()
+
+        self.assertEqual(job.status, ExportJob.COMPLETED)
+        self.assertEqual(job.response_status, 200)
+        self.assertEqual(job.result["urls"], ["https://example.com"])
         crawl.assert_called_once()
 
 

@@ -6,6 +6,7 @@ import { BulkUrlInput } from "../components/bulk-url-input";
 import { PaymentModal } from "../components/payment-modal";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { runExportJob } from "../lib/export-jobs";
 
 const JSON_TOOL_SEO = {
   title: "Webpage to JSON – DistillPage",
@@ -436,14 +437,7 @@ function WebsiteToJson() {
         exportPayload.base_url = previewBaseUrl;
       }
 
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/export-json/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(exportPayload),
-      });
+      const response = await runExportJob("json", exportPayload, token);
 
       const payload = (await response.json()) as ExportResult | ErrorPayload;
 
@@ -489,11 +483,11 @@ function WebsiteToJson() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-json/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validBulkUrls, output_mode: bulkOutputMode, ai_cleanup: bulkAiCleanup }),
-      });
+      const response = await runExportJob(
+        "bulk-json",
+        { urls: validBulkUrls, output_mode: bulkOutputMode, ai_cleanup: bulkAiCleanup },
+        token,
+      );
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
 

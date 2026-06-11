@@ -6,6 +6,7 @@ import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { runExportJob } from "../lib/export-jobs";
 
 const SS_TOOL_SEO = {
   title: "Web to Screenshot – DistillPage",
@@ -402,14 +403,7 @@ function WebsiteToScreenshot() {
         exportPayload.base_url = previewBaseUrl;
       }
 
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/export-screenshot/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(exportPayload),
-      });
+      const response = await runExportJob("screenshot", exportPayload, token);
 
       const payload = (await response.json()) as ExportResult | ErrorPayload;
 
@@ -469,11 +463,11 @@ function WebsiteToScreenshot() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export/bulk-screenshot/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ urls: validUrls, width: viewportWidth, ai_cleanup: bulkAiCleanup }),
-      });
+      const response = await runExportJob(
+        "bulk-screenshot",
+        { urls: validUrls, width: viewportWidth, ai_cleanup: bulkAiCleanup },
+        token,
+      );
 
       const payload = (await response.json()) as BulkExportResult | ErrorPayload;
 
