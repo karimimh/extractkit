@@ -84,6 +84,14 @@ export function ToolSidebar({ isOpen = false, onClose }: ToolSidebarProps) {
           <BookOpen size={18} aria-hidden="true" />
           <span>Blog</span>
         </NavLink>
+        <NavLink
+          to="/developers/docs"
+          className={({ isActive }) => isActive ? "tool-sidebar-link active" : "tool-sidebar-link"}
+          onClick={onClose}
+        >
+          <Code2 size={18} aria-hidden="true" />
+          <span>API Documentation</span>
+        </NavLink>
       </div>
 
       <div className="tool-sidebar-footer">

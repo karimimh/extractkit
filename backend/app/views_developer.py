@@ -87,6 +87,8 @@ class DeveloperIntegrationsView(APIView):
         return Response({
             "api_base_url": f"{origin}/api",
             "async_job_endpoint": f"{origin}/api/jobs/",
+            "documentation_url": f"{origin}/api/developer/docs/",
+            "openapi_schema_url": f"{origin}/api/developer/schema/",
             "authentication": {
                 "header": "X-API-Key",
                 "alternative": "Authorization: ApiKey <key>",

@@ -92,7 +92,7 @@ AI Cleanup uses `OPENAI_API_KEY` and defaults to `gpt-4o-mini`. Override the mod
 
 ## API
 
-Interactive docs at `GET /api/docs/` (Swagger UI, drf-spectacular).
+Public developer docs are available at `GET /api/developer/docs/` (Swagger UI, drf-spectacular).
 
 Core endpoints:
 
@@ -145,6 +145,8 @@ python manage.py run_scheduled_exports --loop --interval 60
 Webhook deliveries use the `export.completed` or `export.failed` event name. When a webhook is configured, the schedule creation response returns its signing secret once. Verify the raw request body using HMAC-SHA256 against the `X-DistillPage-Signature: sha256=...` header. Deliveries also include `X-DistillPage-Event` and `X-DistillPage-Job-Id`.
 
 Developer API keys use the `X-API-Key` header. Async job requests support an `Idempotency-Key` header and optional `webhook_url` / `webhook_secret` fields. The MCP endpoint exposes create, get, and list export-job tools over authenticated JSON-RPC.
+
+Public developer documentation is available on the website at `/developers/docs` and as filtered OpenAPI documentation at `/api/developer/docs/`. API-key management, account, payment, and other dashboard/internal endpoints are excluded from the public schema. In debug environments only, the complete internal schema is available at `/api/internal/docs/`.
 
 Webpage monitors use the same scheduler process. They support cleaned text, selected CSS elements, structured JSON fields, and visual screenshots. The first check creates a baseline; later changes create downloadable before/after comparisons and send the `monitor.changed` webhook event. Generic webhooks, Slack webhooks, Discord webhooks, and account-email notifications are supported.
 

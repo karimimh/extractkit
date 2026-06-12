@@ -1,4 +1,4 @@
-import { ChevronDown, Code2, History, LogOut, User, WalletCards } from "lucide-react";
+import { ChevronDown, History, LogOut, User, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -100,9 +100,6 @@ export function UserHeader() {
                   <button type="button" className="btn-ghost" onClick={() => { navigate("/export-history"); setProfileOpen(false); }}>
                     <History size={15} /> Export History
                     {runningExports > 0 && <span className="popover-running-count">{runningExports} running</span>}
-                  </button>
-                  <button type="button" className="btn-ghost" onClick={() => { navigate("/developer-api"); setProfileOpen(false); }}>
-                    <Code2 size={15} /> Developer API
                   </button>
                   <button type="button" className="btn-ghost" onClick={() => { logout(); setProfileOpen(false); }}>
                     <LogOut size={15} /> Sign Out

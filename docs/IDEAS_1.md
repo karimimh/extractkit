@@ -1,24 +1,3 @@
-## SEO
-
-**Backlinks — what you need to do manually (code can't do this):**
-
-- Submit to [Product Hunt](https://producthunt.com), [AlternativeTo](https://alternativeto.net), [There's an AI for That](https://theresanaiforthat.com), and similar tool directories
-- Add the site to "awesome-\*" GitHub lists for web tools
-- Write a short dev.to / Medium post about the stack — links from those rank well
-- Get listed on sites like [Uneed](https://www.uneed.best) and [Futurepedia](https://www.futurepedia.io)
-
----
-
-Your strongest opportunity is not adding many unrelated converters. Build DistillPage into a **web-content extraction, monitoring, and delivery platform**.
-
-You already have reusable foundations:
-
-- Browser rendering and screenshots
-- AI cleanup and manual selectors
-- Bulk processing
-- Structured extraction
-- Authentication, wallet, and billing
-
 ## Recommended Roadmap
 
 ### 1. Custom Structured Data Extraction
@@ -185,8 +164,6 @@ Before adding several new pages, I would add these shared capabilities:
 5. **Scheduled monitoring and change alerts**
 6. **Developer API, webhooks, and integrations**
 7. **Visual regression tools**
-
-I would avoid prioritizing Web → Summary, Slides, Audio, or Social Posts yet. Those are crowded AI-generation features and do not leverage your strongest differentiation: reliable webpage rendering, cleanup, extraction, and export.
 
 Sources: [Firecrawl Crawl](https://docs.firecrawl.dev/features/crawl), [Firecrawl Extract](https://docs.firecrawl.dev/features/extract), [Browserless Screenshot API](https://docs.browserless.io/rest-apis/screenshot-api), [changedetection.io](https://changedetection.io/)
 

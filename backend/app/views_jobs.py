@@ -7,14 +7,22 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from .authentication import DeveloperAPIKeyAuthentication
 from .jobs import _view_classes, enqueue, serialize_job, tool_for
 from .models import DeveloperAPIKey, ExportJob, ExportSchedule
+from .serializers import DeveloperJobCreateSerializer, DeveloperJobSerializer
 from .views import get_client_ip
+
+
+PUBLIC_AUTHENTICATION_CLASSES = [DeveloperAPIKeyAuthentication, JWTAuthentication]
 
 
 def _get_visible_job(request, public_id):
@@ -82,12 +90,34 @@ def _validated_schedule_data(data, partial=False):
 
 
 class ExportJobListCreateView(APIView):
+    authentication_classes = PUBLIC_AUTHENTICATION_CLASSES
+
+    @extend_schema(
+        operation_id="developer_jobs_list",
+        tags=["Jobs"],
+        responses=DeveloperJobSerializer(many=True),
+    )
     def get(self, request):
         if not request.user.is_authenticated:
             return Response({"detail": "Sign in to view export history."}, status=status.HTTP_401_UNAUTHORIZED)
         jobs = ExportJob.objects.filter(user=request.user)[:50]
         return Response([serialize_job(job) for job in jobs])
 
+    @extend_schema(
+        operation_id="developer_jobs_create",
+        tags=["Jobs"],
+        request=DeveloperJobCreateSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                required=False,
+                description="Unique key used to safely retry job creation.",
+            ),
+        ],
+        responses={202: DeveloperJobSerializer},
+    )
     def post(self, request):
         endpoint = request.data.get("endpoint", "")
         payload = request.data.get("payload", {})
@@ -142,6 +172,13 @@ class ExportJobListCreateView(APIView):
 
 
 class ExportJobDetailView(APIView):
+    authentication_classes = PUBLIC_AUTHENTICATION_CLASSES
+
+    @extend_schema(
+        operation_id="developer_jobs_retrieve",
+        tags=["Jobs"],
+        responses={200: DeveloperJobSerializer},
+    )
     def get(self, request, public_id):
         job = _get_visible_job(request, public_id)
         if not job:
@@ -150,8 +187,15 @@ class ExportJobDetailView(APIView):
 
 
 class ExportJobRerunView(APIView):
+    authentication_classes = PUBLIC_AUTHENTICATION_CLASSES
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        operation_id="developer_jobs_rerun",
+        tags=["Jobs"],
+        request=None,
+        responses={202: DeveloperJobSerializer},
+    )
     def post(self, request, public_id):
         source = ExportJob.objects.filter(public_id=public_id, user=request.user).first()
         if not source:
@@ -169,6 +213,11 @@ class ExportJobRerunView(APIView):
 
 
 class ExportJobDownloadView(APIView):
+    @extend_schema(
+        operation_id="developer_jobs_download",
+        tags=["Jobs"],
+        responses={(200, "application/octet-stream"): OpenApiTypes.BINARY},
+    )
     def get(self, request, public_id):
         # The unguessable UUID acts as the download capability because browser
         # download navigation cannot attach the JWT Authorization header.

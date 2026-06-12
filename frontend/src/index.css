@@ -681,7 +681,36 @@ h2.subtitle {
 	align-items: center;
 	gap: 0.6rem;
 }
-.developer-key-form input { flex: 1; min-width: 0; }
+.developer-key-form {
+	align-items: flex-end;
+	flex-wrap: wrap;
+	margin-top: 0.35rem;
+}
+.developer-key-field {
+	display: grid;
+	gap: 0.45rem;
+	flex: 1 1 260px;
+	min-width: 0;
+	font-family: "Syne", sans-serif;
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+.developer-key-field input {
+	width: 100%;
+	min-width: 0;
+	border: 1px solid var(--border-strong);
+	border-radius: 14px;
+	padding: 0.92rem 1rem;
+	font-size: 1rem;
+	background: var(--surface-translucent);
+	color: var(--text-main);
+	transition: box-shadow 180ms ease, border-color 180ms ease;
+}
+.developer-key-field input:focus {
+	outline: none;
+	border-color: #0284c7;
+	box-shadow: 0 0 0 4px #38bdf81f;
+}
 .developer-key-form button, .developer-key-list button, .developer-secret button, .developer-code button {
 	border: 1px solid var(--border);
 	border-radius: 9px;
@@ -697,6 +726,11 @@ h2.subtitle {
 	border-radius: 10px;
 	background: var(--input-bg);
 }
+.developer-key-hint {
+	margin: 0.55rem 0 0;
+	color: var(--muted);
+	font-size: 0.84rem;
+}
 .developer-secret code, .developer-key-list code { overflow-wrap: anywhere; font-size: 0.78rem; }
 .developer-key-list article div { display: grid; gap: 0.2rem; }
 .developer-code { align-items: flex-start; overflow: auto; }
@@ -707,6 +741,82 @@ h2.subtitle {
 	.developer-grid { grid-template-columns: 1fr; }
 	.developer-wide { grid-column: auto; }
 	.developer-stats, .integration-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.developer-docs-layout {
+	display: grid;
+	grid-template-columns: 190px minmax(0, 780px);
+	gap: 2rem;
+	justify-content: center;
+	padding: 2rem 1rem 4rem;
+}
+.developer-docs-nav {
+	display: grid;
+	align-content: start;
+	gap: 0.6rem;
+	height: fit-content;
+	padding: 1rem;
+	border: 1px solid var(--border);
+	border-radius: 14px;
+	background: var(--card);
+}
+.developer-docs-nav a, .developer-docs-content a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.developer-docs-content { min-width: 0; }
+.developer-docs-hero, .developer-docs-content section {
+	margin-bottom: 1.25rem;
+	padding: 1.25rem;
+	border: 1px solid var(--border);
+	border-radius: 16px;
+	background: var(--card);
+}
+.developer-docs-hero h1, .developer-docs-content h2 { margin: 0.4rem 0; }
+.developer-docs-content p { color: var(--muted); line-height: 1.65; }
+.developer-docs-actions { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 1rem; }
+.developer-docs-actions a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.6rem 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	text-decoration: none;
+}
+.developer-docs-content pre {
+	overflow: auto;
+	padding: 1rem;
+	border-radius: 10px;
+	background: var(--input-bg);
+	font-size: 0.8rem;
+}
+.developer-docs-note {
+	padding: 0.8rem;
+	border-left: 3px solid var(--accent);
+	background: var(--input-bg);
+	color: var(--muted);
+}
+.developer-endpoint-table, .developer-export-types, .developer-error-grid { display: grid; gap: 0.55rem; }
+.developer-endpoint-table div {
+	display: grid;
+	grid-template-columns: 55px minmax(190px, 1fr) minmax(220px, 1.5fr);
+	gap: 0.65rem;
+	align-items: center;
+	padding: 0.65rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+}
+.developer-endpoint-table strong { color: #047857; font-size: 0.76rem; }
+.developer-endpoint-table span, .developer-export-types span, .developer-error-grid span { color: var(--muted); font-size: 0.84rem; }
+.developer-export-types { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.developer-export-types div, .developer-error-grid div { display: grid; gap: 0.25rem; padding: 0.7rem; border: 1px solid var(--border); border-radius: 9px; }
+.developer-error-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 800px) {
+	.developer-docs-layout { grid-template-columns: 1fr; }
+	.developer-docs-nav { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.developer-docs-nav strong { grid-column: 1 / -1; }
+	.developer-endpoint-table div { grid-template-columns: 52px minmax(0, 1fr); }
+	.developer-endpoint-table span { grid-column: 1 / -1; }
+	.developer-export-types, .developer-error-grid { grid-template-columns: 1fr; }
 }
 
 .export-history-row,

@@ -1,12 +1,16 @@
 import json
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from .authentication import DeveloperAPIKeyAuthentication
 from .jobs import _view_classes, enqueue, serialize_job, tool_for
 from .models import DeveloperAPIKey, ExportJob
+from .serializers import DeveloperMCPRequestSerializer, DeveloperMCPResponseSerializer
 from .views import get_client_ip
 
 
@@ -52,8 +56,15 @@ def _error(request_id, code, message, http_status=status.HTTP_400_BAD_REQUEST):
 
 
 class MCPView(APIView):
+    authentication_classes = [DeveloperAPIKeyAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        operation_id="developer_mcp",
+        tags=["MCP"],
+        request=DeveloperMCPRequestSerializer,
+        responses={200: DeveloperMCPResponseSerializer},
+    )
     def post(self, request):
         request_id = request.data.get("id")
         method = request.data.get("method")

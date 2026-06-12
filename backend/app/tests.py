@@ -529,6 +529,37 @@ class DeveloperAPIViewTests(DjangoTestCase):
         self.assertEqual(ExportJob.objects.get().user, self.user)
         enqueue.assert_called_once()
 
+    def test_api_key_cannot_manage_keys_or_access_account_api(self):
+        _, raw_key = DeveloperAPIKey.create_key(user=self.user, name="Public API only")
+        self.client.force_authenticate(user=None)
+
+        keys = self.client.get("/api/developer/keys/", HTTP_X_API_KEY=raw_key)
+        account = self.client.get("/api/auth/me/", HTTP_X_API_KEY=raw_key)
+        crawl = self.client.post(
+            "/api/crawl/",
+            {"url": "https://example.com"},
+            format="json",
+            HTTP_X_API_KEY=raw_key,
+        )
+
+        self.assertEqual(keys.status_code, 401)
+        self.assertEqual(account.status_code, 401)
+        self.assertEqual(crawl.status_code, 401)
+
+    def test_public_schema_excludes_dashboard_and_internal_endpoints(self):
+        response = self.client.get("/api/developer/schema/", HTTP_ACCEPT="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        paths = response.json()["paths"]
+        self.assertIn("/api/jobs/", paths)
+        self.assertIn("/api/mcp/", paths)
+        self.assertNotIn("/api/developer/keys/", paths)
+        self.assertNotIn("/api/auth/me/", paths)
+        self.assertNotIn("/api/payments/create/", paths)
+        self.assertEqual(response.json()["info"]["title"], "DistillPage Developer API")
+        self.assertEqual(paths["/api/jobs/"]["post"]["security"], [{"DeveloperAPIKey": []}])
+        self.assertNotIn("jwtAuth", response.json()["components"]["securitySchemes"])
+
 
 class ExportJobRunnerTests(TransactionTestCase):
     @patch(

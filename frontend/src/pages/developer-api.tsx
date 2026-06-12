@@ -1,5 +1,6 @@
 import { Check, Clipboard, Code2, KeyRound, Plug, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { AuthModal } from "../components/auth-modal";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
@@ -81,6 +82,7 @@ export default function DeveloperAPI() {
           <h1>Developer API and Integrations</h1>
           <h2 className="subtitle">Build reliable webpage export workflows</h2>
           <p className="subtitle">Create API keys, submit idempotent async jobs, receive signed webhooks, and connect your automation platform.</p>
+          <p className="developer-doc-link"><Link to="/developers/docs">Read the developer documentation</Link></p>
         </header>
 
         {!user || !token ? (
@@ -105,9 +107,18 @@ export default function DeveloperAPI() {
             <section className="history-page-section">
               <div className="history-section-heading"><KeyRound size={18} /><strong>API keys</strong></div>
               <div className="developer-key-form">
-                <input value={name} maxLength={120} placeholder="Key name, e.g. Production" onChange={(event) => setName(event.target.value)} />
+                <label className="developer-key-field">
+                  <span>Key name</span>
+                  <input
+                    value={name}
+                    maxLength={120}
+                    placeholder="Production"
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                </label>
                 <button type="button" onClick={() => void createKey()}>Create key</button>
               </div>
+              <p className="developer-key-hint">Use a descriptive name so you can tell your keys apart later.</p>
               {revealedKey && (
                 <div className="developer-secret">
                   <code>{revealedKey}</code>
@@ -133,7 +144,7 @@ export default function DeveloperAPI() {
                 <pre><code>{requestExample}</code></pre>
                 <button type="button" onClick={() => void copy("request", requestExample)}>{copied === "request" ? <Check size={15} /> : <Clipboard size={15} />}</button>
               </div>
-              <p className="developer-doc-link">Interactive OpenAPI documentation: <a href={`${API_BASE_URL}/api/docs/`} target="_blank" rel="noreferrer">{API_BASE_URL}/api/docs/</a></p>
+              <p className="developer-doc-link">Public OpenAPI documentation: <a href={`${API_BASE_URL}/api/developer/docs/`} target="_blank" rel="noreferrer">{API_BASE_URL}/api/developer/docs/</a></p>
             </section>
 
             <section className="history-page-section developer-wide">

@@ -200,6 +200,54 @@ class ExportScreenshotSerializer(serializers.Serializer):
 
 
 # ---------------------------------------------------------------------------
+# Public developer API serializers
+# ---------------------------------------------------------------------------
+
+class DeveloperJobCreateSerializer(serializers.Serializer):
+    endpoint = serializers.ChoiceField(choices=[
+        "crawl", "pdf", "markdown", "json", "tabular", "screenshot",
+        "bulk-pdf", "bulk-markdown", "bulk-json", "bulk-screenshot",
+    ])
+    payload = serializers.JSONField()
+    webhook_url = serializers.URLField(required=False)
+    webhook_secret = serializers.CharField(required=False, max_length=128)
+
+
+class DeveloperJobSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    tool = serializers.CharField()
+    status = serializers.ChoiceField(choices=["pending", "running", "completed", "failed"])
+    title = serializers.CharField()
+    error = serializers.CharField()
+    response_status = serializers.IntegerField(allow_null=True)
+    result = serializers.JSONField(allow_null=True)
+    download_url = serializers.CharField(allow_null=True)
+    schedule_id = serializers.UUIDField(allow_null=True)
+    idempotency_key = serializers.CharField()
+    webhook_configured = serializers.BooleanField()
+    webhook_status = serializers.IntegerField(allow_null=True)
+    webhook_error = serializers.CharField()
+    webhook_delivered_at = serializers.DateTimeField(allow_null=True)
+    created_at = serializers.DateTimeField()
+    started_at = serializers.DateTimeField(allow_null=True)
+    finished_at = serializers.DateTimeField(allow_null=True)
+
+
+class DeveloperMCPRequestSerializer(serializers.Serializer):
+    jsonrpc = serializers.CharField(default="2.0")
+    id = serializers.JSONField(required=False)
+    method = serializers.CharField()
+    params = serializers.JSONField(required=False)
+
+
+class DeveloperMCPResponseSerializer(serializers.Serializer):
+    jsonrpc = serializers.CharField()
+    id = serializers.JSONField(required=False)
+    result = serializers.JSONField(required=False)
+    error = serializers.JSONField(required=False)
+
+
+# ---------------------------------------------------------------------------
 # Auth serializers
 # ---------------------------------------------------------------------------
 
