@@ -2616,6 +2616,12 @@ h2.subtitle {
 
 /* ── Website crawler ─────────────────────────────────────────────────── */
 
+.domain-page-discovery {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
 .crawler-grid {
 	grid-template-columns: 1fr;
 }

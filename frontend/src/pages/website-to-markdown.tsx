@@ -1,10 +1,11 @@
-import { Layers, Minus, MousePointer } from "lucide-react";
+import { Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
+import { DomainPageDiscovery } from "../components/domain-page-discovery";
 import { ExportActivity } from "../components/export-activity";
 import MarkdownRenderer from "../components/markdown";
 import { Switch } from "../components/shared/switch";
@@ -52,7 +53,7 @@ type ErrorPayload = {
 };
 
 type InteractionMode = "cursor" | "select";
-type ToolMode = "single" | "bulk";
+type ToolMode = "single" | "bulk" | "domain";
 type BulkOutputMode = "zip" | "combined";
 type CleanupMode = "full" | "ai" | "manual";
 
@@ -238,9 +239,11 @@ function WebsiteToMarkdown() {
   const previewRequestIdRef = useRef(0);
   // --- Bulk state ---
   const [bulkUrls, setBulkUrls] = useState<string>("");
-  const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("zip");
+  const [domainUrls, setDomainUrls] = useState<string>("");
+  const [bulkOutputMode, setBulkOutputMode] = useState<BulkOutputMode>("combined");
   const [bulkAiCleanup, setBulkAiCleanup] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
+  const [domainPagesDiscovered, setDomainPagesDiscovered] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -450,7 +453,7 @@ function WebsiteToMarkdown() {
     setErrorType(null);
     setBulkResult(null);
 
-    const validUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
+    const validUrls = (toolMode === "domain" ? domainUrls : bulkUrls).split("\n").map((u) => u.trim()).filter(Boolean);
     if (validUrls.length === 0) {
       setError("Please enter at least one URL.");
       return;
@@ -458,7 +461,7 @@ function WebsiteToMarkdown() {
 
     if (!token) {
       setErrorType("anon_limit");
-      setError("Sign in to use bulk export.");
+      setError("Sign in to export multiple pages.");
       return;
     }
 
@@ -479,10 +482,10 @@ function WebsiteToMarkdown() {
           setError(detail ?? "Insufficient balance.");
         } else if (response.status === 403) {
           setErrorType("anon_limit");
-          setError(detail ?? "Sign in to use bulk export.");
+          setError(detail ?? "Sign in to export multiple pages.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to generate bulk Markdown.");
+          setError(detail ?? "Failed to generate Markdown for the selected pages.");
         }
         return;
       }
@@ -496,7 +499,7 @@ function WebsiteToMarkdown() {
     }
   };
 
-  const validBulkUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
+  const validBulkUrls = (toolMode === "domain" ? domainUrls : bulkUrls).split("\n").map((u) => u.trim()).filter(Boolean);
   const totalCostCents = validBulkUrls.length * PRICE_PER_ACTION_CENTS;
   const hasEnoughBalance = !user || user.balance_cents >= totalCostCents;
 
@@ -519,12 +522,14 @@ function WebsiteToMarkdown() {
               label="Export mode"
               value={toolMode}
               options={[
-                { value: "single", label: "Single URL" },
-                { value: "bulk", label: <><Layers size={14} /> Bulk URLs</> },
+                { value: "single", label: "Single page" },
+                { value: "bulk", label: "Bulk URLs" },
+                { value: "domain", label: "Domain pages" },
               ]}
               onChange={(mode) => {
                 setToolMode(mode);
                 setError(null);
+                setDomainPagesDiscovered(false);
                 if (mode === "single") setBulkResult(null);
                 else setResult(null);
               }}
@@ -688,69 +693,94 @@ function WebsiteToMarkdown() {
                 )}
               </>
             ) : (
-              /* ── Bulk mode ── */
+              /* ── Multiple pages modes ── */
               <>
-                <div className="export-form">
-                  <label>Website URLs</label>
-                  <BulkUrlInput value={bulkUrls} onChange={setBulkUrls} maxUrls={50} validCount={validBulkUrls.length} />
-                </div>
-
-                <div className="toggle-group">
-                  <span>Output format</span>
-                  <div className="toggle-buttons">
-                    <button
-                      type="button"
-                      className={bulkOutputMode === "zip" ? "active" : ""}
-                      onClick={() => setBulkOutputMode("zip")}
-                    >
-                      ZIP (one .md per URL)
-                    </button>
-                    <button
-                      type="button"
-                      className={bulkOutputMode === "combined" ? "active" : ""}
-                      onClick={() => setBulkOutputMode("combined")}
-                    >
-                      Combined Markdown
-                    </button>
-                  </div>
-                </div>
-
-                <div className="toggle-group">
-                  <span>Cleanup method</span>
-                  <div className="toggle-buttons">
-                    <button type="button" className={bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(true)}>
-                      AI Cleanup
-                    </button>
-                    <button type="button" className={!bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(false)}>
-                      Full Page export
-                    </button>
-                  </div>
-                </div>
-
-                {validBulkUrls.length > 0 && (
-                  <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
-                    <span>
-                      This will cost <strong>{formatUsd(totalCostCents)}</strong>
-                      {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
-                    </span>
-                    {!hasEnoughBalance && (
-                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Add Funds
-                      </button>
-                    )}
+                {toolMode === "domain" ? (
+                  <DomainPageDiscovery
+                    token={token}
+                    value={domainUrls}
+                    onChange={setDomainUrls}
+                    onError={setError}
+                    onAuthRequired={() => setShowAuthModal(true)}
+                    onDiscoveryChange={setDomainPagesDiscovered}
+                  />
+                ) : (
+                  <div className="export-form">
+                    <label>Website URLs</label>
+                    <BulkUrlInput value={bulkUrls} onChange={setBulkUrls} maxUrls={50} validCount={validBulkUrls.length} />
                   </div>
                 )}
 
-                <div className="export-actions">
-                  <button
-                    type="button"
-                    onClick={onBulkSubmit}
-                    disabled={isLoading || !hasEnoughBalance || validBulkUrls.length === 0}
-                    className={isLoading ? "export-loading" : ""}
-                  >
-                    {isLoading ? "Converting to Markdown..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to Markdown`}
-                  </button>
-                </div>
+                {(toolMode === "bulk" || domainPagesDiscovered) && (
+                  <>
+                    <div className="toggle-group">
+                      <span>Output format</span>
+                      <div className="toggle-buttons">
+                        <button
+                          type="button"
+                          className={bulkOutputMode === "zip" ? "active" : ""}
+                          onClick={() => setBulkOutputMode("zip")}
+                        >
+                          ZIP (one .md per URL)
+                        </button>
+                        <button
+                          type="button"
+                          className={bulkOutputMode === "combined" ? "active" : ""}
+                          onClick={() => setBulkOutputMode("combined")}
+                        >
+                          Combined Markdown
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="toggle-group">
+                      <span>Cleanup method</span>
+                      <div className="toggle-buttons">
+                        <button type="button" className={bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(true)}>
+                          AI Cleanup
+                        </button>
+                        <button type="button" className={!bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(false)}>
+                          Full Page export
+                        </button>
+                      </div>
+                    </div>
+
+                    {validBulkUrls.length > 0 && (
+                      <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
+                        <span>
+                          This will cost <strong>{formatUsd(totalCostCents)}</strong>
+                          {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
+                        </span>
+                        {!hasEnoughBalance && (
+                          <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                            Add Funds
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="export-actions">
+                      <button
+                        type="button"
+                        onClick={onBulkSubmit}
+                        disabled={isLoading || !hasEnoughBalance || validBulkUrls.length === 0}
+                        className={isLoading ? "export-loading" : ""}
+                      >
+                        {isLoading ? "Converting to Markdown..." : `Export ${validBulkUrls.length || ""} page${validBulkUrls.length !== 1 ? "s" : ""} to Markdown`}
+                      </button>
+                    </div>
+
+                    {bulkResult && (
+                      <div className="result-panel">
+                        <h2>{bulkResult.title}</h2>
+                        <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined Markdown file"} is ready.</p>
+                        <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
+                          Download .{bulkResult.file_ext}
+                        </a>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {error && (
                   <div className="message error">
@@ -765,16 +795,6 @@ function WebsiteToMarkdown() {
                         Sign In
                       </button>
                     )}
-                  </div>
-                )}
-
-                {bulkResult && (
-                  <div className="result-panel">
-                    <h2>{bulkResult.title}</h2>
-                    <p>Your {bulkResult.file_ext === "zip" ? "ZIP archive" : "combined Markdown file"} is ready.</p>
-                    <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
-                      Download .{bulkResult.file_ext}
-                    </a>
                   </div>
                 )}
               </>

@@ -322,8 +322,8 @@ const ARTICLES: Article[] = [
     description:
       "Discover same-domain pages from sitemaps and internal links, select the URLs you need, and export them together.",
     canonical: "https://distillpage.com/blog/crawl-and-export-a-website",
-    toolName: "Website Bulk Export",
-    toolPath: "/website-bulk-export",
+    toolName: "Website to Markdown Converter",
+    toolPath: "/web-to-markdown",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-11",
     intro:
@@ -332,7 +332,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How website discovery works",
         body: [
-          "Website Bulk Export starts with the site's sitemap when one is available, including nested sitemap indexes. It can then follow same-domain internal links up to the maximum depth and page limit you choose.",
+          "The Domain pages mode inside supported website export tools starts with the site's sitemap when one is available, including nested sitemap indexes. It can then follow same-domain internal links up to the maximum depth and page limit you choose.",
           "Use sitemap-only mode when you trust the site's published URL inventory and do not want link discovery. You can also start with a direct sitemap URL.",
         ],
       },
@@ -360,7 +360,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How to crawl and export a website",
         body: [
-          "Open Website Bulk Export, enter the website or sitemap URL, set the page limit, link depth, and optional path patterns, then discover pages. Review the results, select the URLs you need, choose the format and cleanup method, and export them together.",
+          "Open the PDF, Markdown, JSON, or Screenshot tool, choose Domain pages, enter the website or sitemap URL, set the discovery options, and discover pages. Review the results, select the URLs you need, then export them together.",
         ],
       },
     ],

@@ -1,10 +1,11 @@
-import { Layers, Minus, MousePointer } from "lucide-react";
+import { Minus, MousePointer } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
+import { DomainPageDiscovery } from "../components/domain-page-discovery";
 import { ExportActivity } from "../components/export-activity";
 import { Switch } from "../components/shared/switch";
 import { usePageSeo } from "../hooks/use-page-seo";
@@ -52,7 +53,7 @@ type ErrorPayload = {
 
 type InteractionMode = "cursor" | "select";
 type ViewportWidth = 375 | 768 | 1280 | 1440;
-type ToolMode = "single" | "bulk";
+type ToolMode = "single" | "bulk" | "domain";
 type CleanupMode = "full" | "ai" | "manual";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -243,8 +244,10 @@ function WebsiteToScreenshot() {
   const previewRequestIdRef = useRef(0);
   // --- Bulk state ---
   const [bulkUrls, setBulkUrls] = useState<string>("");
+  const [domainUrls, setDomainUrls] = useState<string>("");
   const [bulkAiCleanup, setBulkAiCleanup] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkExportResult | null>(null);
+  const [domainPagesDiscovered, setDomainPagesDiscovered] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -452,7 +455,7 @@ function WebsiteToScreenshot() {
     setErrorType(null);
     setBulkResult(null);
 
-    const validUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
+    const validUrls = (toolMode === "domain" ? domainUrls : bulkUrls).split("\n").map((u) => u.trim()).filter(Boolean);
     if (validUrls.length === 0) {
       setError("Please enter at least one URL.");
       return;
@@ -460,7 +463,7 @@ function WebsiteToScreenshot() {
 
     if (!token) {
       setErrorType("anon_limit");
-      setError("Sign in to use bulk export.");
+      setError("Sign in to export multiple pages.");
       return;
     }
 
@@ -481,10 +484,10 @@ function WebsiteToScreenshot() {
           setError(detail ?? "Insufficient balance.");
         } else if (response.status === 403) {
           setErrorType("anon_limit");
-          setError(detail ?? "Sign in to use bulk export.");
+          setError(detail ?? "Sign in to export multiple pages.");
         } else {
           setErrorType("generic");
-          setError(detail ?? "Failed to generate bulk screenshots.");
+          setError(detail ?? "Failed to capture the selected pages.");
         }
         return;
       }
@@ -498,7 +501,7 @@ function WebsiteToScreenshot() {
     }
   };
 
-  const validBulkUrls = bulkUrls.split("\n").map((u) => u.trim()).filter(Boolean);
+  const validBulkUrls = (toolMode === "domain" ? domainUrls : bulkUrls).split("\n").map((u) => u.trim()).filter(Boolean);
   const totalCostCents = validBulkUrls.length * PRICE_PER_ACTION_CENTS;
   const hasEnoughBalance = !user || user.balance_cents >= totalCostCents;
 
@@ -521,12 +524,14 @@ function WebsiteToScreenshot() {
               label="Export mode"
               value={toolMode}
               options={[
-                { value: "single", label: "Single URL" },
-                { value: "bulk", label: <><Layers size={14} /> Bulk URLs</> },
+                { value: "single", label: "Single page" },
+                { value: "bulk", label: "Bulk URLs" },
+                { value: "domain", label: "Domain pages" },
               ]}
               onChange={(mode) => {
                 setToolMode(mode);
                 setError(null);
+                setDomainPagesDiscovered(false);
                 if (mode === "single") setBulkResult(null);
                 else setResult(null);
               }}
@@ -707,65 +712,90 @@ function WebsiteToScreenshot() {
             )}
             </>
             ) : (
-              /* ── Bulk mode ── */
+              /* ── Multiple pages modes ── */
               <>
-                <div className="export-form">
-                  <label>Website URLs</label>
-                  <BulkUrlInput value={bulkUrls} onChange={setBulkUrls} maxUrls={50} validCount={validBulkUrls.length} />
-                </div>
-
-                <div className="toggle-group">
-                  <span>Cleanup method</span>
-                  <div className="toggle-buttons">
-                    <button type="button" className={bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(true)}>
-                      AI Cleanup
-                    </button>
-                    <button type="button" className={!bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(false)}>
-                      Full Page export
-                    </button>
-                  </div>
-                </div>
-
-                <div className="toggle-group">
-                  <span>Viewport width</span>
-                  <div className="toggle-buttons">
-                    {VIEWPORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        className={viewportWidth === opt.value ? "active" : ""}
-                        onClick={() => setViewportWidth(opt.value)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {validBulkUrls.length > 0 && (
-                  <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
-                    <span>
-                      This will cost <strong>{formatUsd(totalCostCents)}</strong>
-                      {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
-                    </span>
-                    {!hasEnoughBalance && (
-                      <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
-                        Add Funds
-                      </button>
-                    )}
+                {toolMode === "domain" ? (
+                  <DomainPageDiscovery
+                    token={token}
+                    value={domainUrls}
+                    onChange={setDomainUrls}
+                    onError={setError}
+                    onAuthRequired={() => setShowAuthModal(true)}
+                    onDiscoveryChange={setDomainPagesDiscovered}
+                  />
+                ) : (
+                  <div className="export-form">
+                    <label>Website URLs</label>
+                    <BulkUrlInput value={bulkUrls} onChange={setBulkUrls} maxUrls={50} validCount={validBulkUrls.length} />
                   </div>
                 )}
 
-                <div className="export-actions">
-                  <button
-                    type="button"
-                    onClick={onBulkSubmit}
-                    disabled={isLoading || !hasEnoughBalance || validBulkUrls.length === 0}
-                    className={isLoading ? "export-loading" : ""}
-                  >
-                    {isLoading ? "Capturing screenshots..." : `Capture ${validBulkUrls.length || ""} screenshot${validBulkUrls.length !== 1 ? "s" : ""}`}
-                  </button>
-                </div>
+                {(toolMode === "bulk" || domainPagesDiscovered) && (
+                  <>
+                    <div className="toggle-group">
+                      <span>Cleanup method</span>
+                      <div className="toggle-buttons">
+                        <button type="button" className={bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(true)}>
+                          AI Cleanup
+                        </button>
+                        <button type="button" className={!bulkAiCleanup ? "active" : ""} onClick={() => setBulkAiCleanup(false)}>
+                          Full Page export
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="toggle-group">
+                      <span>Viewport width</span>
+                      <div className="toggle-buttons">
+                        {VIEWPORT_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            className={viewportWidth === opt.value ? "active" : ""}
+                            onClick={() => setViewportWidth(opt.value)}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {validBulkUrls.length > 0 && (
+                      <div className={`credit-cost-info ${!hasEnoughBalance ? "insufficient" : ""}`}>
+                        <span>
+                          This will cost <strong>{formatUsd(totalCostCents)}</strong>
+                          {user ? ` (balance ${formatUsd(user.balance_cents)})` : ""}
+                        </span>
+                        {!hasEnoughBalance && (
+                          <button type="button" className="inline-action" onClick={() => setShowPaymentModal(true)}>
+                            Add Funds
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="export-actions">
+                      <button
+                        type="button"
+                        onClick={onBulkSubmit}
+                        disabled={isLoading || !hasEnoughBalance || validBulkUrls.length === 0}
+                        className={isLoading ? "export-loading" : ""}
+                      >
+                        {isLoading ? "Capturing screenshots..." : `Capture ${validBulkUrls.length || ""} screenshot${validBulkUrls.length !== 1 ? "s" : ""}`}
+                      </button>
+                    </div>
+
+                    {bulkResult && (
+                      <div className="result-panel">
+                        <h2>{bulkResult.title}</h2>
+                        <p>Your ZIP archive of screenshots is ready.</p>
+                        <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
+                          Download .zip
+                        </a>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {error && (
                   <div className="message error">
@@ -780,16 +810,6 @@ function WebsiteToScreenshot() {
                         Sign In
                       </button>
                     )}
-                  </div>
-                )}
-
-                {bulkResult && (
-                  <div className="result-panel">
-                    <h2>{bulkResult.title}</h2>
-                    <p>Your ZIP archive of screenshots is ready.</p>
-                    <a href={bulkResult.file_url} target="_blank" rel="noreferrer" download>
-                      Download .zip
-                    </a>
                   </div>
                 )}
               </>

@@ -10,9 +10,9 @@ export function BulkUrlInput({ value, onChange, maxUrls = 50, validCount }: Bulk
     <div className="bulk-url-input">
       <textarea
         className="bulk-url-textarea"
-        placeholder={`https://example.com/article-1\nhttps://example.com/article-2\nhttps://example.com/article-3`}
+        placeholder={`https://example.com/article-1\nhttps://another-domain.com/page\nhttps://third-domain.com/resource`}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         spellCheck={false}
         autoCorrect="off"
         autoCapitalize="off"

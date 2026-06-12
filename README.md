@@ -8,7 +8,6 @@ A platform for extracting, transforming, exporting, and monitoring webpages.
 | **Web → Markdown** | `/web-to-markdown` | Convert a full or AI-cleaned web page into portable Markdown |
 | **Web → JSON** | `/web-to-json` | Extract standard page fields or custom prompt/schema-driven structured data |
 | **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
-| **Website Bulk Export** | `/website-bulk-export` | Discover same-domain pages from sitemaps and internal links, then export the selected site pages |
 | **Webpage Monitoring** | `/change-monitoring` | Monitor webpage text, selected elements, structured fields, or visual captures and receive change notifications |
 | **Web → CSV** | `/web-to-csv` | Export webpage tables, listings, or custom extracted records as CSV |
 | **Web → Excel** | `/web-to-excel` | Export records plus metadata, links, images, and tables as an Excel workbook |

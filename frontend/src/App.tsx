@@ -7,7 +7,6 @@ import WebsiteToMarkdown from "./pages/website-to-markdown";
 import WebsiteToScreenshot from "./pages/website-to-screenshot";
 import WebsiteToTabular from "./pages/website-to-tabular";
 import WebsiteToPdf from "./pages/website-to-pdf";
-import WebsiteBulkExport from "./pages/website-bulk-export";
 import ChangeMonitors from "./pages/change-monitors";
 import DeveloperAPI from "./pages/developer-api";
 import DeveloperDocs from "./pages/developer-docs";
@@ -42,7 +41,6 @@ function App() {
         <Route path="/web-to-csv" element={<WebsiteToTabular format="csv" />} />
         <Route path="/web-to-excel" element={<WebsiteToTabular format="xlsx" />} />
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
-        <Route path="/website-bulk-export" element={<WebsiteBulkExport />} />
         <Route path="/change-monitoring" element={<ChangeMonitors />} />
         <Route path="/developer-api" element={<DeveloperAPI />} />
         <Route path="/developers/docs" element={<DeveloperDocs />} />

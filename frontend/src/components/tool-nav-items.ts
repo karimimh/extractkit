@@ -1,4 +1,4 @@
-import { Bell, Braces, Camera, FileCode, FileSpreadsheet, FileText, Globe2, Table2 } from "lucide-react";
+import { Bell, Braces, Camera, FileCode, FileSpreadsheet, FileText, Table2 } from "lucide-react";
 
 export const CONVERSION_TOOLS = [
   { to: "/web-to-pdf", label: "Website to PDF Converter", icon: FileText },
@@ -7,7 +7,6 @@ export const CONVERSION_TOOLS = [
   { to: "/web-to-csv", label: "Website to CSV Converter", icon: Table2 },
   { to: "/web-to-excel", label: "Website to Excel Converter", icon: FileSpreadsheet },
   { to: "/web-to-screenshot", label: "Website Screenshot Generator", icon: Camera },
-  { to: "/website-bulk-export", label: "Website Bulk Export", icon: Globe2 },
 ];
 
 export const AUTOMATION_TOOLS = [
