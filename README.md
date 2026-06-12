@@ -10,7 +10,6 @@ A platform for extracting, transforming, exporting, and monitoring webpages.
 | **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
 | **Website Bulk Export** | `/website-bulk-export` | Discover same-domain pages from sitemaps and internal links, then export the selected site pages |
 | **Webpage Monitoring** | `/change-monitoring` | Monitor webpage text, selected elements, structured fields, or visual captures and receive change notifications |
-| **Export History** | `/export-history` | Review, download, rerun, and schedule previous exports |
 | **Web → CSV** | `/web-to-csv` | Export webpage tables, listings, or custom extracted records as CSV |
 | **Web → Excel** | `/web-to-excel` | Export records plus metadata, links, images, and tables as an Excel workbook |
 | **Developer API** | `/developer-api` | Manage API keys, usage, webhooks, and integrations |
@@ -26,7 +25,7 @@ frontend/          React 19 + Vite 8 SPA
     components/    Navigation, auth, billing, and shared UI
     context/       Shared authentication context
     lib/           API clients and shared utilities
-    pages/         Webpage tools, history, monitoring, developer API, and blog
+    pages/         Webpage tools, monitoring, developer API, and blog
 
 backend/           Django 5 + Django REST Framework
   app/             Web extraction, exports, jobs, monitoring, auth, and billing

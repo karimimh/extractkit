@@ -238,7 +238,7 @@ export default function WebsiteBulkExport() {
         </div>
       </div>
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
+      <PaymentModal open={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
     </main>
   );
 }

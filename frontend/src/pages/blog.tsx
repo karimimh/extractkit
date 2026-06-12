@@ -372,9 +372,9 @@ const ARTICLES: Article[] = [
       "Turn a completed DistillPage export into a recurring job and receive signed webhook notifications when each run finishes.",
     canonical: "https://distillpage.com/blog/schedule-webpage-exports-with-webhooks",
     toolName: "Scheduled Exports",
-    toolPath: "/export-history",
+    toolPath: "/web-to-pdf",
     publishedAt: "2026-06-11",
-    updatedAt: "2026-06-11",
+    updatedAt: "2026-06-12",
     intro:
       "A webpage export is often more useful when it runs automatically. DistillPage lets you rerun completed exports on an hourly, daily, weekly, or monthly schedule and optionally send the result status to your webhook.",
     sections: [
@@ -382,14 +382,14 @@ const ARTICLES: Article[] = [
         heading: "When to schedule an export",
         body: [
           "Scheduled exports are useful for recurring archives, refreshed datasets, periodic reports, and content pipelines that need an up-to-date copy of the same webpage without manual work.",
-          "Create the first export with the settings you need, then schedule it from Export History. DistillPage reuses that job as the source for every recurring run.",
+          "Create the first export with the settings you need, then expand Scheduling & history inside that export tool. DistillPage reuses that job as the source for every recurring run.",
         ],
       },
       {
         heading: "Choose a frequency and first run",
         body: [
           "Schedules can run hourly, daily, weekly, or monthly. You choose the first run time, and DistillPage calculates the following runs from the selected frequency.",
-          "Active schedules can be paused, resumed, or deleted from Export History. Each completed run also appears in your recent exports, where it can be downloaded or rerun.",
+          "Active schedules can be paused, resumed, or deleted inside the relevant export tool. You can also open Export History from the account menu to review activity across all tools.",
         ],
       },
       {
@@ -402,7 +402,7 @@ const ARTICLES: Article[] = [
       {
         heading: "How to create a scheduled export",
         body: [
-          "Complete and download an export, then open Export History and select Schedule on its history card. Choose the frequency and first run time, add an optional webhook URL, and create the schedule.",
+          "Complete an export, expand Scheduling & history in the same tool, and select Schedule on its history card. Choose the frequency and first run time, add an optional webhook URL, and create the schedule.",
         ],
       },
     ],

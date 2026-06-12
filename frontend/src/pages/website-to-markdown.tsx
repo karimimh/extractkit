@@ -5,6 +5,7 @@ import { useAuth } from "../context/auth-context";
 import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
+import { ExportActivity } from "../components/export-activity";
 import MarkdownRenderer from "../components/markdown";
 import { Switch } from "../components/shared/switch";
 import { usePageSeo } from "../hooks/use-page-seo";
@@ -781,6 +782,7 @@ function WebsiteToMarkdown() {
           </div>
         </div>
 
+        <ExportActivity tool="markdown" />
         <footer className="support-footer">
           Need help? Email us at{" "}
           <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
@@ -788,7 +790,7 @@ function WebsiteToMarkdown() {
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
+      <PaymentModal open={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
     </main>
   );
 }

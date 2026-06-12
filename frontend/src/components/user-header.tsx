@@ -1,18 +1,18 @@
 import { ChevronDown, History, LogOut, User, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import { formatUsd } from "../lib/billing";
 import { listExportJobs } from "../lib/export-jobs";
 import { AuthModal } from "./auth-modal";
+import { ExportActivity } from "./export-activity";
 import { PaymentModal } from "./payment-modal";
 
 export function UserHeader() {
   const { user, token, logout, isLoading } = useAuth();
-  const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showExportHistory, setShowExportHistory] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
   const [runningExports, setRunningExports] = useState(0);
@@ -97,7 +97,7 @@ export function UserHeader() {
                   <button type="button" className="btn-buy" onClick={() => { setShowPaymentModal(true); setProfileOpen(false); }}>
                     <WalletCards size={15} /> Add Funds
                   </button>
-                  <button type="button" className="btn-ghost" onClick={() => { navigate("/export-history"); setProfileOpen(false); }}>
+                  <button type="button" className="btn-ghost" onClick={() => { setShowExportHistory(true); setProfileOpen(false); }}>
                     <History size={15} /> Export History
                     {runningExports > 0 && <span className="popover-running-count">{runningExports} running</span>}
                   </button>
@@ -119,7 +119,8 @@ export function UserHeader() {
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
+      <PaymentModal open={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
+      <ExportActivity dialog open={showExportHistory} onClose={() => setShowExportHistory(false)} />
     </>
   );
 }

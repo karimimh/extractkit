@@ -5,6 +5,7 @@ import { useAuth } from "../context/auth-context";
 import { AuthModal } from "../components/auth-modal";
 import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
+import { ExportActivity } from "../components/export-activity";
 import { Switch } from "../components/shared/switch";
 import { usePageSeo } from "../hooks/use-page-seo";
 import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
@@ -796,6 +797,7 @@ function WebsiteToScreenshot() {
           </div>
         </div>
 
+        <ExportActivity tool="screenshot" />
         <footer className="support-footer">
           Need help? Email us at{" "}
           <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
@@ -803,7 +805,7 @@ function WebsiteToScreenshot() {
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
+      <PaymentModal open={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
     </main>
   );
 }

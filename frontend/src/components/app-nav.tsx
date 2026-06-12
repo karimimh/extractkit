@@ -5,7 +5,6 @@ import { WEB_TOOLS } from "./tool-nav-items";
 
 const ROUTE_TITLES = [
   ...WEB_TOOLS,
-  { to: "/export-history", label: "Export History" },
   { to: "/blog", label: "Blog" },
 ];
 

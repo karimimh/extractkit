@@ -1,6 +1,5 @@
 - separate the export history from scheduling. Maybe show the history in a dialog. don't put it in sidebar. only put scheduling in sidebar
 - Improve Webpage Monitoring UI. the retry buttons should spin when in progress. the list of monitors should contain more information about it. The email should be setup in backend
-- Developer API key creation doesn't work. maybe instead of swagger show the api in a documentaion page.
 - the blog pages should contain images and be more nice.
 - implement `Competitor & Price Intelligence Monitor`
 

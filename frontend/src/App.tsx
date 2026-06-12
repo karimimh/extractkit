@@ -10,7 +10,6 @@ import WebsiteToTabular from "./pages/website-to-tabular";
 import WebsiteToPdf from "./pages/website-to-pdf";
 import WebsiteBulkExport from "./pages/website-bulk-export";
 import ChangeMonitors from "./pages/change-monitors";
-import ExportHistory from "./pages/export-history";
 import DeveloperAPI from "./pages/developer-api";
 import DeveloperDocs from "./pages/developer-docs";
 
@@ -27,7 +26,6 @@ function Layout() {
     location.pathname.startsWith("/web-to-") ||
     location.pathname === "/website-bulk-export" ||
     location.pathname === "/change-monitoring" ||
-    location.pathname === "/export-history" ||
     location.pathname === "/developer-api" ||
     location.pathname === "/developers/docs" ||
     location.pathname.startsWith("/blog");
@@ -74,7 +72,6 @@ function App() {
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
         <Route path="/website-bulk-export" element={<WebsiteBulkExport />} />
         <Route path="/change-monitoring" element={<ChangeMonitors />} />
-        <Route path="/export-history" element={<ExportHistory />} />
         <Route path="/developer-api" element={<DeveloperAPI />} />
         <Route path="/developers/docs" element={<DeveloperDocs />} />
         <Route path="/blog" element={<BlogIndex />} />

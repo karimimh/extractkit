@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { AuthModal } from "../components/auth-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
+import { ExportActivity } from "../components/export-activity";
 import { PaymentModal } from "../components/payment-modal";
 import { Switch } from "../components/shared/switch";
 import { useAuth } from "../context/auth-context";
@@ -859,13 +860,14 @@ function WebsiteToJson() {
           </div>
         </div>
 
+        <ExportActivity tool="json" />
         <footer className="support-footer">
           Need help? Email us at <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
         </footer>
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
+      <PaymentModal open={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
     </main>
   );
 }

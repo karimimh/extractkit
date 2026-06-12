@@ -931,6 +931,51 @@ h2.subtitle {
 .job-status.pending { color: #b45309; }
 .export-history-empty { color: var(--muted) !important; }
 
+.export-activity {
+	margin-top: 1.25rem;
+	border: 1px solid var(--border);
+	border-radius: 14px;
+	background: var(--card);
+}
+
+.export-activity > summary {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.85rem 1rem;
+	cursor: pointer;
+	font-weight: 700;
+	list-style-position: inside;
+}
+
+.export-activity-content {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	padding: 0 1rem 1rem;
+}
+
+.export-activity-content button,
+.export-activity-content a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.42rem 0.65rem;
+	background: var(--card);
+	color: var(--text-main);
+	text-decoration: none;
+}
+
+.export-history-dialog {
+	width: min(900px, 96vw);
+}
+
+.export-history-dialog .export-activity-content {
+	padding: 1.25rem 0 0;
+}
+
 .history-page-grid {
 	display: grid;
 	grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
@@ -981,6 +1026,9 @@ h2.subtitle {
 
 @media (max-width: 900px) {
 	.history-page-grid {
+		grid-template-columns: 1fr;
+	}
+	.export-activity-content {
 		grid-template-columns: 1fr;
 	}
 }
@@ -1521,7 +1569,90 @@ h2.subtitle {
 	flex-shrink: 0;
 }
 
-/* Modal shared styles */
+/* Shared dialog shell */
+.dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.55);
+	backdrop-filter: blur(4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+	padding: 1rem;
+	animation: dialog-fade-in 220ms ease;
+}
+
+.dialog-backdrop-closing {
+	animation: dialog-fade-out 220ms ease forwards;
+}
+
+.dialog-panel {
+	background: var(--surface);
+	color: var(--text-main);
+	border-radius: 20px;
+	padding: 0;
+	width: min(420px, 96vw);
+	position: relative;
+	box-shadow: 0 24px 60px #0f172a3a;
+	overflow: hidden;
+	animation: dialog-pop-in 220ms ease;
+	transform-origin: center;
+}
+
+.dialog-panel-closing {
+	animation: dialog-pop-out 220ms ease forwards;
+}
+
+.dialog-panel-sm {
+	width: min(420px, 96vw);
+}
+
+.dialog-panel-md {
+	width: min(520px, 96vw);
+}
+
+.dialog-panel-lg,
+.modal-wide {
+	width: min(680px, 96vw);
+}
+
+.dialog-panel-xl,
+.export-history-dialog,
+.dialog-wide {
+	width: min(920px, 96vw);
+}
+
+.dialog-scroll,
+.modal-scroll {
+	max-height: min(90vh, calc(100vh - 2rem));
+	overflow-y: auto;
+	padding: 2rem;
+}
+
+.dialog-close,
+.modal-close {
+	position: absolute;
+	top: 1rem;
+	right: 1rem;
+	background: none;
+	border: none;
+	font-size: 1rem;
+	cursor: pointer;
+	color: var(--text-subtle);
+	line-height: 1;
+	padding: 0.25rem 0.4rem;
+	border-radius: 6px;
+	transition: background 150ms;
+	z-index: 1;
+}
+
+.dialog-close:hover,
+.modal-close:hover {
+	background: var(--surface-muted);
+}
+
+/* Legacy modal shell */
 .modal-backdrop {
 	position: fixed;
 	inset: 0;
@@ -1568,6 +1699,38 @@ h2.subtitle {
 
 .modal-close:hover {
 	background: var(--surface-muted);
+}
+
+@keyframes dialog-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes dialog-fade-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+@keyframes dialog-pop-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes dialog-pop-out {
+	from {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(8px) scale(0.98);
+	}
 }
 
 .modal-tabs {

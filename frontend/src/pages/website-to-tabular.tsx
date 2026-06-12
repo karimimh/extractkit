@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { useState } from "react";
+import { ExportActivity } from "../components/export-activity";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
 import { runExportJob } from "../lib/export-jobs";
@@ -154,6 +155,7 @@ export default function WebsiteToTabular({ format }: { format: ExportFormat }) {
             )}
           </div>
         </div>
+        <ExportActivity tool={format} />
       </div>
     </main>
   );
