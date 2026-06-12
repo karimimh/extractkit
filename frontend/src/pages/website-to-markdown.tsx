@@ -13,14 +13,14 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const MD_TOOL_SEO = {
-  title: "Web to Markdown Converter – DistillPage",
+  title: "Website to Markdown Converter – DistillPage",
   description:
     "Convert any website to clean Markdown using full-page export, AI Cleanup, or manual element removal.",
   canonical: "https://distillpage.com/web-to-markdown",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Web to Markdown Converter – DistillPage",
+    name: "Website to Markdown Converter – DistillPage",
     url: "https://distillpage.com/web-to-markdown",
     description:
       "Convert websites to clean Markdown with full-page export, AI Cleanup, or manual element removal.",
@@ -504,7 +504,7 @@ function WebsiteToMarkdown() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to Markdown</h1>
+          <h1>Website to Markdown Converter</h1>
           <h2 className="subtitle">Convert a web page into clean, portable Markdown</h2>
           <p className="subtitle">
             Export the full page, let AI remove navigation, ads, footers, and interruptions, or manually choose what should be excluded from the Markdown.

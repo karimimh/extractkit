@@ -1,6 +1,5 @@
 import { BookOpen, Code2, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import { ThemeSwitcher } from "./theme-switcher";
 import { AUTOMATION_TOOLS, CONVERSION_TOOLS } from "./tool-nav-items";
 
 type ToolSidebarProps = {
@@ -88,11 +87,6 @@ export function ToolSidebar({ isOpen = false, onClose }: ToolSidebarProps) {
           <Code2 size={18} aria-hidden="true" />
           <span>API Documentation</span>
         </NavLink>
-      </div>
-
-      <div className="tool-sidebar-footer">
-        <p className="tool-sidebar-label">Theme</p>
-        <ThemeSwitcher />
       </div>
     </aside>
   );

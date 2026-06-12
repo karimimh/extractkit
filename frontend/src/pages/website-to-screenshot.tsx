@@ -12,14 +12,14 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const SS_TOOL_SEO = {
-  title: "Web to Screenshot – DistillPage",
+  title: "Website Screenshot Generator – DistillPage",
   description:
     "Capture website screenshots using full-page export, AI Cleanup, or manual interaction at your chosen viewport.",
   canonical: "https://distillpage.com/web-to-screenshot",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Web to Screenshot – DistillPage",
+    name: "Website Screenshot Generator – DistillPage",
     url: "https://distillpage.com/web-to-screenshot",
     description:
       "Capture high-fidelity website screenshots with full-page export, AI Cleanup, or manual interaction.",
@@ -506,7 +506,7 @@ function WebsiteToScreenshot() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to an Image</h1>
+          <h1>Website Screenshot Generator</h1>
           <h2 className="subtitle">Generate pixel-perfect full-page screenshots from any URL</h2>
           <p className="subtitle">
             Capture the full page, let AI remove navigation, ads, footers, and interruptions, or manually interact with the page before creating the screenshot.

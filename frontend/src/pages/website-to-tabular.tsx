@@ -27,13 +27,13 @@ export default function WebsiteToTabular({ format }: { format: ExportFormat }) {
   const [isLoading, setIsLoading] = useState(false);
 
   usePageSeo({
-    title: `Webpage to ${formatName} – DistillPage`,
+    title: `Website to ${formatName} Converter – DistillPage`,
     description: `Extract webpage tables, listings, and custom structured data into ${formatName}.`,
     canonical: `https://distillpage.com/web-to-${isExcel ? "excel" : "csv"}`,
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      name: `Webpage to ${formatName} – DistillPage`,
+      name: `Website to ${formatName} Converter – DistillPage`,
       applicationCategory: "DeveloperApplication",
       operatingSystem: "Web",
     },
@@ -93,7 +93,7 @@ export default function WebsiteToTabular({ format }: { format: ExportFormat }) {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to {formatName}</h1>
+          <h1>Website to {formatName} Converter</h1>
           <h2 className="subtitle">Turn tables, products, search results, and listings into usable rows</h2>
           <p className="subtitle">
             {isExcel

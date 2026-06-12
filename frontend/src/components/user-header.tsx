@@ -7,6 +7,7 @@ import { listExportJobs } from "../lib/export-jobs";
 import { AuthModal } from "./auth-modal";
 import { ExportActivity } from "./export-activity";
 import { PaymentModal } from "./payment-modal";
+import { ThemeSwitcher } from "./theme-switcher";
 
 export function UserHeader() {
   const { user, token, logout, isLoading } = useAuth();
@@ -113,6 +114,10 @@ export function UserHeader() {
                 </button>
               </div>
             )}
+            <div className="popover-theme">
+              <span>Theme</span>
+              <ThemeSwitcher />
+            </div>
           </div>,
           document.body,
         )}

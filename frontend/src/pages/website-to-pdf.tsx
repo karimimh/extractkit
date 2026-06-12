@@ -12,14 +12,14 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const PDF_TOOL_SEO = {
-  title: "Web to PDF Converter – DistillPage",
+  title: "Website to PDF Converter – DistillPage",
   description:
     "Convert any website to a clean, high-fidelity PDF. Export the full page, use AI Cleanup, or manually remove unwanted elements.",
   canonical: "https://distillpage.com/web-to-pdf",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Web to PDF Converter – DistillPage",
+    name: "Website to PDF Converter – DistillPage",
     url: "https://distillpage.com/web-to-pdf",
     description:
       "Convert any website to a clean PDF with full-page export, AI Cleanup, or manual element removal.",
@@ -575,7 +575,7 @@ function WebsiteToPdf() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Export Any Webpage to PDF</h1>
+          <h1>Website to PDF Converter</h1>
           <h2 className="subtitle">Interact with the page, remove what you don't want, export exactly what you do</h2>
           <p className="subtitle">
             Export the full page, let AI remove navigation, ads, footers, and interruptions, or manually interact with the page and choose exactly what to remove.

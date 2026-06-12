@@ -12,14 +12,14 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const JSON_TOOL_SEO = {
-  title: "Webpage to JSON – DistillPage",
+  title: "Website to JSON Converter – DistillPage",
   description:
     "Extract standard webpage fields or use custom instructions and an optional JSON Schema to create structured JSON.",
   canonical: "https://distillpage.com/web-to-json",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Webpage to JSON – DistillPage",
+    name: "Website to JSON Converter – DistillPage",
     url: "https://distillpage.com/web-to-json",
     description:
       "Extract standard webpage fields or create custom structured JSON using instructions and an optional JSON Schema.",
@@ -545,7 +545,7 @@ function WebsiteToJson() {
     <main className="app-tool-page min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 pb-8 sm:py-8">
         <header className="card-header">
-          <h1>Extract Structured JSON from Any Webpage</h1>
+          <h1>Website to JSON Converter</h1>
           <h2 className="subtitle">Extract standard fields or describe the custom JSON your workflow needs</h2>
           <p className="subtitle">
             Use custom instructions and an optional JSON Schema to extract specific records and fields, or export the page with the built-in standard structure.
