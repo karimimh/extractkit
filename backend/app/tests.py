@@ -779,6 +779,68 @@ class WebpageMonitorViewTests(DjangoTestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_validates_noise_control_settings(self):
+        invalid_percent = self.client.post(
+            "/api/monitors/",
+            {
+                "url": "https://example.com/pricing",
+                "mode": "text",
+                "frequency": "daily",
+                "next_run_at": (timezone.now() + timedelta(days=1)).isoformat(),
+                "minimum_change_percent": 101,
+            },
+            format="json",
+        )
+        invalid_pattern = self.client.post(
+            "/api/monitors/",
+            {
+                "url": "https://example.com/pricing",
+                "mode": "text",
+                "frequency": "daily",
+                "next_run_at": (timezone.now() + timedelta(days=1)).isoformat(),
+                "ignore_patterns": ["["],
+            },
+            format="json",
+        )
+
+        self.assertEqual(invalid_percent.status_code, 400)
+        self.assertEqual(invalid_pattern.status_code, 400)
+
+    def test_updating_comparison_rules_resets_baseline_on_next_check(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+
+        response = self.client.patch(
+            f"/api/monitors/{monitor.public_id}/",
+            {"ignore_numbers": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        monitor.refresh_from_db()
+        self.assertTrue(monitor.baseline_reset_pending)
+
+    def test_cannot_update_comparison_rules_during_check(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+            is_running=True,
+        )
+
+        response = self.client.patch(
+            f"/api/monitors/{monitor.public_id}/",
+            {"ignore_numbers": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+
     @patch("app.views_monitoring.enqueue_monitor", return_value=False)
     def test_check_now_reports_when_monitor_is_already_running(self, enqueue_monitor):
         monitor = WebpageMonitor.objects.create(
@@ -794,6 +856,68 @@ class WebpageMonitorViewTests(DjangoTestCase):
         self.assertEqual(response.status_code, 202)
         self.assertEqual(response.json()["detail"], "Monitor check is already running.")
         enqueue_monitor.assert_called_once_with(monitor.id)
+
+    def test_lists_complete_snapshot_and_change_history(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        before = MonitorSnapshot.objects.create(monitor=monitor, title="Before", content_hash="before", data={"price": 10})
+        after = MonitorSnapshot.objects.create(monitor=monitor, title="After", content_hash="after", data={"price": 12})
+        for index in range(51):
+            MonitorChange.objects.create(
+                monitor=monitor,
+                before=before,
+                after=after,
+                summary=f"Change {index}",
+                changed_percent=index,
+            )
+
+        snapshot_response = self.client.get(f"/api/monitors/{monitor.public_id}/snapshots/")
+        change_response = self.client.get(f"/api/monitors/{monitor.public_id}/changes/")
+
+        self.assertEqual(snapshot_response.status_code, 200)
+        self.assertEqual(len(snapshot_response.json()), 2)
+        self.assertEqual(snapshot_response.json()[0]["title"], "After")
+        self.assertEqual(change_response.status_code, 200)
+        self.assertEqual(len(change_response.json()), 51)
+
+    def test_monitor_history_is_private(self):
+        from django.contrib.auth.models import User
+
+        other_user = User.objects.create_user(username="other-monitor@example.com")
+        monitor = WebpageMonitor.objects.create(
+            user=other_user,
+            url="https://example.com/private",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+
+        self.assertEqual(self.client.get(f"/api/monitors/{monitor.public_id}/snapshots/").status_code, 404)
+        self.assertEqual(self.client.get(f"/api/monitors/{monitor.public_id}/changes/").status_code, 404)
+
+    def test_restores_historical_snapshot_as_latest_baseline(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        original = MonitorSnapshot.objects.create(
+            monitor=monitor,
+            title="Original",
+            content_hash="original",
+            data={"price": 10},
+        )
+        MonitorSnapshot.objects.create(monitor=monitor, title="Current", content_hash="current", data={"price": 12})
+
+        response = self.client.post(f"/api/monitors/{monitor.public_id}/snapshots/{original.id}/restore/")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(monitor.snapshots.first().content_hash, "original")
+        self.assertEqual(monitor.snapshots.first().data, {"price": 10})
 
 
 class WebpageMonitorRunnerTests(TransactionTestCase):
@@ -843,13 +967,95 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
         self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
         send_mail.assert_called_once()
 
+        self.monitor.refresh_from_db()
+        self.assertIsNotNone(self.monitor.last_run_at)
+        self.assertFalse(self.monitor.is_running)
+
+    @patch("app.monitoring.extract_main_content")
+    def test_ignored_text_noise_does_not_create_change(self, extract):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        self.monitor.ignore_patterns = [r"Updated \d{2}:\d{2}"]
+        self.monitor.ignore_whitespace = True
+        self.monitor.ignore_case = True
+        self.monitor.ignore_numbers = True
+        self.monitor.save(update_fields=["ignore_patterns", "ignore_whitespace", "ignore_case", "ignore_numbers"])
+        extract.side_effect = [
+            ExtractedContent("Article", "<main>PRICE: $10 Updated 12:30</main>"),
+            ExtractedContent("Article", "<main> price:   $12 Updated 14:45 </main>"),
+        ]
+
+        run_monitor(self.monitor.id)
+        run_monitor(self.monitor.id)
+
+        self.assertEqual(MonitorSnapshot.objects.filter(monitor=self.monitor).count(), 2)
+        self.assertEqual(MonitorChange.objects.filter(monitor=self.monitor).count(), 0)
+
+    @patch("app.monitoring.extract_main_content")
+    def test_ignore_selector_removes_noisy_element(self, extract):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        self.monitor.ignore_selectors = [".timestamp"]
+        self.monitor.save(update_fields=["ignore_selectors"])
+        extract.side_effect = [
+            ExtractedContent("Article", "<main>Stable content <span class='timestamp'>12:30</span></main>"),
+            ExtractedContent("Article", "<main>Stable content <span class='timestamp'>14:45</span></main>"),
+        ]
+
+        run_monitor(self.monitor.id)
+        run_monitor(self.monitor.id)
+
+        self.assertEqual(MonitorChange.objects.filter(monitor=self.monitor).count(), 0)
+
+    @patch("app.monitoring.send_mail")
+    @patch("app.monitoring.requests.post")
+    @patch("app.monitoring.extract_main_content")
+    def test_change_below_threshold_keeps_snapshot_without_alerting(self, extract, post, send_mail):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        self.monitor.minimum_change_percent = 100
+        self.monitor.save(update_fields=["minimum_change_percent"])
+        extract.side_effect = [
+            ExtractedContent("Article", "<main>This is mostly stable content with price $10.</main>"),
+            ExtractedContent("Article", "<main>This is mostly stable content with price $11.</main>"),
+        ]
+
+        run_monitor(self.monitor.id)
+        run_monitor(self.monitor.id)
+
+        self.assertEqual(MonitorSnapshot.objects.filter(monitor=self.monitor).count(), 2)
+        self.assertEqual(MonitorChange.objects.filter(monitor=self.monitor).count(), 0)
+        post.assert_not_called()
+        send_mail.assert_not_called()
+
+    @patch("app.monitoring.extract_main_content")
+    def test_pending_baseline_reset_skips_one_comparison(self, extract):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        MonitorSnapshot.objects.create(monitor=self.monitor, content_hash="old-rules", data={"text": "OLD"})
+        self.monitor.baseline_reset_pending = True
+        self.monitor.save(update_fields=["baseline_reset_pending"])
+        extract.return_value = ExtractedContent("Article", "<main>Completely new normalized baseline</main>")
+
+        run_monitor(self.monitor.id)
+        self.monitor.refresh_from_db()
+
+        self.assertEqual(MonitorChange.objects.filter(monitor=self.monitor).count(), 0)
+        self.assertFalse(self.monitor.baseline_reset_pending)
+
     @patch("app.monitoring.enqueue_monitor")
     def test_due_monitor_advances_and_queues(self, enqueue_monitor):
         from .monitoring import run_due_monitors
 
+        self.assertIsNone(self.monitor.last_run_at)
         self.assertEqual(run_due_monitors(), 1)
         self.monitor.refresh_from_db()
         self.assertGreater(self.monitor.next_run_at, timezone.now())
+        self.assertIsNone(self.monitor.last_run_at)
         enqueue_monitor.assert_called_once_with(self.monitor.id)
 
     @patch("app.monitoring.enqueue_monitor")
@@ -857,14 +1063,15 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
         from .monitoring import run_due_monitors
 
         due_at = timezone.now() - timedelta(seconds=5)
+        queued_at = due_at + timedelta(seconds=5)
         self.monitor.frequency = WebpageMonitor.MINUTELY
         self.monitor.next_run_at = due_at
         self.monitor.save(update_fields=["frequency", "next_run_at"])
 
-        self.assertEqual(run_due_monitors(), 1)
+        self.assertEqual(run_due_monitors(now=queued_at), 1)
         self.monitor.refresh_from_db()
 
-        self.assertEqual(self.monitor.next_run_at, due_at + timedelta(minutes=1))
+        self.assertEqual(self.monitor.next_run_at, queued_at + timedelta(minutes=1))
         enqueue_monitor.assert_called_once_with(self.monitor.id)
 
     @patch("app.monitoring.executor.submit")

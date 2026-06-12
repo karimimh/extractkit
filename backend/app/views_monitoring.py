@@ -1,4 +1,5 @@
 import json
+import re
 import secrets
 
 from django.core.exceptions import ValidationError
@@ -11,8 +12,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import MonitorChange, WebpageMonitor
-from .monitoring import enqueue_monitor, serialize_change
+from .models import MonitorChange, MonitorSnapshot, WebpageMonitor
+from .monitoring import enqueue_monitor, serialize_change, serialize_snapshot
+
+COMPARISON_RULE_FIELDS = {
+    "ignore_selectors",
+    "ignore_patterns",
+    "ignore_whitespace",
+    "ignore_case",
+    "ignore_numbers",
+}
 
 
 def serialize_monitor(monitor, reveal_secret=False):
@@ -24,6 +33,12 @@ def serialize_monitor(monitor, reveal_secret=False):
         "mode": monitor.mode,
         "selectors": monitor.selectors,
         "fields": monitor.fields,
+        "ignore_selectors": monitor.ignore_selectors,
+        "ignore_patterns": monitor.ignore_patterns,
+        "ignore_whitespace": monitor.ignore_whitespace,
+        "ignore_case": monitor.ignore_case,
+        "ignore_numbers": monitor.ignore_numbers,
+        "minimum_change_percent": monitor.minimum_change_percent,
         "ai_cleanup": monitor.ai_cleanup,
         "frequency": monitor.frequency,
         "webhook_url": monitor.webhook_url,
@@ -70,15 +85,29 @@ def validated_monitor_data(data, partial=False):
         if timezone.is_naive(value):
             value = timezone.make_aware(value)
         result["next_run_at"] = value
-    for key in ("selectors", "fields"):
+    for key in ("selectors", "fields", "ignore_selectors", "ignore_patterns"):
         if key in data:
             values = data[key]
             if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
                 raise ValueError(f"{key} must be a list of strings.")
             result[key] = [value.strip() for value in values if value.strip()][:50]
+    if "ignore_patterns" in result:
+        try:
+            for pattern in result["ignore_patterns"]:
+                re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(f"Invalid ignore pattern: {exc}.") from exc
+    if "minimum_change_percent" in data:
+        try:
+            minimum_change_percent = float(data["minimum_change_percent"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Minimum change percentage must be a number.") from exc
+        if not 0 <= minimum_change_percent <= 100:
+            raise ValueError("Minimum change percentage must be between 0 and 100.")
+        result["minimum_change_percent"] = minimum_change_percent
     if "name" in data:
         result["name"] = str(data["name"])[:120]
-    for key in ("ai_cleanup", "notify_email", "is_active"):
+    for key in ("ai_cleanup", "notify_email", "is_active", "ignore_whitespace", "ignore_case", "ignore_numbers"):
         if key in data:
             result[key] = bool(data[key])
     if "webhook_url" in data:
@@ -141,6 +170,11 @@ class WebpageMonitorDetailView(APIView):
             values = validated_monitor_data(request.data, partial=True)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        if monitor.is_running and COMPARISON_RULE_FIELDS.intersection(values):
+            return Response(
+                {"detail": "Wait for the current check to finish before changing comparison rules."},
+                status=status.HTTP_409_CONFLICT,
+            )
         effective_mode = values.get("mode", monitor.mode)
         effective_selectors = values.get("selectors", monitor.selectors)
         if effective_mode == WebpageMonitor.SELECTED and not effective_selectors:
@@ -154,6 +188,8 @@ class WebpageMonitorDetailView(APIView):
             values["webhook_secret"] = ""
         for key, value in values.items():
             setattr(monitor, key, value)
+        if COMPARISON_RULE_FIELDS.intersection(values):
+            monitor.baseline_reset_pending = True
         monitor.save()
         return Response(serialize_monitor(monitor, reveal_secret="webhook_secret" in values))
 
@@ -184,7 +220,42 @@ class MonitorChangeListView(APIView):
         monitor = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
         if not monitor:
             return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
-        return Response([serialize_change(change) for change in monitor.changes.select_related("before", "after")[:50]])
+        return Response([serialize_change(change) for change in monitor.changes.select_related("before", "after")])
+
+
+class MonitorSnapshotListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, public_id):
+        monitor = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
+        if not monitor:
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response([serialize_snapshot(snapshot) for snapshot in monitor.snapshots.all()])
+
+
+class MonitorSnapshotRestoreView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, public_id, snapshot_id):
+        monitor = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
+        if not monitor:
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+        if monitor.is_running:
+            return Response(
+                {"detail": "Wait for the current check to finish before restoring a baseline."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        snapshot = MonitorSnapshot.objects.filter(pk=snapshot_id, monitor=monitor).first()
+        if not snapshot:
+            return Response({"detail": "Snapshot not found."}, status=status.HTTP_404_NOT_FOUND)
+        restored = MonitorSnapshot.objects.create(
+            monitor=monitor,
+            title=snapshot.title,
+            content_hash=snapshot.content_hash,
+            data=snapshot.data,
+            image_path=snapshot.image_path,
+        )
+        return Response(serialize_snapshot(restored), status=status.HTTP_201_CREATED)
 
 
 class MonitorChangeDownloadView(APIView):

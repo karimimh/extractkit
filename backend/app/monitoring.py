@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
@@ -32,6 +33,36 @@ def _normalized_text(soup):
     return "\n".join(line.strip() for line in soup.get_text("\n").splitlines() if line.strip())
 
 
+def _remove_ignored_selectors(soup, selectors):
+    for selector in selectors:
+        for element in soup.select(selector):
+            element.decompose()
+
+
+def _normalize_string(value, monitor):
+    for pattern in monitor.ignore_patterns:
+        value = re.sub(pattern, "", value)
+    if monitor.ignore_numbers:
+        value = re.sub(r"[-+]?\d+(?:[.,]\d+)?", "<number>", value)
+    if monitor.ignore_whitespace:
+        value = " ".join(value.split())
+    if monitor.ignore_case:
+        value = value.casefold()
+    return value
+
+
+def _normalize_data(value, monitor):
+    if isinstance(value, dict):
+        return {key: _normalize_data(item, monitor) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_data(item, monitor) for item in value]
+    if isinstance(value, str):
+        return _normalize_string(value, monitor)
+    if monitor.ignore_numbers and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return "<number>"
+    return value
+
+
 def _field_value(data, path):
     value = data
     for part in path.split("."):
@@ -48,7 +79,7 @@ def _capture(monitor):
     if monitor.mode == WebpageMonitor.VISUAL:
         generated = generate_screenshot_from_url(
             monitor.url,
-            selectors=monitor.selectors,
+            selectors=[*monitor.selectors, *monitor.ignore_selectors],
             ai_cleanup=monitor.ai_cleanup,
         )
         image_path = generated.relative_path
@@ -64,6 +95,7 @@ def _capture(monitor):
             extracted.html,
             extracted.title,
             source_url=monitor.url,
+            selectors=monitor.ignore_selectors,
             ai_cleanup=monitor.ai_cleanup,
         )
         data = generated.data
@@ -73,6 +105,7 @@ def _capture(monitor):
         soup = BeautifulSoup(extracted.html, "html.parser")
         if monitor.ai_cleanup:
             apply_ai_cleanup_to_soup(soup)
+        _remove_ignored_selectors(soup, monitor.ignore_selectors)
         if monitor.mode == WebpageMonitor.SELECTED:
             data = {
                 selector: [_normalized_text(element) for element in soup.select(selector)]
@@ -81,6 +114,7 @@ def _capture(monitor):
         else:
             data = {"text": _normalized_text(soup)}
 
+    data = _normalize_data(data, monitor)
     serialized = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return extracted.title, data, "", hashlib.sha256(serialized.encode()).hexdigest()
 
@@ -129,6 +163,16 @@ def serialize_change(change):
     }
 
 
+def serialize_snapshot(snapshot):
+    return {
+        "id": snapshot.id,
+        "title": snapshot.title,
+        "data": snapshot.data,
+        "image_url": f"{settings.MEDIA_URL}{snapshot.image_path}" if snapshot.image_path else None,
+        "created_at": snapshot.created_at,
+    }
+
+
 def _notify(change):
     monitor = change.monitor
     message = f"DistillPage detected a change in {monitor.name or monitor.url}: {change.summary}"
@@ -172,10 +216,9 @@ def run_monitor(monitor_id):
     try:
         monitor = WebpageMonitor.objects.select_related("user").get(pk=monitor_id)
         monitor.is_running = True
-        monitor.last_run_at = timezone.now()
-        monitor.save(update_fields=["is_running", "last_run_at", "updated_at"])
+        monitor.save(update_fields=["is_running", "updated_at"])
         title, data, image_path, content_hash = _capture(monitor)
-        previous = monitor.snapshots.first()
+        previous = None if monitor.baseline_reset_pending else monitor.snapshots.first()
         snapshot = MonitorSnapshot.objects.create(
             monitor=monitor,
             title=title,
@@ -184,28 +227,35 @@ def run_monitor(monitor_id):
             content_hash=content_hash,
         )
         monitor.last_error = ""
+        monitor.baseline_reset_pending = False
         if previous and previous.content_hash != snapshot.content_hash:
             if monitor.mode == WebpageMonitor.VISUAL:
                 summary, diff, percent, diff_image = _visual_comparison(previous, snapshot)
             else:
                 summary, diff, percent, diff_image = _text_comparison(previous, snapshot)
-            change = MonitorChange.objects.create(
-                monitor=monitor,
-                before=previous,
-                after=snapshot,
-                summary=summary,
-                diff=diff,
-                changed_percent=percent,
-                diff_image_path=diff_image,
-            )
-            monitor.last_changed_at = timezone.now()
-            _notify(change)
-        monitor.save(update_fields=["last_error", "last_changed_at", "updated_at"])
+            if percent >= monitor.minimum_change_percent:
+                change = MonitorChange.objects.create(
+                    monitor=monitor,
+                    before=previous,
+                    after=snapshot,
+                    summary=summary,
+                    diff=diff,
+                    changed_percent=percent,
+                    diff_image_path=diff_image,
+                )
+                monitor.last_changed_at = timezone.now()
+                _notify(change)
+            elif diff_image:
+                (Path(settings.MEDIA_ROOT) / diff_image).unlink(missing_ok=True)
+        monitor.save(update_fields=["last_error", "last_changed_at", "baseline_reset_pending", "updated_at"])
     except Exception as exc:
         logger.exception("Webpage monitor %s failed", monitor_id)
         WebpageMonitor.objects.filter(pk=monitor_id).update(last_error=str(exc)[:2000])
     finally:
-        WebpageMonitor.objects.filter(pk=monitor_id).update(is_running=False)
+        WebpageMonitor.objects.filter(pk=monitor_id).update(
+            is_running=False,
+            last_run_at=timezone.now(),
+        )
         close_old_connections()
 
 
@@ -229,12 +279,8 @@ def run_due_monitors(now=None):
             WebpageMonitor.objects.select_for_update().filter(is_active=True, next_run_at__lte=now)
         )
         for monitor in monitors:
-            monitor.last_run_at = now
-            next_run_at = next_run_after(monitor.next_run_at, monitor.frequency)
-            while next_run_at <= now:
-                next_run_at = next_run_after(next_run_at, monitor.frequency)
-            monitor.next_run_at = next_run_at
-            monitor.save(update_fields=["last_run_at", "next_run_at", "updated_at"])
+            monitor.next_run_at = next_run_after(now, monitor.frequency)
+            monitor.save(update_fields=["next_run_at", "updated_at"])
             monitor_ids.append(monitor.id)
     for monitor_id in monitor_ids:
         enqueue_monitor(monitor_id)

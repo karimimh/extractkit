@@ -28,7 +28,9 @@ The main weakness is that users cannot easily inspect snapshots, understand chan
 
 ## 1. Snapshot And Change History
 
-The backend stores snapshots and up to 50 changes, but the UI only displays the latest change.
+The backend stores snapshots and detected changes for each monitor.
+
+**Implemented:** The monitor details dialog now shows the latest snapshot, complete snapshot timeline and change history, text/structured before-and-after data, visual before/after/diff images, change percentages and timestamps, JSON/image downloads, and snapshot baseline restoration.
 
 Add a monitor details dialog containing:
 
@@ -47,6 +49,8 @@ This should be the first major improvement.
 ## 2. Reduce Unwanted Alerts
 
 Currently, any content-hash difference creates a change event. This can create alerts for timestamps, ads, rotating banners, and minor visual changes.
+
+**Implemented:** Monitors support a minimum changed-percentage threshold, ignored CSS selectors, ignored text regular expressions, and options to ignore whitespace, capitalization, or number changes. Checks below the threshold and normalized-away noise remain available as snapshots but do not create change events or notifications.
 
 Add:
 

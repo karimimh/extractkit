@@ -558,13 +558,40 @@ h2.subtitle {
 }
 
 .monitor-form-grid input,
-.monitor-form-grid select {
+.monitor-form-grid select,
+.monitor-form-grid textarea {
 	width: 100%;
 	padding: 0.6rem;
 	border: 1px solid var(--border);
 	border-radius: 9px;
 	background: var(--page-bg);
 	color: var(--text-main);
+}
+
+.monitor-form-grid textarea {
+	resize: vertical;
+	font-family: inherit;
+}
+
+.monitor-noise-controls {
+	display: grid;
+	gap: 0.65rem;
+	margin: 0.2rem 0;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 0.75rem;
+}
+
+.monitor-noise-controls legend {
+	padding: 0 0.3rem;
+	color: var(--text-main);
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+.monitor-noise-checks {
+	display: grid;
+	gap: 0.45rem;
 }
 
 .monitor-form-grid .monitor-check {
@@ -684,6 +711,284 @@ h2.subtitle {
 	cursor: wait;
 }
 
+.monitor-details-dialog {
+	width: min(1120px, 96vw);
+}
+
+.monitor-dialog-header {
+	padding-right: 2rem;
+}
+
+.monitor-dialog-header h2 {
+	margin: 0.15rem 0 0.3rem;
+	font-family: "Syne", sans-serif;
+}
+
+.monitor-dialog-header a {
+	color: var(--muted);
+	font-size: 0.8rem;
+	overflow-wrap: anywhere;
+}
+
+.monitor-dialog-rules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	margin-top: 0.65rem;
+}
+
+.monitor-dialog-rules span {
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.25rem 0.5rem;
+	background: var(--surface-muted);
+	color: var(--muted);
+	font-size: 0.68rem;
+}
+
+.monitor-rules-editor {
+	margin-top: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 0.65rem;
+	background: var(--page-bg);
+}
+
+.monitor-rules-editor summary {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+.monitor-rules-editor-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.6rem;
+	margin: 0.75rem 0;
+}
+
+.monitor-rules-editor-grid label {
+	display: grid;
+	gap: 0.3rem;
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.monitor-rules-editor-grid input,
+.monitor-rules-editor-grid textarea {
+	width: 100%;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 0.5rem;
+	background: var(--card);
+	color: var(--text-main);
+	font-family: inherit;
+}
+
+.monitor-rules-editor-grid .monitor-check {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.monitor-rules-editor-grid .monitor-check input {
+	width: auto;
+}
+
+.monitor-rules-patterns {
+	grid-column: 1 / -1;
+}
+
+.monitor-dialog-tabs {
+	display: flex;
+	gap: 0.5rem;
+	margin: 1.25rem 0 1rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.monitor-dialog-tabs button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	padding: 0.6rem 0.75rem;
+	background: transparent;
+	color: var(--muted);
+	font-weight: 700;
+}
+
+.monitor-dialog-tabs button.active {
+	border-bottom-color: var(--text-main);
+	color: var(--text-main);
+}
+
+.monitor-dialog-tabs span {
+	border-radius: 999px;
+	padding: 0.1rem 0.4rem;
+	background: var(--surface-muted);
+	font-size: 0.68rem;
+}
+
+.monitor-dialog-state {
+	color: var(--muted);
+}
+
+.monitor-history-layout {
+	display: grid;
+	grid-template-columns: minmax(180px, 0.32fr) minmax(0, 1fr);
+	gap: 1rem;
+	min-height: 420px;
+}
+
+.monitor-history-timeline {
+	display: grid;
+	align-content: start;
+	gap: 0.45rem;
+	max-height: 64vh;
+	overflow-y: auto;
+	padding-right: 0.35rem;
+}
+
+.monitor-history-timeline button {
+	display: grid;
+	gap: 0.25rem;
+	width: 100%;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 0.65rem;
+	background: var(--page-bg);
+	color: var(--text-main);
+	text-align: left;
+}
+
+.monitor-history-timeline button.active {
+	border-color: var(--text-main);
+	background: var(--surface-muted);
+}
+
+.monitor-history-timeline span,
+.monitor-history-timeline p,
+.monitor-history-heading span {
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.monitor-history-content {
+	min-width: 0;
+	border: 1px solid var(--border);
+	border-radius: 14px;
+	padding: 1rem;
+	background: var(--page-bg);
+}
+
+.monitor-history-heading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.9rem;
+}
+
+.monitor-history-heading h3 {
+	margin: 0.15rem 0;
+	font-size: 1rem;
+}
+
+.monitor-history-heading button,
+.monitor-history-heading a {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 0.35rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.45rem 0.65rem;
+	background: var(--card);
+	color: var(--text-main);
+	text-decoration: none;
+}
+
+.monitor-history-actions {
+	display: flex;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.monitor-history-actions button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.monitor-change-percent {
+	border-radius: 999px;
+	padding: 0.4rem 0.6rem;
+	background: var(--surface-muted);
+}
+
+.monitor-data-preview,
+.monitor-diff-preview pre {
+	max-height: 52vh;
+	margin: 0;
+	overflow: auto;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 0.8rem;
+	background: var(--card);
+	color: var(--text-main);
+	font-size: 0.72rem;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.monitor-data-comparison,
+.monitor-image-comparison {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+.monitor-data-comparison h4,
+.monitor-diff-preview h4 {
+	margin: 0 0 0.4rem;
+	font-size: 0.8rem;
+}
+
+.monitor-diff-preview {
+	margin-top: 0.9rem;
+}
+
+.monitor-snapshot-image,
+.monitor-image-comparison img {
+	display: block;
+	width: 100%;
+	max-height: 58vh;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	object-fit: contain;
+	background: white;
+}
+
+.monitor-image-comparison figure {
+	min-width: 0;
+	margin: 0;
+}
+
+.monitor-image-comparison figcaption {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	margin-bottom: 0.4rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
 .monitor-empty-card {
 	color: var(--muted);
 }
@@ -703,6 +1008,17 @@ h2.subtitle {
 
 	.monitor-details {
 		grid-template-columns: 1fr;
+	}
+
+	.monitor-history-layout,
+	.monitor-data-comparison,
+	.monitor-image-comparison,
+	.monitor-rules-editor-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.monitor-history-timeline {
+		max-height: 180px;
 	}
 }
 

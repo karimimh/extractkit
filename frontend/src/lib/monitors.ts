@@ -5,9 +5,19 @@ export type MonitorChange = {
   summary: string;
   changed_percent: number;
   diff: string;
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
   before_image_url: string | null;
   after_image_url: string | null;
   diff_image_url: string | null;
+  created_at: string;
+};
+
+export type MonitorSnapshot = {
+  id: number;
+  title: string;
+  data: Record<string, unknown>;
+  image_url: string | null;
   created_at: string;
 };
 
@@ -18,6 +28,12 @@ export type WebpageMonitor = {
   mode: "text" | "selected" | "structured" | "visual";
   selectors: string[];
   fields: string[];
+  ignore_selectors: string[];
+  ignore_patterns: string[];
+  ignore_whitespace: boolean;
+  ignore_case: boolean;
+  ignore_numbers: boolean;
+  minimum_change_percent: number;
   ai_cleanup: boolean;
   frequency: "minutely" | "hourly" | "daily" | "weekly" | "monthly";
   webhook_url: string;
@@ -60,7 +76,8 @@ export async function updateMonitor(id: string, values: Partial<WebpageMonitor>,
     headers: headers(token, true),
     body: JSON.stringify(values),
   });
-  if (!response.ok) throw new Error("Could not update monitor.");
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not update monitor.");
+  return (await response.json()) as WebpageMonitor;
 }
 
 export async function deleteMonitor(id: string, token: string) {
@@ -77,6 +94,32 @@ export async function runMonitor(id: string, token: string) {
     headers: headers(token),
   });
   if (!response.ok) throw new Error("Could not run monitor.");
+}
+
+export async function listMonitorChanges(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/changes/`, { headers: headers(token) });
+  if (!response.ok) throw new Error("Could not load monitor changes.");
+  return (await response.json()) as MonitorChange[];
+}
+
+export async function listMonitorSnapshots(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/snapshots/`, { headers: headers(token) });
+  if (!response.ok) throw new Error("Could not load monitor snapshots.");
+  return (await response.json()) as MonitorSnapshot[];
+}
+
+export async function restoreMonitorSnapshot(monitorId: string, snapshotId: number, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${monitorId}/snapshots/${snapshotId}/restore/`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not restore snapshot.");
+  return (await response.json()) as MonitorSnapshot;
+}
+
+export function monitorAssetUrl(path: string | null) {
+  if (!path || path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 export function changeDownloadUrl(change: MonitorChange) {

@@ -1,6 +1,7 @@
-import { Bell, Download, ListChecks, Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Bell, Download, History, ListChecks, Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AuthModal } from "../components/auth-modal";
+import { MonitorDetailsDialog } from "../components/monitor-details-dialog";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
 import {
@@ -29,10 +30,17 @@ export default function ChangeMonitors() {
   const [frequency, setFrequency] = useState<WebpageMonitor["frequency"]>("daily");
   const [selectors, setSelectors] = useState("");
   const [fields, setFields] = useState("");
+  const [ignoreSelectors, setIgnoreSelectors] = useState("");
+  const [ignorePatterns, setIgnorePatterns] = useState("");
+  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
+  const [ignoreCase, setIgnoreCase] = useState(false);
+  const [ignoreNumbers, setIgnoreNumbers] = useState(false);
+  const [minimumChangePercent, setMinimumChangePercent] = useState(0);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [aiCleanup, setAiCleanup] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [detailsMonitor, setDetailsMonitor] = useState<WebpageMonitor | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return setMonitors([]);
@@ -69,6 +77,12 @@ export default function ChangeMonitors() {
         next_run_at: firstRun,
         selectors: selectors.split(",").map((value) => value.trim()).filter(Boolean),
         fields: fields.split(",").map((value) => value.trim()).filter(Boolean),
+        ignore_selectors: ignoreSelectors.split(",").map((value) => value.trim()).filter(Boolean),
+        ignore_patterns: ignorePatterns.split("\n").map((value) => value.trim()).filter(Boolean),
+        ignore_whitespace: ignoreWhitespace,
+        ignore_case: ignoreCase,
+        ignore_numbers: ignoreNumbers,
+        minimum_change_percent: minimumChangePercent,
         webhook_url: webhookUrl,
         notify_email: notifyEmail,
         ai_cleanup: aiCleanup,
@@ -137,6 +151,23 @@ export default function ChangeMonitors() {
               </label>
               {(mode === "selected" || mode === "visual") && <label>CSS selectors, comma separated<input value={selectors} onChange={(event) => setSelectors(event.target.value)} placeholder=".price, #availability" /></label>}
               {mode === "structured" && <label>JSON fields, comma separated<input value={fields} onChange={(event) => setFields(event.target.value)} placeholder="title, metadata.description, tables.0.rows" /></label>}
+              <fieldset className="monitor-noise-controls">
+                <legend>Reduce unwanted alerts</legend>
+                <label>Minimum change percentage
+                  <input type="number" min={0} max={100} step={0.1} value={minimumChangePercent} onChange={(event) => setMinimumChangePercent(Number(event.target.value))} />
+                </label>
+                <label>Ignore CSS selectors, comma separated
+                  <input value={ignoreSelectors} onChange={(event) => setIgnoreSelectors(event.target.value)} placeholder=".timestamp, .rotating-banner" />
+                </label>
+                <label>Ignore text patterns, one regular expression per line
+                  <textarea rows={3} value={ignorePatterns} onChange={(event) => setIgnorePatterns(event.target.value)} placeholder={"Updated \\d{2}:\\d{2}\nAdvertisement"} />
+                </label>
+                <div className="monitor-noise-checks">
+                  <label className="monitor-check"><input type="checkbox" checked={ignoreWhitespace} onChange={(event) => setIgnoreWhitespace(event.target.checked)} /> Ignore whitespace changes</label>
+                  <label className="monitor-check"><input type="checkbox" checked={ignoreCase} onChange={(event) => setIgnoreCase(event.target.checked)} /> Ignore capitalization changes</label>
+                  <label className="monitor-check"><input type="checkbox" checked={ignoreNumbers} onChange={(event) => setIgnoreNumbers(event.target.checked)} /> Ignore number changes</label>
+                </div>
+              </fieldset>
               <label>Webhook, Slack, or Discord URL<input type="url" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} /></label>
               <label className="monitor-check"><input type="checkbox" checked={aiCleanup} onChange={(event) => setAiCleanup(event.target.checked)} /> AI cleanup</label>
               <label className="monitor-check"><input type="checkbox" checked={notifyEmail} onChange={(event) => setNotifyEmail(event.target.checked)} /> Email me when changed</label>
@@ -165,15 +196,19 @@ export default function ChangeMonitors() {
                   <div><dt>Monitoring</dt><dd>{modeLabel(monitor)}{monitor.ai_cleanup ? " + AI cleanup" : ""}</dd></div>
                   <div><dt>Frequency</dt><dd>{frequencyLabel(monitor)}</dd></div>
                   <div><dt>Next check</dt><dd>{monitor.is_active ? new Date(monitor.next_run_at).toLocaleString() : "Paused"}</dd></div>
-                  <div><dt>Last check</dt><dd>{monitor.last_run_at ? new Date(monitor.last_run_at).toLocaleString() : "Not completed yet"}</dd></div>
+                  <div><dt>Last completed check</dt><dd>{monitor.last_run_at ? new Date(monitor.last_run_at).toLocaleString() : "Not completed yet"}</dd></div>
                   <div><dt>Last change</dt><dd>{monitor.last_changed_at ? new Date(monitor.last_changed_at).toLocaleString() : "None detected"}</dd></div>
                   <div><dt>Notifications</dt><dd>{[monitor.notify_email && "Email", monitor.webhook_configured && "Webhook"].filter(Boolean).join(" + ") || "None"}</dd></div>
+                  <div><dt>Alert threshold</dt><dd>{monitor.minimum_change_percent ? `${monitor.minimum_change_percent}% or more` : "Any detected change"}</dd></div>
                 </dl>
                 {!!monitor.selectors.length && <small>Selectors: {monitor.selectors.join(", ")}</small>}
                 {!!monitor.fields.length && <small>Fields: {monitor.fields.join(", ")}</small>}
+                {!!monitor.ignore_selectors.length && <small>Ignored selectors: {monitor.ignore_selectors.join(", ")}</small>}
+                {(monitor.ignore_whitespace || monitor.ignore_case || monitor.ignore_numbers || !!monitor.ignore_patterns.length) && <small>Noise rules enabled</small>}
                 {monitor.last_error && <p className="monitor-error"><strong>Last check failed:</strong> {monitor.last_error}</p>}
                 {monitor.latest_change && <p className="monitor-change-summary">{monitor.latest_change.summary}</p>}
                 <div className="export-history-actions">
+                  <button type="button" onClick={() => setDetailsMonitor(monitor)}><History size={14} /> Details &amp; history</button>
                   <button type="button" disabled={monitor.is_running} onClick={() => void checkNow(monitor)}>
                     <RefreshCw className={monitor.is_running ? "monitor-spinning-icon" : ""} size={14} /> {monitor.is_running ? "Checking..." : monitor.last_error ? "Retry check" : "Check now"}
                   </button>
@@ -189,6 +224,16 @@ export default function ChangeMonitors() {
           </section>
           </div>
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+        <MonitorDetailsDialog
+          key={detailsMonitor?.id ?? "closed-monitor-details"}
+          monitor={detailsMonitor}
+          token={token}
+          onClose={() => setDetailsMonitor(null)}
+          onMonitorUpdated={(updated) => {
+            setDetailsMonitor(updated);
+            setMonitors((current) => current.map((monitor) => monitor.id === updated.id ? updated : monitor));
+          }}
+        />
       </div>
     </main>
   );
