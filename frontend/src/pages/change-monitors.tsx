@@ -1,4 +1,4 @@
-import { Bell, Download, Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Bell, Download, ListChecks, Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AuthModal } from "../components/auth-modal";
 import { useAuth } from "../context/auth-context";
@@ -32,6 +32,7 @@ export default function ChangeMonitors() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [aiCleanup, setAiCleanup] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return setMonitors([]);
@@ -56,8 +57,9 @@ export default function ChangeMonitors() {
       setShowAuthModal(true);
       return;
     }
-    const delay = { hourly: 1, daily: 24, weekly: 24 * 7, monthly: 24 * 30 }[frequency];
-    const firstRun = new Date(Date.now() + delay * 60 * 60 * 1000).toISOString();
+    const delayMinutes = { minutely: 1, hourly: 60, daily: 60 * 24, weekly: 60 * 24 * 7, monthly: 60 * 24 * 30 }[frequency];
+    const firstRun = new Date(Date.now() + delayMinutes * 60 * 1000).toISOString();
+    setIsCreating(true);
     try {
       const monitor = await createMonitor({
         name,
@@ -80,8 +82,29 @@ export default function ChangeMonitors() {
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not create monitor.");
+    } finally {
+      setIsCreating(false);
     }
   };
+
+  const checkNow = async (monitor: WebpageMonitor) => {
+    try {
+      await runMonitor(monitor.id, token);
+      setMessage("Monitor check queued.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not run monitor.");
+    }
+  };
+
+  const modeLabel = (monitor: WebpageMonitor) => ({
+    text: "Cleaned text",
+    selected: "Selected elements",
+    structured: "Structured fields",
+    visual: "Visual screenshot",
+  })[monitor.mode];
+
+  const frequencyLabel = (monitor: WebpageMonitor) => monitor.frequency === "minutely" ? "Every minute" : monitor.frequency;
 
   return (
     <main className="app-tool-page min-h-screen">
@@ -108,7 +131,7 @@ export default function ChangeMonitors() {
               </label>
               <label>Frequency
                 <select value={frequency} onChange={(event) => setFrequency(event.target.value as WebpageMonitor["frequency"])}>
-                  <option value="hourly">Hourly</option><option value="daily">Daily</option>
+                  <option value="minutely">Every minute (testing)</option><option value="hourly">Hourly</option><option value="daily">Daily</option>
                   <option value="weekly">Weekly</option><option value="monthly">Monthly</option>
                 </select>
               </label>
@@ -117,12 +140,14 @@ export default function ChangeMonitors() {
               <label>Webhook, Slack, or Discord URL<input type="url" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} /></label>
               <label className="monitor-check"><input type="checkbox" checked={aiCleanup} onChange={(event) => setAiCleanup(event.target.checked)} /> AI cleanup</label>
               <label className="monitor-check"><input type="checkbox" checked={notifyEmail} onChange={(event) => setNotifyEmail(event.target.checked)} /> Email me when changed</label>
-              <button type="button" className="monitor-primary-button" onClick={() => void submit()} disabled={!url}><Plus size={14} /> Create monitor</button>
+              <button type="button" className="monitor-primary-button" onClick={() => void submit()} disabled={!url || isCreating}>
+                {isCreating ? <RefreshCw className="monitor-spinning-icon" size={14} /> : <Plus size={14} />} {isCreating ? "Creating..." : "Create monitor"}
+              </button>
             </div>
           </section>
 
           <section className="monitor-list-section">
-            <div className="monitor-section-heading"><RefreshCw size={18} /><strong>Your monitors</strong></div>
+            <div className="monitor-section-heading"><ListChecks size={18} /><strong>Your monitors</strong></div>
             {message && <p className="export-schedule-message">{message}</p>}
             {!user && <div className="monitor-empty-card"><p>Sign in to create monitors and view detected changes.</p><button type="button" className="monitor-primary-button" onClick={() => setShowAuthModal(true)}>Sign in</button></div>}
             {user && !monitors.length && <div className="monitor-empty-card"><p>No monitors yet. Create one to establish its first baseline.</p></div>}
@@ -131,13 +156,27 @@ export default function ChangeMonitors() {
               <article key={monitor.id} className="monitor-card">
                 <div className="export-history-row">
                   <strong>{monitor.name || monitor.url}</strong>
-                  <span className={`job-status ${monitor.is_active ? "completed" : "failed"}`}>{monitor.is_active ? monitor.mode : "paused"}</span>
+                  <span className={`job-status ${monitor.is_running ? "running" : monitor.is_active ? "completed" : "failed"}`}>
+                    {monitor.is_running ? "checking" : monitor.is_active ? "active" : "paused"}
+                  </span>
                 </div>
-                <small>{monitor.frequency} · next {new Date(monitor.next_run_at).toLocaleString()}</small>
-                {monitor.last_error && <p>{monitor.last_error}</p>}
+                <a className="monitor-url" href={monitor.url} target="_blank" rel="noreferrer">{monitor.url}</a>
+                <dl className="monitor-details">
+                  <div><dt>Monitoring</dt><dd>{modeLabel(monitor)}{monitor.ai_cleanup ? " + AI cleanup" : ""}</dd></div>
+                  <div><dt>Frequency</dt><dd>{frequencyLabel(monitor)}</dd></div>
+                  <div><dt>Next check</dt><dd>{monitor.is_active ? new Date(monitor.next_run_at).toLocaleString() : "Paused"}</dd></div>
+                  <div><dt>Last check</dt><dd>{monitor.last_run_at ? new Date(monitor.last_run_at).toLocaleString() : "Not completed yet"}</dd></div>
+                  <div><dt>Last change</dt><dd>{monitor.last_changed_at ? new Date(monitor.last_changed_at).toLocaleString() : "None detected"}</dd></div>
+                  <div><dt>Notifications</dt><dd>{[monitor.notify_email && "Email", monitor.webhook_configured && "Webhook"].filter(Boolean).join(" + ") || "None"}</dd></div>
+                </dl>
+                {!!monitor.selectors.length && <small>Selectors: {monitor.selectors.join(", ")}</small>}
+                {!!monitor.fields.length && <small>Fields: {monitor.fields.join(", ")}</small>}
+                {monitor.last_error && <p className="monitor-error"><strong>Last check failed:</strong> {monitor.last_error}</p>}
                 {monitor.latest_change && <p className="monitor-change-summary">{monitor.latest_change.summary}</p>}
                 <div className="export-history-actions">
-                  <button type="button" onClick={() => void runMonitor(monitor.id, token).then(() => setMessage("Monitor check queued."))}><RefreshCw size={14} /> Check now</button>
+                  <button type="button" disabled={monitor.is_running} onClick={() => void checkNow(monitor)}>
+                    <RefreshCw className={monitor.is_running ? "monitor-spinning-icon" : ""} size={14} /> {monitor.is_running ? "Checking..." : monitor.last_error ? "Retry check" : "Check now"}
+                  </button>
                   <button type="button" onClick={() => void updateMonitor(monitor.id, { is_active: !monitor.is_active }, token).then(() => load())}>
                     {monitor.is_active ? <Pause size={14} /> : <Play size={14} />} {monitor.is_active ? "Pause" : "Resume"}
                   </button>

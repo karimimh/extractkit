@@ -136,10 +136,17 @@ export function DomainPageDiscovery({
         Use sitemap only
       </label>
 
-      <div className="export-actions">
-        <button type="button" onClick={() => void crawl()} disabled={isCrawling || !url} className={`crawler-discover-button${isCrawling ? " export-loading" : ""}`}>
-          <Globe2 size={16} /> {isCrawling ? "Discovering pages..." : "Discover domain pages"}
-        </button>
+      <div className="crawler-discover-actions">
+        <div className="export-actions">
+          <button type="button" onClick={() => void crawl()} disabled={isCrawling || !url} className={`crawler-discover-button${isCrawling ? " export-loading" : ""}`}>
+            <Globe2 size={16} /> {isCrawling ? "Discovering pages..." : "Discover domain pages"}
+          </button>
+        </div>
+        {!crawlResult && !isCrawling && (
+          <p className="crawler-discover-note">
+            Discover pages first, then review the list and export the selected URLs below.
+          </p>
+        )}
       </div>
 
       {crawlResult && (

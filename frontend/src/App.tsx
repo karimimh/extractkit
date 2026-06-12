@@ -10,6 +10,7 @@ import WebsiteToPdf from "./pages/website-to-pdf";
 import ChangeMonitors from "./pages/change-monitors";
 import DeveloperAPI from "./pages/developer-api";
 import DeveloperDocs from "./pages/developer-docs";
+import { CHANGE_MONITORING_ENABLED } from "./lib/features";
 
 function Layout() {
   const location = useLocation();
@@ -41,7 +42,7 @@ function App() {
         <Route path="/web-to-csv" element={<WebsiteToTabular format="csv" />} />
         <Route path="/web-to-excel" element={<WebsiteToTabular format="xlsx" />} />
         <Route path="/web-to-screenshot" element={<WebsiteToScreenshot />} />
-        <Route path="/change-monitoring" element={<ChangeMonitors />} />
+        {CHANGE_MONITORING_ENABLED && <Route path="/change-monitoring" element={<ChangeMonitors />} />}
         <Route path="/developer-api" element={<DeveloperAPI />} />
         <Route path="/developers/docs" element={<DeveloperDocs />} />
         <Route path="/blog" element={<BlogIndex />} />

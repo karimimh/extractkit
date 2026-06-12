@@ -779,6 +779,22 @@ class WebpageMonitorViewTests(DjangoTestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    @patch("app.views_monitoring.enqueue_monitor", return_value=False)
+    def test_check_now_reports_when_monitor_is_already_running(self, enqueue_monitor):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+            is_running=True,
+        )
+
+        response = self.client.post(f"/api/monitors/{monitor.public_id}/run/")
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["detail"], "Monitor check is already running.")
+        enqueue_monitor.assert_called_once_with(monitor.id)
+
 
 class WebpageMonitorRunnerTests(TransactionTestCase):
     def setUp(self):
@@ -835,6 +851,29 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
         self.monitor.refresh_from_db()
         self.assertGreater(self.monitor.next_run_at, timezone.now())
         enqueue_monitor.assert_called_once_with(self.monitor.id)
+
+    @patch("app.monitoring.enqueue_monitor")
+    def test_minutely_monitor_advances_by_one_minute(self, enqueue_monitor):
+        from .monitoring import run_due_monitors
+
+        due_at = timezone.now() - timedelta(seconds=5)
+        self.monitor.frequency = WebpageMonitor.MINUTELY
+        self.monitor.next_run_at = due_at
+        self.monitor.save(update_fields=["frequency", "next_run_at"])
+
+        self.assertEqual(run_due_monitors(), 1)
+        self.monitor.refresh_from_db()
+
+        self.assertEqual(self.monitor.next_run_at, due_at + timedelta(minutes=1))
+        enqueue_monitor.assert_called_once_with(self.monitor.id)
+
+    @patch("app.monitoring.executor.submit")
+    def test_enqueue_does_not_queue_duplicate_running_check(self, submit):
+        from .monitoring import enqueue_monitor, run_monitor
+
+        self.assertTrue(enqueue_monitor(self.monitor.id))
+        self.assertFalse(enqueue_monitor(self.monitor.id))
+        submit.assert_called_once_with(run_monitor, self.monitor.id)
 
     def test_visual_comparison_creates_pixel_diff(self):
         from PIL import Image

@@ -19,17 +19,19 @@ export type WebpageMonitor = {
   selectors: string[];
   fields: string[];
   ai_cleanup: boolean;
-  frequency: "hourly" | "daily" | "weekly" | "monthly";
+  frequency: "minutely" | "hourly" | "daily" | "weekly" | "monthly";
   webhook_url: string;
   webhook_configured: boolean;
   webhook_secret?: string;
   notify_email: boolean;
   is_active: boolean;
+  is_running: boolean;
   next_run_at: string;
   last_run_at: string | null;
   last_changed_at: string | null;
   last_error: string;
   latest_change: MonitorChange | null;
+  created_at: string;
 };
 
 function headers(token: string, json = false) {

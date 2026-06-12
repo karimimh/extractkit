@@ -47,7 +47,7 @@ export function AppNav() {
                 type="button"
                 className="app-nav-tools-trigger"
                 aria-haspopup="true"
-                onClick={() => setToolsDismissed(false)}
+                onClick={() => setToolsDismissed((current) => !current)}
                 onMouseEnter={() => setToolsDismissed(false)}
               >
                 Tools <ChevronDown size={15} aria-hidden="true" />

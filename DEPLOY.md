@@ -58,6 +58,7 @@ Create `/srv/distillpage/.env`:
 SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(50))">
 DEBUG=False
 ALLOWED_HOSTS=distillpage.com,www.distillpage.com
+CHANGE_MONITORING_ENABLED=false
 
 POSTGRES_DB=distillpage
 POSTGRES_USER=distillpage
@@ -67,6 +68,16 @@ POSTGRES_PORT=5432
 
 # Auth
 GOOGLE_CLIENT_ID=<your-google-client-id>
+
+# Change-monitor email notifications
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=<your-smtp-host>
+EMAIL_PORT=587
+EMAIL_HOST_USER=<your-smtp-user>
+EMAIL_HOST_PASSWORD=<your-smtp-password>
+EMAIL_USE_TLS=true
+EMAIL_USE_SSL=false
+DEFAULT_FROM_EMAIL=DistillPage <notifications@distillpage.com>
 
 # NOWPayments (crypto billing)
 NOWPAYMENTS_API_KEY=<key>
@@ -136,6 +147,34 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now distillpage
 ```
 
+### Scheduler systemd service
+
+Scheduled exports do not run from Gunicorn. Create `/etc/systemd/system/distillpage-scheduler.service`:
+
+```ini
+[Unit]
+Description=distillpage scheduled exports
+After=network.target postgresql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/distillpage/backend
+EnvironmentFile=/srv/distillpage/.env
+Environment=PLAYWRIGHT_BROWSERS_PATH=/srv/distillpage/.playwright
+ExecStart=/srv/distillpage/.venv/bin/python manage.py run_scheduled_exports --loop --interval 60
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now distillpage-scheduler
+sudo systemctl status distillpage-scheduler
+```
+
 ---
 
 ## 7. Frontend build
@@ -143,7 +182,7 @@ sudo systemctl enable --now distillpage
 ```bash
 cd /srv/distillpage/frontend
 npm ci
-VITE_API_BASE_URL='' npm run build   # empty = relative paths, Nginx handles proxying
+VITE_API_BASE_URL='' VITE_ENABLE_CHANGE_MONITORING=false npm run build
 ```
 
 > **Why empty?** All API calls become `/api/...` (relative), which Nginx proxies to Gunicorn. The same build works regardless of the server IP or domain.

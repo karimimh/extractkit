@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import ExportSchedule, MonitorChange, WebpageMonitor
+from .models import MonitorChange, WebpageMonitor
 from .monitoring import enqueue_monitor, serialize_change
 
 
@@ -30,6 +30,7 @@ def serialize_monitor(monitor, reveal_secret=False):
         "webhook_configured": bool(monitor.webhook_url),
         "notify_email": monitor.notify_email,
         "is_active": monitor.is_active,
+        "is_running": monitor.is_running,
         "next_run_at": monitor.next_run_at,
         "last_run_at": monitor.last_run_at,
         "last_changed_at": monitor.last_changed_at,
@@ -59,7 +60,7 @@ def validated_monitor_data(data, partial=False):
             raise ValueError("Invalid monitoring mode.")
         result["mode"] = data["mode"]
     if "frequency" in data:
-        if data["frequency"] not in dict(ExportSchedule.FREQUENCY_CHOICES):
+        if data["frequency"] not in dict(WebpageMonitor.FREQUENCY_CHOICES):
             raise ValueError("Invalid frequency.")
         result["frequency"] = data["frequency"]
     if "next_run_at" in data:
@@ -171,8 +172,9 @@ class WebpageMonitorRunView(APIView):
         monitor = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
         if not monitor:
             return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
-        enqueue_monitor(monitor.id)
-        return Response({"detail": "Monitor check queued."}, status=status.HTTP_202_ACCEPTED)
+        queued = enqueue_monitor(monitor.id)
+        detail = "Monitor check queued." if queued else "Monitor check is already running."
+        return Response({"detail": detail}, status=status.HTTP_202_ACCEPTED)
 
 
 class MonitorChangeListView(APIView):

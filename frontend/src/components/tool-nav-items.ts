@@ -1,4 +1,5 @@
 import { Bell, Braces, Camera, FileCode, FileSpreadsheet, FileText, Table2 } from "lucide-react";
+import { CHANGE_MONITORING_ENABLED } from "../lib/features";
 
 export const CONVERSION_TOOLS = [
   { to: "/web-to-pdf", label: "Website to PDF Converter", icon: FileText },
@@ -9,8 +10,8 @@ export const CONVERSION_TOOLS = [
   { to: "/web-to-screenshot", label: "Website Screenshot Generator", icon: Camera },
 ];
 
-export const AUTOMATION_TOOLS = [
-  { to: "/change-monitoring", label: "Website Change Monitor", icon: Bell },
-];
+export const AUTOMATION_TOOLS = CHANGE_MONITORING_ENABLED
+  ? [{ to: "/change-monitoring", label: "Website Change Monitor", icon: Bell }]
+  : [];
 
 export const WEB_TOOLS = [...CONVERSION_TOOLS, ...AUTOMATION_TOOLS];

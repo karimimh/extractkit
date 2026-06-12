@@ -62,6 +62,10 @@ SECRET_KEY = _env('SECRET_KEY', 'django-insecure-a3nqq2w2k9y4o0o8(lriv0)aohiess(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _env('DEBUG', 'True').lower() in ('true', '1', 'yes')
+CHANGE_MONITORING_ENABLED = _env(
+    'CHANGE_MONITORING_ENABLED',
+    'true' if DEBUG else 'false',
+).lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = [h.strip() for h in _env('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 
@@ -207,6 +211,15 @@ SIMPLE_JWT = {
 }
 
 GOOGLE_CLIENT_ID = _env('GOOGLE_CLIENT_ID', '')
+
+EMAIL_BACKEND = _env('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = _env('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(_env('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = _env('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = _env('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = _env('EMAIL_USE_TLS', 'true').lower() in ('true', '1', 'yes')
+EMAIL_USE_SSL = _env('EMAIL_USE_SSL', 'false').lower() in ('true', '1', 'yes')
+DEFAULT_FROM_EMAIL = _env('DEFAULT_FROM_EMAIL', 'DistillPage <notifications@distillpage.com>')
 
 NOWPAYMENTS_API_KEY = _env('NOWPAYMENTS_API_KEY', '')
 NOWPAYMENTS_IPN_SECRET = _env('NOWPAYMENTS_IPN_SECRET', '')

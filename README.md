@@ -8,7 +8,6 @@ A platform for extracting, transforming, exporting, and monitoring webpages.
 | **Web → Markdown** | `/web-to-markdown` | Convert a full or AI-cleaned web page into portable Markdown |
 | **Web → JSON** | `/web-to-json` | Extract standard page fields or custom prompt/schema-driven structured data |
 | **Web → Screenshot** | `/web-to-screenshot` | Export full, AI-cleaned, or manually edited webpages as high-resolution PNG images |
-| **Webpage Monitoring** | `/change-monitoring` | Monitor webpage text, selected elements, structured fields, or visual captures and receive change notifications |
 | **Web → CSV** | `/web-to-csv` | Export webpage tables, listings, or custom extracted records as CSV |
 | **Web → Excel** | `/web-to-excel` | Export records plus metadata, links, images, and tables as an Excel workbook |
 | **Developer API** | `/developer-api` | Manage API keys, usage, webhooks, and integrations |
@@ -133,7 +132,7 @@ POST /api/payments/webhook/            NOWPayments IPN callback
 
 All web conversion export endpoints accept `ai_cleanup: true` to enable AI Cleanup. Single-page endpoints also accept `selectors` for Manual Interaction exports. Omitting both produces a Full Page export.
 
-Scheduled exports require a continuously running scheduler process:
+Scheduled exports and webpage monitors require a continuously running scheduler process:
 
 ```bash
 cd backend
@@ -146,7 +145,22 @@ Developer API keys use the `X-API-Key` header. Async job requests support an `Id
 
 Public developer documentation is available on the website at `/developers/docs` and as filtered OpenAPI documentation at `/api/developer/docs/`. API-key management, account, payment, and other dashboard/internal endpoints are excluded from the public schema. In debug environments only, the complete internal schema is available at `/api/internal/docs/`.
 
-Webpage monitors use the same scheduler process. They support cleaned text, selected CSS elements, structured JSON fields, and visual screenshots. The first check creates a baseline; later changes create downloadable before/after comparisons and send the `monitor.changed` webhook event. Generic webhooks, Slack webhooks, Discord webhooks, and account-email notifications are supported.
+Webpage monitors use the same scheduler process. The minute-by-minute option is available for testing; with the default 60-second polling interval, a due check may start up to roughly one minute after its displayed time. They support cleaned text, selected CSS elements, structured JSON fields, and visual screenshots. The first check creates a baseline; later changes create downloadable before/after comparisons and send the `monitor.changed` webhook event.
+
+For account-email notifications, configure Django's SMTP backend in `.env`:
+
+```ini
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=<smtp-user>
+EMAIL_HOST_PASSWORD=<smtp-password>
+EMAIL_USE_TLS=true
+EMAIL_USE_SSL=false
+DEFAULT_FROM_EMAIL=DistillPage <notifications@distillpage.com>
+```
+
+The account must have an email address, and the monitor's **Email me when changed** option must be enabled. Email is only sent after a later check detects a change, not for the initial baseline.
 
 ---
 

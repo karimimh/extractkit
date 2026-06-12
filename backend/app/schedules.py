@@ -9,6 +9,8 @@ from .models import ExportJob, ExportSchedule
 
 
 def next_run_after(current, frequency):
+    if frequency == "minutely":
+        return current + timedelta(minutes=1)
     if frequency == ExportSchedule.HOURLY:
         return current + timedelta(hours=1)
     if frequency == ExportSchedule.DAILY:

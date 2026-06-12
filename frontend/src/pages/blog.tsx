@@ -1,5 +1,6 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { usePageSeo } from "../hooks/use-page-seo";
+import { CHANGE_MONITORING_ENABLED } from "../lib/features";
 
 type ArticleSection = {
   heading: string;
@@ -451,10 +452,14 @@ const ARTICLES: Article[] = [
   },
 ];
 
+const PUBLISHED_ARTICLES = CHANGE_MONITORING_ENABLED
+  ? ARTICLES
+  : ARTICLES.filter((article) => article.slug !== "monitor-webpage-changes");
+
 const BLOG_SEO = {
   title: "DistillPage Blog",
   description:
-    "Practical guides for webpage conversion, structured extraction, scheduled exports, webhooks, and webpage monitoring.",
+    "Practical guides for webpage conversion, structured extraction, scheduled exports, and webhooks.",
   canonical: "https://distillpage.com/blog",
   jsonLd: {
     "@context": "https://schema.org",
@@ -462,7 +467,7 @@ const BLOG_SEO = {
     name: "DistillPage Blog",
     url: "https://distillpage.com/blog",
     description:
-      "Practical guides for webpage conversion, structured extraction, scheduled exports, webhooks, and webpage monitoring.",
+      "Practical guides for webpage conversion, structured extraction, scheduled exports, and webhooks.",
   },
 };
 
@@ -497,12 +502,12 @@ export function BlogIndex() {
         <p>
           Practical articles for turning webpages into focused PDFs, screenshots,
           Markdown, structured data, and complete website exports, plus scheduling
-          recurring exports and monitoring webpages for changes.
+          recurring exports and delivering webhook events.
         </p>
       </section>
 
       <section className="article-list" aria-label="Blog posts">
-        {ARTICLES.map((article) => (
+        {PUBLISHED_ARTICLES.map((article) => (
           <article className="article-card" key={article.slug}>
             <p>{article.toolName}</p>
             <h2>
@@ -521,8 +526,8 @@ export function BlogIndex() {
 
 export function BlogPost() {
   const { slug } = useParams();
-  const article = ARTICLES.find((item) => item.slug === slug);
-  const pageArticle = article ?? ARTICLES[0];
+  const article = PUBLISHED_ARTICLES.find((item) => item.slug === slug);
+  const pageArticle = article ?? PUBLISHED_ARTICLES[0];
 
   usePageSeo({
     title: `${pageArticle.title} - DistillPage`,

@@ -171,8 +171,9 @@ def run_monitor(monitor_id):
     close_old_connections()
     try:
         monitor = WebpageMonitor.objects.select_related("user").get(pk=monitor_id)
+        monitor.is_running = True
         monitor.last_run_at = timezone.now()
-        monitor.save(update_fields=["last_run_at", "updated_at"])
+        monitor.save(update_fields=["is_running", "last_run_at", "updated_at"])
         title, data, image_path, content_hash = _capture(monitor)
         previous = monitor.snapshots.first()
         snapshot = MonitorSnapshot.objects.create(
@@ -204,11 +205,20 @@ def run_monitor(monitor_id):
         logger.exception("Webpage monitor %s failed", monitor_id)
         WebpageMonitor.objects.filter(pk=monitor_id).update(last_error=str(exc)[:2000])
     finally:
+        WebpageMonitor.objects.filter(pk=monitor_id).update(is_running=False)
         close_old_connections()
 
 
 def enqueue_monitor(monitor_id):
-    executor.submit(run_monitor, monitor_id)
+    claimed = WebpageMonitor.objects.filter(pk=monitor_id, is_running=False).update(is_running=True)
+    if not claimed:
+        return False
+    try:
+        executor.submit(run_monitor, monitor_id)
+    except Exception:
+        WebpageMonitor.objects.filter(pk=monitor_id).update(is_running=False)
+        raise
+    return True
 
 
 def run_due_monitors(now=None):

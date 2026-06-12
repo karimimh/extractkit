@@ -209,6 +209,7 @@ class ExportSchedule(models.Model):
 
 
 class WebpageMonitor(models.Model):
+    MINUTELY = "minutely"
     TEXT = "text"
     SELECTED = "selected"
     STRUCTURED = "structured"
@@ -219,6 +220,10 @@ class WebpageMonitor(models.Model):
         (STRUCTURED, "Structured JSON fields"),
         (VISUAL, "Visual screenshot"),
     ]
+    FREQUENCY_CHOICES = [
+        (MINUTELY, "Every minute"),
+        *ExportSchedule.FREQUENCY_CHOICES,
+    ]
 
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="webpage_monitors")
@@ -228,11 +233,12 @@ class WebpageMonitor(models.Model):
     selectors = models.JSONField(default=list, blank=True)
     fields = models.JSONField(default=list, blank=True)
     ai_cleanup = models.BooleanField(default=False)
-    frequency = models.CharField(max_length=12, choices=ExportSchedule.FREQUENCY_CHOICES)
+    frequency = models.CharField(max_length=12, choices=FREQUENCY_CHOICES)
     webhook_url = models.URLField(blank=True)
     webhook_secret = models.CharField(max_length=128, blank=True)
     notify_email = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_running = models.BooleanField(default=False)
     next_run_at = models.DateTimeField()
     last_run_at = models.DateTimeField(null=True, blank=True)
     last_changed_at = models.DateTimeField(null=True, blank=True)
