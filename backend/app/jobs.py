@@ -90,11 +90,11 @@ def deliver_webhook(job):
     ).encode()
     headers = {
         "Content-Type": "application/json",
-        "X-DistillPage-Event": f"export.{job.status}",
-        "X-DistillPage-Job-Id": str(job.public_id),
+        "X-ExtractKit-Event": f"export.{job.status}",
+        "X-ExtractKit-Job-Id": str(job.public_id),
     }
     if webhook_secret:
-        headers["X-DistillPage-Signature"] = "sha256=" + hmac.new(
+        headers["X-ExtractKit-Signature"] = "sha256=" + hmac.new(
             webhook_secret.encode(), body, hashlib.sha256
         ).hexdigest()
 

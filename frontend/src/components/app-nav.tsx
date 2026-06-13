@@ -36,7 +36,7 @@ export function AppNav() {
       <nav className="app-nav">
         <div className="app-nav-inner">
           <NavLink to="/" className="app-nav-brand">
-            DistillPage
+            ExtractKit
           </NavLink>
 
           <div className="app-nav-links">

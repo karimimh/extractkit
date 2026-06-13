@@ -1,12 +1,12 @@
-## Best revenue idea: turn DistillPage into a **Competitor & Price Intelligence Monitor**
+## Best revenue idea: turn ExtractKit into a **Competitor & Price Intelligence Monitor**
 
-Instead of building a completely new unrelated website, create a focused product on top of DistillPage:
+Instead of building a completely new unrelated website, create a focused product on top of ExtractKit:
 
 > **“Track competitors’ prices, product pages, landing pages, SEO pages, legal pages, and announcements — get AI summaries, diffs, alerts, and exportable reports.”**
 
 This has better revenue potential because businesses pay recurring money for monitoring, not just one-time exports. Current tools in this market already position around website change monitoring, competitor intelligence, pricing, compliance, Slack/API alerts, and AI summaries. Visualping, for example, markets website change alerts via email, Slack, SMS, and API, and its use cases include competitive intelligence. ([Visualping][1]) Browse AI also promotes scraping and monitoring product prices, competitor websites, leads, and integrations. ([Browse.ai][2])
 
-### What to add to DistillPage
+### What to add to ExtractKit
 
 Add these as new tools/pages:
 
@@ -25,7 +25,7 @@ Add these as new tools/pages:
 
 Do not market it as “web scraping.” Market it as:
 
-**DistillPage Intelligence**
+**ExtractKit Intelligence**
 “Monitor any competitor page and turn website changes into business insights.”
 
 Your current product sounds utility-based. This would make it outcome-based.
@@ -53,7 +53,7 @@ Start with this single workflow:
 
 1. User enters competitor URL.
 2. User selects what to track: price, product title, CTA, full text, screenshot, or custom field.
-3. DistillPage creates a baseline.
+3. ExtractKit creates a baseline.
 4. Scheduler checks daily/hourly.
 5. If changed, user gets:
    - before/after screenshot,
@@ -80,7 +80,7 @@ This can attract higher-value B2B users, but sales may be slower than competitor
 
 ## My recommendation
 
-Build **DistillPage Intelligence: Competitor & Price Monitoring** first.
+Build **ExtractKit Intelligence: Competitor & Price Monitoring** first.
 
 It is the best fit because it reuses your current tools, has clear recurring revenue, targets businesses, and can be launched without rebuilding your whole platform. Your immediate landing page should focus on one promise:
 
@@ -91,19 +91,19 @@ It is the best fit because it reuses your current tools, has clear recurring rev
 
 ---
 
-Add it **inside DistillPage first**, not a whole new domain.
+Add it **inside ExtractKit first**, not a whole new domain.
 
 Your current site already has the right foundation: exports, monitoring, schedules, webhooks, screenshots, JSON/CSV/Excel, and API. A new domain would force you to rebuild trust, SEO, auth, billing, documentation, and brand awareness from zero.
 
 Best structure:
 
-**Main brand:** `distillpage.com`
-**New product section:** `distillpage.com/competitor-monitoring` or `distillpage.com/intelligence`
+**Main brand:** `extractkit.io`
+**New product section:** `extractkit.io/competitor-monitoring` or `extractkit.io/intelligence`
 **Tool route:** `/competitor-monitoring`, `/price-tracker`, `/seo-monitor`, `/landing-page-monitor`
 
 I would position it like this:
 
-> **DistillPage Intelligence**
+> **ExtractKit Intelligence**
 > Monitor competitor websites, prices, landing pages, and SEO changes with AI summaries and reports.
 
 Then your navigation can become:
@@ -115,7 +115,7 @@ Then your navigation can become:
 - API
 - Pricing
 
-Use a new domain only later, after you validate demand. For example, if “DistillPage Intelligence” gets traction and becomes much bigger than the original tools, then you could create something like `competitorwatch.ai` or `pageintel.com` and redirect traffic. But at the beginning, keep everything under DistillPage.
+Use a new domain only later, after you validate demand. For example, if “ExtractKit Intelligence” gets traction and becomes much bigger than the original tools, then you could create something like `competitorwatch.ai` or `pageintel.com` and redirect traffic. But at the beginning, keep everything under ExtractKit.
 
 My practical recommendation:
 
@@ -130,4 +130,4 @@ My practical recommendation:
    - SEO page monitor
    - product availability monitor
 
-So the answer is: **add it as a new premium tool/product line inside DistillPage. Do not start a separate domain yet.**
+So the answer is: **add it as a new premium tool/product line inside ExtractKit. Do not start a separate domain yet.**

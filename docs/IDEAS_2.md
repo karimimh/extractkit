@@ -16,7 +16,7 @@ The market signal is good: Mordor Intelligence estimates the web scraping market
 
 ### MVP features
 
-Use your existing DistillPage engine and build:
+Use your existing ExtractKit engine and build:
 
 | Feature                 | What it does                                         |
 | ----------------------- | ---------------------------------------------------- |
@@ -39,7 +39,7 @@ Start with simple subscriptions:
 | Business   | $149/mo, 2,000 monitored URLs |
 | Agency/API |                      $299+/mo |
 
-This is better than charging only `$0.20 per URL`, because recurring monitoring creates monthly revenue instead of one-time transactions. DistillPage already has wallet billing and per-export pricing, so you can reuse that system but add subscriptions.
+This is better than charging only `$0.20 per URL`, because recurring monitoring creates monthly revenue instead of one-time transactions. ExtractKit already has wallet billing and per-export pricing, so you can reuse that system but add subscriptions.
 
 ## Other high-revenue website ideas
 
@@ -76,7 +76,7 @@ Week 4: Launch on Reddit ecommerce communities, Shopify groups, Indie Hackers, P
 
 ## Final answer
 
-Do **not** build a totally new unrelated website first. Your highest-probability move is to **repackage DistillPage into a vertical B2B SaaS**.
+Do **not** build a totally new unrelated website first. Your highest-probability move is to **repackage ExtractKit into a vertical B2B SaaS**.
 
 Best niche: **Competitor Price & Stock Monitoring for ecommerce.**
 

@@ -175,7 +175,7 @@ def serialize_snapshot(snapshot):
 
 def _notify(change):
     monitor = change.monitor
-    message = f"DistillPage detected a change in {monitor.name or monitor.url}: {change.summary}"
+    message = f"ExtractKit detected a change in {monitor.name or monitor.url}: {change.summary}"
     payload = {
         "event": "monitor.changed",
         "monitor": str(monitor.public_id),
@@ -186,9 +186,12 @@ def _notify(change):
     body = json.dumps(payload, default=str, separators=(",", ":")).encode()
     errors = []
     if monitor.webhook_url:
-        headers = {"Content-Type": "application/json", "X-DistillPage-Event": "monitor.changed"}
+        headers = {
+            "Content-Type": "application/json",
+            "X-ExtractKit-Event": "monitor.changed",
+        }
         if monitor.webhook_secret:
-            headers["X-DistillPage-Signature"] = "sha256=" + hmac.new(
+            headers["X-ExtractKit-Signature"] = "sha256=" + hmac.new(
                 monitor.webhook_secret.encode(), body, hashlib.sha256
             ).hexdigest()
         try:
@@ -200,7 +203,7 @@ def _notify(change):
     if monitor.notify_email and monitor.user.email:
         try:
             send_mail(
-                f"DistillPage change detected: {monitor.name or monitor.url}",
+                f"ExtractKit change detected: {monitor.name or monitor.url}",
                 f"{change.summary}\n\n{monitor.url}",
                 None,
                 [monitor.user.email],

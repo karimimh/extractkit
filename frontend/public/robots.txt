@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://distillpage.com/sitemap.xml
+Sitemap: https://extractkit.io/sitemap.xml

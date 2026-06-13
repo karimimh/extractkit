@@ -13,15 +13,15 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const SS_TOOL_SEO = {
-  title: "Website Screenshot Generator – DistillPage",
+  title: "Website Screenshot Generator – ExtractKit",
   description:
     "Capture website screenshots using full-page export, AI Cleanup, or manual interaction at your chosen viewport.",
-  canonical: "https://distillpage.com/web-to-screenshot",
+  canonical: "https://extractkit.io/web-to-screenshot",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Website Screenshot Generator – DistillPage",
-    url: "https://distillpage.com/web-to-screenshot",
+    name: "Website Screenshot Generator – ExtractKit",
+    url: "https://extractkit.io/web-to-screenshot",
     description:
       "Capture high-fidelity website screenshots with full-page export, AI Cleanup, or manual interaction.",
     applicationCategory: "UtilitiesApplication",
@@ -820,7 +820,7 @@ function WebsiteToScreenshot() {
         <ExportActivity tool="screenshot" />
         <footer className="support-footer">
           Need help? Email us at{" "}
-          <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
+          <a href="mailto:support@extractkit.io">support@extractkit.io</a>
         </footer>
       </div>
 

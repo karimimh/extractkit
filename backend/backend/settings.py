@@ -123,7 +123,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': _env('POSTGRES_DB', 'distillpage', aliases=('DB_NAME',)),
+        'NAME': _env('POSTGRES_DB', 'extractkit', aliases=('DB_NAME',)),
         'USER': _env('POSTGRES_USER', 'postgres', aliases=('DB_USER',)),
         'PASSWORD': _env('POSTGRES_PASSWORD', 'postgres', aliases=('DB_PASSWORD',)),
         'HOST': _env('POSTGRES_HOST', 'localhost', aliases=('DB_HOST',)),
@@ -175,8 +175,8 @@ STATIC_ROOT = 'staticfiles/'
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://distillpage.com',
-    'https://www.distillpage.com',
+    'https://extractkit.io',
+    'https://www.extractkit.io',
 ]
 
 if not DEBUG:
@@ -219,7 +219,7 @@ EMAIL_HOST_USER = _env('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = _env('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = _env('EMAIL_USE_TLS', 'true').lower() in ('true', '1', 'yes')
 EMAIL_USE_SSL = _env('EMAIL_USE_SSL', 'false').lower() in ('true', '1', 'yes')
-DEFAULT_FROM_EMAIL = _env('DEFAULT_FROM_EMAIL', 'DistillPage <notifications@distillpage.com>')
+DEFAULT_FROM_EMAIL = _env('DEFAULT_FROM_EMAIL', 'ExtractKit <notifications@extractkit.io>')
 
 NOWPAYMENTS_API_KEY = _env('NOWPAYMENTS_API_KEY', '')
 NOWPAYMENTS_IPN_SECRET = _env('NOWPAYMENTS_IPN_SECRET', '')
@@ -238,7 +238,7 @@ WALLET_PACKAGES = [
 ]
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'DistillPage API',
+    'TITLE': 'ExtractKit API',
     'DESCRIPTION': 'API for extracting, transforming, exporting, and monitoring webpages.',
     'VERSION': '1.0.0',
 }

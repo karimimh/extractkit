@@ -17,7 +17,7 @@ Outputs:
 - Excel
 - API response
 
-This is significantly more useful than your current fixed JSON structure in [structured_json_generator.py](/Users/mhk/dev/distillpage/backend/app/services/structured_json_generator.py).
+This is significantly more useful than your current fixed JSON structure in [structured_json_generator.py](/Users/mhk/dev/extractkit/backend/app/services/structured_json_generator.py).
 
 **Why build it first:** it targets developers, researchers, sales teams, and businesses willing to pay more per extraction. Firecrawl similarly supports prompt/schema-based structured extraction across URLs.
 
@@ -169,7 +169,7 @@ Sources: [Firecrawl Crawl](https://docs.firecrawl.dev/features/crawl), [Firecraw
 
 ## VISION
 
-DistillPage should become:
+ExtractKit should become:
 
 “The operating system for webpage extraction and monitoring.”
 
@@ -186,7 +186,7 @@ A user gives a URL and chooses an output:
 
 A stronger vision could be:
 
-DistillPage = Webpage Operations Workspace
+ExtractKit = Webpage Operations Workspace
 
 Users can:
 

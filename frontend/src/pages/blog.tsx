@@ -26,19 +26,19 @@ const ARTICLES: Article[] = [
     title: "How to Create a Custom PDF from a Webpage",
     description:
       "Learn how to turn any webpage into a custom PDF using AI Cleanup, full-page export, or manual interaction.",
-    canonical: "https://distillpage.com/blog/custom-pdf-from-webpage",
+    canonical: "https://extractkit.io/blog/custom-pdf-from-webpage",
     toolName: "Web to PDF",
     toolPath: "/web-to-pdf",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "Saving a webpage as a PDF is easy until the page includes sticky headers, cookie banners, ads, sidebars, or chat widgets. DistillPage lets you use AI Cleanup, export the full page, or manually control the page before the final PDF.",
+      "Saving a webpage as a PDF is easy until the page includes sticky headers, cookie banners, ads, sidebars, or chat widgets. ExtractKit lets you use AI Cleanup, export the full page, or manually control the page before the final PDF.",
     sections: [
       {
         heading: "When a normal browser PDF is not enough",
         body: [
           "Browser print tools are useful for simple pages, but they often capture the page exactly as it is served. That means promotional banners, newsletter popups, floating buttons, and unrelated navigation can end up in the file.",
-          "DistillPage provides three cleanup methods. Full Page export keeps the page unchanged. AI Cleanup asks OpenAI to identify page chrome and interruptions while preserving the primary content. Manual Interaction opens an interactive preview where you can browse, expand content, and click exactly what should be removed.",
+          "ExtractKit provides three cleanup methods. Full Page export keeps the page unchanged. AI Cleanup asks OpenAI to identify page chrome and interruptions while preserving the primary content. Manual Interaction opens an interactive preview where you can browse, expand content, and click exactly what should be removed.",
         ],
       },
       {
@@ -58,7 +58,7 @@ const ARTICLES: Article[] = [
       {
         heading: "Screen layout or print layout",
         body: [
-          "Some pages have a dedicated print stylesheet, while others look better in their screen layout. DistillPage lets you choose the layout mode before generating the PDF, so you can keep the version that preserves the content most accurately.",
+          "Some pages have a dedicated print stylesheet, while others look better in their screen layout. ExtractKit lets you choose the layout mode before generating the PDF, so you can keep the version that preserves the content most accurately.",
           "If the page has complex columns or interactive sections, preview it first and compare the result. The goal is not just to save a page, but to create a readable PDF that still looks intentional.",
         ],
       },
@@ -75,13 +75,13 @@ const ARTICLES: Article[] = [
     title: "How to Capture a Full Page Website Screenshot Without Clutter",
     description:
       "Capture a clean website screenshot using AI Cleanup, full-page export, or manual interaction before saving the image.",
-    canonical: "https://distillpage.com/blog/remove-elements-before-website-screenshot",
+    canonical: "https://extractkit.io/blog/remove-elements-before-website-screenshot",
     toolName: "Web to Screenshot",
     toolPath: "/web-to-screenshot",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "A website screenshot should show the page you care about, not every floating banner and overlay the site decides to add. DistillPage offers AI Cleanup, Full Page export, and Manual Interaction before capture.",
+      "A website screenshot should show the page you care about, not every floating banner and overlay the site decides to add. ExtractKit offers AI Cleanup, Full Page export, and Manual Interaction before capture.",
     sections: [
       {
         heading: "Why full-page screenshots need cleanup",
@@ -124,13 +124,13 @@ const ARTICLES: Article[] = [
     title: "How to Convert a Webpage to Clean Markdown",
     description:
       "Convert a webpage to readable Markdown using AI Cleanup, full-page export, or manual element removal.",
-    canonical: "https://distillpage.com/blog/convert-webpage-to-clean-markdown",
+    canonical: "https://extractkit.io/blog/convert-webpage-to-clean-markdown",
     toolName: "Web to Markdown",
     toolPath: "/web-to-markdown",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-10",
     intro:
-      "Markdown is a practical format for notes, documentation, research archives, and LLM input. DistillPage can preserve the full page, use AI Cleanup to identify unrelated elements, or let you manually control what reaches the final Markdown.",
+      "Markdown is a practical format for notes, documentation, research archives, and LLM input. ExtractKit can preserve the full page, use AI Cleanup to identify unrelated elements, or let you manually control what reaches the final Markdown.",
     sections: [
       {
         heading: "Why clean Markdown is better than raw HTML",
@@ -174,13 +174,13 @@ const ARTICLES: Article[] = [
     title: "How to Extract Custom Structured JSON from a Webpage",
     description:
       "Extract standard webpage data or define custom structured JSON with a prompt and optional JSON Schema.",
-    canonical: "https://distillpage.com/blog/extract-structured-json-from-webpage",
+    canonical: "https://extractkit.io/blog/extract-structured-json-from-webpage",
     toolName: "Web to JSON",
     toolPath: "/web-to-json",
     publishedAt: "2026-06-10",
     updatedAt: "2026-06-11",
     intro:
-      "Webpages contain useful data, but the fields you need vary from page to page. DistillPage can create its standard webpage JSON or extract custom records and fields from your instructions, with an optional JSON Schema to define the exact result.",
+      "Webpages contain useful data, but the fields you need vary from page to page. ExtractKit can create its standard webpage JSON or extract custom records and fields from your instructions, with an optional JSON Schema to define the exact result.",
     sections: [
       {
         heading: "Why structured JSON is useful",
@@ -200,7 +200,7 @@ const ARTICLES: Article[] = [
         heading: "Use a JSON Schema when the shape matters",
         body: [
           "A prompt explains what to extract. An optional JSON Schema defines how the response must be structured, including field names, value types, required fields, nested objects, and arrays of repeated records.",
-          "Schema-driven extraction is useful when the JSON will feed an API, database, automation, or typed application. DistillPage validates that the schema has an object root and checks the extracted result against it before returning the data.",
+          "Schema-driven extraction is useful when the JSON will feed an API, database, automation, or typed application. ExtractKit validates that the schema has an object root and checks the extracted result against it before returning the data.",
         ],
       },
       {
@@ -238,13 +238,13 @@ const ARTICLES: Article[] = [
     title: "How to Export Webpage Data to CSV",
     description:
       "Turn webpage tables, listings, and repeated records into a clean CSV using a custom extraction prompt.",
-    canonical: "https://distillpage.com/blog/export-webpage-data-to-csv",
+    canonical: "https://extractkit.io/blog/export-webpage-data-to-csv",
     toolName: "Web to CSV",
     toolPath: "/web-to-csv",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-11",
     intro:
-      "Copying webpage data into a spreadsheet is slow and error-prone. DistillPage lets you describe the records you need, extracts them from the page, and generates a UTF-8 CSV with consistent columns.",
+      "Copying webpage data into a spreadsheet is slow and error-prone. ExtractKit lets you describe the records you need, extracts them from the page, and generates a UTF-8 CSV with consistent columns.",
     sections: [
       {
         heading: "What kinds of pages work well",
@@ -256,7 +256,7 @@ const ARTICLES: Article[] = [
       {
         heading: "Describe the rows you need",
         body: [
-          "Enter a direct request such as: Extract every product's name, price, rating, availability, and product URL. DistillPage uses the first repeated object array in the extracted result as the CSV records.",
+          "Enter a direct request such as: Extract every product's name, price, rating, availability, and product URL. ExtractKit uses the first repeated object array in the extracted result as the CSV records.",
           "An optional JSON Schema can define field names and types before extraction. This is useful when you need stable column names for an import, automation, or recurring analysis.",
         ],
       },
@@ -280,13 +280,13 @@ const ARTICLES: Article[] = [
     title: "How to Export Webpage Data to Excel",
     description:
       "Create an Excel workbook from webpage records, with supporting metadata, links, images, and tables when available.",
-    canonical: "https://distillpage.com/blog/export-webpage-data-to-excel",
+    canonical: "https://extractkit.io/blog/export-webpage-data-to-excel",
     toolName: "Web to Excel",
     toolPath: "/web-to-excel",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-11",
     intro:
-      "An Excel workbook is useful when webpage data needs more context than a single flat file can provide. DistillPage extracts the records you describe and creates a workbook that can also preserve supporting page data in separate sheets.",
+      "An Excel workbook is useful when webpage data needs more context than a single flat file can provide. ExtractKit extracts the records you describe and creates a workbook that can also preserve supporting page data in separate sheets.",
     sections: [
       {
         heading: "When Excel is better than CSV",
@@ -305,7 +305,7 @@ const ARTICLES: Article[] = [
       {
         heading: "What the workbook can contain",
         body: [
-          "Every workbook includes a Records sheet. When the extracted data provides them, DistillPage also creates Metadata, Links, Images, and Tables sheets so supporting page information remains accessible without crowding the main records.",
+          "Every workbook includes a Records sheet. When the extracted data provides them, ExtractKit also creates Metadata, Links, Images, and Tables sheets so supporting page information remains accessible without crowding the main records.",
           "Header rows are styled and filtered, cell values are cleaned for spreadsheet compatibility, and potentially executable formula-like values are escaped.",
         ],
       },
@@ -322,13 +322,13 @@ const ARTICLES: Article[] = [
     title: "How to Crawl and Export an Entire Website",
     description:
       "Discover same-domain pages from sitemaps and internal links, select the URLs you need, and export them together.",
-    canonical: "https://distillpage.com/blog/crawl-and-export-a-website",
+    canonical: "https://extractkit.io/blog/crawl-and-export-a-website",
     toolName: "Website to Markdown Converter",
     toolPath: "/web-to-markdown",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-11",
     intro:
-      "Collecting pages one URL at a time is impractical when you need a documentation site, blog, knowledge base, or other section of a website. DistillPage discovers same-domain pages, lets you review the URL list, and exports the selected pages together.",
+      "Collecting pages one URL at a time is impractical when you need a documentation site, blog, knowledge base, or other section of a website. ExtractKit discovers same-domain pages, lets you review the URL list, and exports the selected pages together.",
     sections: [
       {
         heading: "How website discovery works",
@@ -370,26 +370,26 @@ const ARTICLES: Article[] = [
     slug: "schedule-webpage-exports-with-webhooks",
     title: "How to Schedule Webpage Exports and Deliver Them by Webhook",
     description:
-      "Turn a completed DistillPage export into a recurring job and receive signed webhook notifications when each run finishes.",
-    canonical: "https://distillpage.com/blog/schedule-webpage-exports-with-webhooks",
+      "Turn a completed ExtractKit export into a recurring job and receive signed webhook notifications when each run finishes.",
+    canonical: "https://extractkit.io/blog/schedule-webpage-exports-with-webhooks",
     toolName: "Scheduled Exports",
     toolPath: "/web-to-pdf",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-12",
     intro:
-      "A webpage export is often more useful when it runs automatically. DistillPage lets you rerun completed exports on an hourly, daily, weekly, or monthly schedule and optionally send the result status to your webhook.",
+      "A webpage export is often more useful when it runs automatically. ExtractKit lets you rerun completed exports on an hourly, daily, weekly, or monthly schedule and optionally send the result status to your webhook.",
     sections: [
       {
         heading: "When to schedule an export",
         body: [
           "Scheduled exports are useful for recurring archives, refreshed datasets, periodic reports, and content pipelines that need an up-to-date copy of the same webpage without manual work.",
-          "Create the first export with the settings you need, then expand Scheduling & history inside that export tool. DistillPage reuses that job as the source for every recurring run.",
+          "Create the first export with the settings you need, then expand Scheduling & history inside that export tool. ExtractKit reuses that job as the source for every recurring run.",
         ],
       },
       {
         heading: "Choose a frequency and first run",
         body: [
-          "Schedules can run hourly, daily, weekly, or monthly. You choose the first run time, and DistillPage calculates the following runs from the selected frequency.",
+          "Schedules can run hourly, daily, weekly, or monthly. You choose the first run time, and ExtractKit calculates the following runs from the selected frequency.",
           "Active schedules can be paused, resumed, or deleted inside the relevant export tool. You can also open Export History from the account menu to review activity across all tools.",
         ],
       },
@@ -397,7 +397,7 @@ const ARTICLES: Article[] = [
         heading: "Deliver export events by webhook",
         body: [
           "Add an optional webhook URL when creating the schedule to receive an export.completed or export.failed event after each run. This lets another application start processing the result, record the status, or alert your team.",
-          "DistillPage signs webhook requests with HMAC-SHA256 and returns the signing secret once when the schedule is created. Verify the raw request body against the X-DistillPage-Signature header before trusting an event.",
+          "ExtractKit signs webhook requests with HMAC-SHA256 and returns the signing secret once when the schedule is created. Verify the raw request body against the X-ExtractKit-Signature header before trusting an event.",
         ],
       },
       {
@@ -413,13 +413,13 @@ const ARTICLES: Article[] = [
     title: "How to Monitor a Webpage for Changes",
     description:
       "Monitor webpage text, selected elements, structured fields, or screenshots and receive notifications when meaningful changes are detected.",
-    canonical: "https://distillpage.com/blog/monitor-webpage-changes",
+    canonical: "https://extractkit.io/blog/monitor-webpage-changes",
     toolName: "Webpage Monitoring",
     toolPath: "/change-monitoring",
     publishedAt: "2026-06-11",
     updatedAt: "2026-06-11",
     intro:
-      "Webpage monitoring replaces repeated manual checks with scheduled comparisons. DistillPage establishes a baseline, checks the page on your chosen frequency, and notifies you when the monitored content changes.",
+      "Webpage monitoring replaces repeated manual checks with scheduled comparisons. ExtractKit establishes a baseline, checks the page on your chosen frequency, and notifies you when the monitored content changes.",
     sections: [
       {
         heading: "Choose what to monitor",
@@ -432,7 +432,7 @@ const ARTICLES: Article[] = [
         heading: "Track meaningful changes on a schedule",
         body: [
           "Choose an hourly, daily, weekly, or monthly frequency. The first check creates the baseline, and later checks compare the latest page state against it.",
-          "When a change is detected, DistillPage saves a downloadable before-and-after comparison. You can also run a check immediately, pause a monitor, or resume it later.",
+          "When a change is detected, ExtractKit saves a downloadable before-and-after comparison. You can also run a check immediately, pause a monitor, or resume it later.",
         ],
       },
       {
@@ -457,15 +457,15 @@ const PUBLISHED_ARTICLES = CHANGE_MONITORING_ENABLED
   : ARTICLES.filter((article) => article.slug !== "monitor-webpage-changes");
 
 const BLOG_SEO = {
-  title: "DistillPage Blog",
+  title: "ExtractKit Blog",
   description:
     "Practical guides for webpage conversion, structured extraction, scheduled exports, and webhooks.",
-  canonical: "https://distillpage.com/blog",
+  canonical: "https://extractkit.io/blog",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "Blog",
-    name: "DistillPage Blog",
-    url: "https://distillpage.com/blog",
+    name: "ExtractKit Blog",
+    url: "https://extractkit.io/blog",
     description:
       "Practical guides for webpage conversion, structured extraction, scheduled exports, and webhooks.",
   },
@@ -482,11 +482,11 @@ function articleJsonLd(article: Article) {
     mainEntityOfPage: article.canonical,
     author: {
       "@type": "Organization",
-      name: "DistillPage",
+      name: "ExtractKit",
     },
     publisher: {
       "@type": "Organization",
-      name: "DistillPage",
+      name: "ExtractKit",
     },
   };
 }
@@ -497,7 +497,7 @@ export function BlogIndex() {
   return (
     <main className="article-page">
       <section className="article-hero">
-        <p className="eyebrow">DistillPage Blog</p>
+        <p className="eyebrow">ExtractKit Blog</p>
         <h1>Guides for cleaner webpage exports</h1>
         <p>
           Practical articles for turning webpages into focused PDFs, screenshots,
@@ -530,7 +530,7 @@ export function BlogPost() {
   const pageArticle = article ?? PUBLISHED_ARTICLES[0];
 
   usePageSeo({
-    title: `${pageArticle.title} - DistillPage`,
+    title: `${pageArticle.title} - ExtractKit`,
     description: pageArticle.description,
     canonical: pageArticle.canonical,
     jsonLd: articleJsonLd(pageArticle),

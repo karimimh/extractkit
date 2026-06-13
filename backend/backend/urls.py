@@ -28,7 +28,7 @@ urlpatterns = [
         SpectacularAPIView.as_view(
             urlconf='app.developer_urls',
             custom_settings={
-                'TITLE': 'DistillPage Developer API',
+                'TITLE': 'ExtractKit Developer API',
                 'DESCRIPTION': 'Public API for asynchronous webpage exports, job history, webhooks, and MCP.',
                 'VERSION': '1.0.0',
                 'POSTPROCESSING_HOOKS': ['app.schema.public_developer_schema'],

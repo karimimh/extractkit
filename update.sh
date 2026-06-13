@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT=/srv/distillpage
+PROJECT=/srv/extractkit
 
 cd "$PROJECT"
 git fetch origin
@@ -21,7 +21,8 @@ VITE_API_BASE_URL='' npm run build
 cd ..
 
 sudo chown -R www-data:www-data "$PROJECT"
-sudo systemctl restart distillpage
+sudo systemctl restart extractkit
+sudo systemctl restart extractkit-scheduler
 sudo systemctl reload nginx
 
 echo "Update complete."

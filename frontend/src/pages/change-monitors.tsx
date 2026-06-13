@@ -17,9 +17,9 @@ import {
 export default function ChangeMonitors() {
   const { token, user } = useAuth();
   usePageSeo({
-    title: "Website Change Monitor – DistillPage",
+    title: "Website Change Monitor – ExtractKit",
     description: "Monitor webpage text, selected elements, structured data, and visual screenshots for changes.",
-    canonical: "https://distillpage.com/change-monitoring",
+    canonical: "https://extractkit.io/change-monitoring",
   });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [monitors, setMonitors] = useState<WebpageMonitor[]>([]);

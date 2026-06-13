@@ -13,15 +13,15 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const PDF_TOOL_SEO = {
-  title: "Website to PDF Converter – DistillPage",
+  title: "Website to PDF Converter – ExtractKit",
   description:
     "Convert any website to a clean, high-fidelity PDF. Export the full page, use AI Cleanup, or manually remove unwanted elements.",
-  canonical: "https://distillpage.com/web-to-pdf",
+  canonical: "https://extractkit.io/web-to-pdf",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Website to PDF Converter – DistillPage",
-    url: "https://distillpage.com/web-to-pdf",
+    name: "Website to PDF Converter – ExtractKit",
+    url: "https://extractkit.io/web-to-pdf",
     description:
       "Convert any website to a clean PDF with full-page export, AI Cleanup, or manual element removal.",
     applicationCategory: "UtilitiesApplication",
@@ -925,7 +925,7 @@ function WebsiteToPdf() {
         <ExportActivity tool="pdf" />
         <footer className="support-footer">
           Need help? Email us at{" "}
-          <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
+          <a href="mailto:support@extractkit.io">support@extractkit.io</a>
         </footer>
       </div>
 

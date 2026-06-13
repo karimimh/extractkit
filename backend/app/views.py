@@ -206,7 +206,7 @@ class ForgotPasswordView(APIView):
             form = PasswordResetForm({"email": email})
             if form.is_valid():
                 req = DjangoRequest()
-                req.META["SERVER_NAME"] = request.META.get("HTTP_HOST", "distillpage.com")
+                req.META["SERVER_NAME"] = request.META.get("HTTP_HOST", "extractkit.io")
                 req.META["SERVER_PORT"] = "443"
                 form.save(request=req, use_https=True, email_template_name="registration/password_reset_email.html")
         except Exception:
@@ -1079,7 +1079,7 @@ class CreatePaymentView(APIView):
             "price_amount": package["price_usd"],
             "price_currency": "usd",
             "order_id": f"user-{request.user.id}-pkg-{package_id}",
-            "order_description": f"DistillPage wallet top-up of {format_usd_cents(package['balance_cents'])}",
+            "order_description": f"ExtractKit wallet top-up of {format_usd_cents(package['balance_cents'])}",
         }
         if settings.NOWPAYMENTS_IPN_CALLBACK_URL:
             invoice_payload["ipn_callback_url"] = settings.NOWPAYMENTS_IPN_CALLBACK_URL

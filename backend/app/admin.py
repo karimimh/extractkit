@@ -24,12 +24,12 @@ class UserProfileInline(admin.StackedInline):
     fields = ("balance_cents",)
 
 
-class DistillPageUserAdmin(UserAdmin):
+class ExtractKitUserAdmin(UserAdmin):
     inlines = UserAdmin.inlines + (UserProfileInline,)
 
 
 admin.site.unregister(User)
-admin.site.register(User, DistillPageUserAdmin)
+admin.site.register(User, ExtractKitUserAdmin)
 
 
 @admin.register(UserProfile)

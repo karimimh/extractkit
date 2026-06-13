@@ -21,7 +21,7 @@ const requestExample = `curl -X POST ${API_BASE_URL}/api/jobs/ \\
   -d '{
     "endpoint": "markdown",
     "payload": {"url": "https://example.com"},
-    "webhook_url": "https://example.com/hooks/distillpage"
+    "webhook_url": "https://example.com/hooks/extractkit"
   }'`;
 
 export default function DeveloperAPI() {
@@ -35,9 +35,9 @@ export default function DeveloperAPI() {
   const [copied, setCopied] = useState("");
 
   usePageSeo({
-    title: "Developer API and Integrations - DistillPage",
-    description: "Manage DistillPage API keys, async jobs, webhooks, usage, and automation integrations.",
-    canonical: "https://distillpage.com/developer-api",
+    title: "Developer API and Integrations - ExtractKit",
+    description: "Manage ExtractKit API keys, async jobs, webhooks, usage, and automation integrations.",
+    canonical: "https://extractkit.io/developer-api",
   });
 
   const load = useCallback(async () => {

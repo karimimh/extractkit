@@ -1,4 +1,4 @@
-# DistillPage
+# ExtractKit
 
 A platform for extracting, transforming, exporting, and monitoring webpages.
 
@@ -139,7 +139,7 @@ cd backend
 python manage.py run_scheduled_exports --loop --interval 60
 ```
 
-Webhook deliveries use the `export.completed` or `export.failed` event name. When a webhook is configured, the schedule creation response returns its signing secret once. Verify the raw request body using HMAC-SHA256 against the `X-DistillPage-Signature: sha256=...` header. Deliveries also include `X-DistillPage-Event` and `X-DistillPage-Job-Id`.
+Webhook deliveries use the `export.completed` or `export.failed` event name. When a webhook is configured, the schedule creation response returns its signing secret once. Verify the raw request body using HMAC-SHA256 against the `X-ExtractKit-Signature: sha256=...` header. Deliveries also include `X-ExtractKit-Event` and `X-ExtractKit-Job-Id`.
 
 Developer API keys use the `X-API-Key` header. Async job requests support an `Idempotency-Key` header and optional `webhook_url` / `webhook_secret` fields. The MCP endpoint exposes create, get, and list export-job tools over authenticated JSON-RPC.
 
@@ -157,7 +157,7 @@ EMAIL_HOST_USER=<smtp-user>
 EMAIL_HOST_PASSWORD=<smtp-password>
 EMAIL_USE_TLS=true
 EMAIL_USE_SSL=false
-DEFAULT_FROM_EMAIL=DistillPage <notifications@distillpage.com>
+DEFAULT_FROM_EMAIL=ExtractKit <notifications@extractkit.io>
 ```
 
 The account must have an email address, and the monitor's **Email me when changed** option must be enabled. Email is only sent after a later check detects a change, not for the initial baseline.
@@ -169,7 +169,7 @@ The account must have an email address, and the monitor's **Email me when change
 **Backend:**
 
 ```bash
-cd /path/to/distillpage
+cd /path/to/extractkit
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt
 cp .env.example .env    # fill in required keys

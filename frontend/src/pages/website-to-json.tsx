@@ -13,15 +13,15 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const JSON_TOOL_SEO = {
-  title: "Website to JSON Converter – DistillPage",
+  title: "Website to JSON Converter – ExtractKit",
   description:
     "Extract standard webpage fields or use custom instructions and an optional JSON Schema to create structured JSON.",
-  canonical: "https://distillpage.com/web-to-json",
+  canonical: "https://extractkit.io/web-to-json",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Website to JSON Converter – DistillPage",
-    url: "https://distillpage.com/web-to-json",
+    name: "Website to JSON Converter – ExtractKit",
+    url: "https://extractkit.io/web-to-json",
     description:
       "Extract standard webpage fields or create custom structured JSON using instructions and an optional JSON Schema.",
     applicationCategory: "DeveloperApplication",
@@ -882,7 +882,7 @@ function WebsiteToJson() {
 
         <ExportActivity tool="json" />
         <footer className="support-footer">
-          Need help? Email us at <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
+          Need help? Email us at <a href="mailto:support@extractkit.io">support@extractkit.io</a>
         </footer>
       </div>
 

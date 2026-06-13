@@ -17,7 +17,7 @@ from .views import get_client_ip
 TOOLS = [
     {
         "name": "create_export_job",
-        "description": "Create an asynchronous DistillPage webpage export job.",
+        "description": "Create an asynchronous ExtractKit webpage export job.",
         "inputSchema": {
             "type": "object",
             "required": ["endpoint", "payload"],
@@ -74,7 +74,7 @@ class MCPView(APIView):
             return _result(request_id, {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "distillpage", "version": "1.0.0"},
+                "serverInfo": {"name": "extractkit", "version": "1.0.0"},
             })
         if method == "notifications/initialized":
             return Response(status=status.HTTP_204_NO_CONTENT)

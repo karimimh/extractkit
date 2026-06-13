@@ -14,15 +14,15 @@ import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
 
 const MD_TOOL_SEO = {
-  title: "Website to Markdown Converter – DistillPage",
+  title: "Website to Markdown Converter – ExtractKit",
   description:
     "Convert any website to clean Markdown using full-page export, AI Cleanup, or manual element removal.",
-  canonical: "https://distillpage.com/web-to-markdown",
+  canonical: "https://extractkit.io/web-to-markdown",
   jsonLd: {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Website to Markdown Converter – DistillPage",
-    url: "https://distillpage.com/web-to-markdown",
+    name: "Website to Markdown Converter – ExtractKit",
+    url: "https://extractkit.io/web-to-markdown",
     description:
       "Convert websites to clean Markdown with full-page export, AI Cleanup, or manual element removal.",
     applicationCategory: "UtilitiesApplication",
@@ -805,7 +805,7 @@ function WebsiteToMarkdown() {
         <ExportActivity tool="markdown" />
         <footer className="support-footer">
           Need help? Email us at{" "}
-          <a href="mailto:distillpage@gmail.com">distillpage@gmail.com</a>
+          <a href="mailto:support@extractkit.io">support@extractkit.io</a>
         </footer>
       </div>
 

@@ -10,7 +10,7 @@ type ThemeContextValue = {
   setMode: (mode: ThemeMode) => void;
 };
 
-const THEME_STORAGE_KEY = "distillpage-theme";
+const THEME_STORAGE_KEY = "extractkit-theme";
 const THEME_MODES: ThemeMode[] = ["light", "dark", "auto"];
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);

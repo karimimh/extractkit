@@ -44,10 +44,10 @@ class ContentExtractorTests(TestCase):
     def test_decodes_utf8_when_server_omits_charset(self):
         response = requests.Response()
         response.status_code = 200
-        response._content = "DistillPage – Tools".encode("utf-8")
+        response._content = "ExtractKit – Tools".encode("utf-8")
         response.encoding = "ISO-8859-1"
 
-        self.assertEqual(_decoded_response_html(response), "DistillPage – Tools")
+        self.assertEqual(_decoded_response_html(response), "ExtractKit – Tools")
 
     @patch(
         "app.services.extractor._render_page",
@@ -556,7 +556,7 @@ class DeveloperAPIViewTests(DjangoTestCase):
         self.assertNotIn("/api/developer/keys/", paths)
         self.assertNotIn("/api/auth/me/", paths)
         self.assertNotIn("/api/payments/create/", paths)
-        self.assertEqual(response.json()["info"]["title"], "DistillPage Developer API")
+        self.assertEqual(response.json()["info"]["title"], "ExtractKit Developer API")
         self.assertEqual(paths["/api/jobs/"]["post"]["security"], [{"DeveloperAPIKey": []}])
         self.assertNotIn("jwtAuth", response.json()["components"]["securitySchemes"])
 
@@ -575,7 +575,7 @@ class ExportJobRunnerTests(TransactionTestCase):
             user=user,
             tool="crawl",
             endpoint="crawl",
-            origin="https://distillpage.com",
+            origin="https://extractkit.io",
             request_data={"url": "https://example.com"},
         )
 
@@ -614,7 +614,7 @@ class ExportJobRunnerTests(TransactionTestCase):
             schedule=schedule,
             tool="crawl",
             endpoint="crawl",
-            origin="https://distillpage.com",
+            origin="https://extractkit.io",
             request_data={"url": "https://example.com"},
         )
 
@@ -625,7 +625,7 @@ class ExportJobRunnerTests(TransactionTestCase):
         self.assertIsNotNone(job.webhook_delivered_at)
         body = post.call_args.kwargs["data"]
         self.assertIn(b'"event":"export.completed"', body)
-        self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
+        self.assertTrue(post.call_args.kwargs["headers"]["X-ExtractKit-Signature"].startswith("sha256="))
 
     @patch("app.jobs.requests.post")
     @patch(
@@ -643,7 +643,7 @@ class ExportJobRunnerTests(TransactionTestCase):
             user=user,
             tool="crawl",
             endpoint="crawl",
-            origin="https://distillpage.com",
+            origin="https://extractkit.io",
             request_data={"url": "https://example.com"},
             webhook_url="https://hooks.example.com/export",
             webhook_secret="direct-secret",
@@ -653,7 +653,7 @@ class ExportJobRunnerTests(TransactionTestCase):
         job.refresh_from_db()
 
         self.assertEqual(job.webhook_status, 204)
-        self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
+        self.assertTrue(post.call_args.kwargs["headers"]["X-ExtractKit-Signature"].startswith("sha256="))
 
 
 class ExportScheduleViewTests(DjangoTestCase):
@@ -964,7 +964,7 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
 
         self.assertIn("changed by", change.summary)
         self.assertIn("Updated price", change.diff)
-        self.assertTrue(post.call_args.kwargs["headers"]["X-DistillPage-Signature"].startswith("sha256="))
+        self.assertTrue(post.call_args.kwargs["headers"]["X-ExtractKit-Signature"].startswith("sha256="))
         send_mail.assert_called_once()
 
         self.monitor.refresh_from_db()

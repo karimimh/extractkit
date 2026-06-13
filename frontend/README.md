@@ -1,6 +1,6 @@
-# DistillPage — Frontend
+# ExtractKit — Frontend
 
-React 19 + Vite 8 single-page application for DistillPage's webpage tools.
+React 19 + Vite 8 single-page application for ExtractKit's webpage tools.
 
 ## Structure
 
@@ -39,5 +39,5 @@ npx tsc -b
 
 | Variable                | Default                  | Description                          |
 | ----------------------- | ------------------------ | ------------------------------------ |
-| `VITE_API_BASE_URL`     | `window.location.origin` | Base URL for the distillpage backend |
+| `VITE_API_BASE_URL`     | `window.location.origin` | Base URL for the extractkit backend |
 | `VITE_GOOGLE_CLIENT_ID` | —                        | Google OAuth client ID               |

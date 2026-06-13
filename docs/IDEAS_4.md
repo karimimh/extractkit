@@ -19,7 +19,7 @@ The strongest direction is **small B2B workflow SaaS**, not generic AI chat. SMB
 
 ### 1. **Website Change Monitor + Archive**
 
-This is probably the best fit for `distillpage.com`.
+This is probably the best fit for `extractkit.io`.
 
 MVP:
 
@@ -98,7 +98,7 @@ This connects well with the intelligent document processing market, which is pro
 
 Build this:
 
-# **Distillpage Monitor**
+# **ExtractKit Monitor**
 
 A SaaS that monitors URLs and automatically creates:
 

@@ -10,11 +10,11 @@ const createJobExample = `curl -X POST ${API_BASE_URL}/api/jobs/ \\
   -d '{
     "endpoint": "markdown",
     "payload": {"url": "https://example.com"},
-    "webhook_url": "https://example.com/hooks/distillpage"
+    "webhook_url": "https://example.com/hooks/extractkit"
   }'`;
 
 const verifyWebhookExample = `signature = "sha256=" + hmac_sha256(webhook_secret, raw_request_body)
-secure_compare(signature, request.headers["X-DistillPage-Signature"])`;
+secure_compare(signature, request.headers["X-ExtractKit-Signature"])`;
 
 const endpointRows = [
   ["POST", "/api/jobs/", "Create an asynchronous export job"],
@@ -22,7 +22,7 @@ const endpointRows = [
   ["GET", "/api/jobs/{id}/", "Get job status and result"],
   ["POST", "/api/jobs/{id}/rerun/", "Create a new job from an existing request"],
   ["GET", "/api/jobs/{id}/download/", "Download a completed result"],
-  ["POST", "/api/mcp/", "Use DistillPage tools through MCP JSON-RPC"],
+  ["POST", "/api/mcp/", "Use ExtractKit tools through MCP JSON-RPC"],
 ];
 
 const exportTypes = [
@@ -40,9 +40,9 @@ const exportTypes = [
 
 export default function DeveloperDocs() {
   usePageSeo({
-    title: "Developer API Documentation - DistillPage",
-    description: "Build with the DistillPage public API, async export jobs, signed webhooks, automation integrations, and MCP.",
-    canonical: "https://distillpage.com/developers/docs",
+    title: "Developer API Documentation - ExtractKit",
+    description: "Build with the ExtractKit public API, async export jobs, signed webhooks, automation integrations, and MCP.",
+    canonical: "https://extractkit.io/developers/docs",
   });
 
   return (
@@ -64,7 +64,7 @@ export default function DeveloperDocs() {
           <article className="developer-docs-content">
             <header className="developer-docs-hero">
               <BookOpen size={28} />
-              <h1>DistillPage Developer API</h1>
+              <h1>ExtractKit Developer API</h1>
               <p>Create reliable webpage export workflows using asynchronous jobs, idempotent requests, and signed webhooks.</p>
               <div className="developer-docs-actions">
                 <Link to="/developer-api">Manage API keys</Link>
@@ -112,9 +112,9 @@ export default function DeveloperDocs() {
 
             <section id="webhooks">
               <h2>Signed webhooks</h2>
-              <p>Add <code>webhook_url</code> when creating a job. DistillPage returns the signing secret once and sends <code>export.completed</code> or <code>export.failed</code>.</p>
+              <p>Add <code>webhook_url</code> when creating a job. ExtractKit returns the signing secret once and sends <code>export.completed</code> or <code>export.failed</code>.</p>
               <pre><code>{verifyWebhookExample}</code></pre>
-              <p>Verify the raw body before parsing it. Deliveries include <code>X-DistillPage-Event</code>, <code>X-DistillPage-Job-Id</code>, and <code>X-DistillPage-Signature</code>.</p>
+              <p>Verify the raw body before parsing it. Deliveries include <code>X-ExtractKit-Event</code>, <code>X-ExtractKit-Job-Id</code>, and <code>X-ExtractKit-Signature</code>.</p>
             </section>
 
             <section id="errors">

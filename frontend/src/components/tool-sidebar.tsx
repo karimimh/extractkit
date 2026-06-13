@@ -14,7 +14,7 @@ export function ToolSidebar({ isOpen = false, onClose }: ToolSidebarProps) {
       aria-label="Tool selection"
     >
       <div className="tool-sidebar-header">
-        <span>DistillPage</span>
+        <span>ExtractKit</span>
         <button
           type="button"
           className="tool-sidebar-close"

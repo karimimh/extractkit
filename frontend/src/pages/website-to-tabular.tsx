@@ -27,13 +27,13 @@ export default function WebsiteToTabular({ format }: { format: ExportFormat }) {
   const [isLoading, setIsLoading] = useState(false);
 
   usePageSeo({
-    title: `Website to ${formatName} Converter – DistillPage`,
+    title: `Website to ${formatName} Converter – ExtractKit`,
     description: `Extract webpage tables, listings, and custom structured data into ${formatName}.`,
-    canonical: `https://distillpage.com/web-to-${isExcel ? "excel" : "csv"}`,
+    canonical: `https://extractkit.io/web-to-${isExcel ? "excel" : "csv"}`,
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      name: `Website to ${formatName} Converter – DistillPage`,
+      name: `Website to ${formatName} Converter – ExtractKit`,
       applicationCategory: "DeveloperApplication",
       operatingSystem: "Web",
     },
