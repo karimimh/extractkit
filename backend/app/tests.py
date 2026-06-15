@@ -824,6 +824,28 @@ class WebpageMonitorViewTests(DjangoTestCase):
         monitor.refresh_from_db()
         self.assertTrue(monitor.baseline_reset_pending)
 
+    def test_editing_frequency_reschedules_and_updates_organization(self):
+        original_next_run = timezone.now() + timedelta(days=1)
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency="daily",
+            next_run_at=original_next_run,
+        )
+
+        response = self.client.patch(
+            f"/api/monitors/{monitor.public_id}/",
+            {"frequency": WebpageMonitor.MINUTELY, "project": "Research", "tags": ["pricing", "priority"]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        monitor.refresh_from_db()
+        self.assertEqual(monitor.project, "Research")
+        self.assertEqual(monitor.tags, ["pricing", "priority"])
+        self.assertLess(monitor.next_run_at, original_next_run)
+        self.assertGreater(monitor.next_run_at, timezone.now())
+
     def test_cannot_update_comparison_rules_during_check(self):
         monitor = WebpageMonitor.objects.create(
             user=self.user,
@@ -840,6 +862,66 @@ class WebpageMonitorViewTests(DjangoTestCase):
         )
 
         self.assertEqual(response.status_code, 409)
+
+    @patch("app.views_monitoring.enqueue_monitor")
+    def test_duplicates_monitor_configuration_and_queues_baseline(self, enqueue_monitor):
+        source = WebpageMonitor.objects.create(
+            user=self.user,
+            name="Pricing",
+            url="https://example.com/pricing",
+            mode=WebpageMonitor.SELECTED,
+            selectors=[".price"],
+            tags=["competitor"],
+            project="Research",
+            ignore_numbers=True,
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+            notify_email=True,
+        )
+
+        response = self.client.post(f"/api/monitors/{source.public_id}/duplicate/")
+
+        self.assertEqual(response.status_code, 201)
+        duplicate = WebpageMonitor.objects.exclude(pk=source.pk).get(user=self.user)
+        self.assertEqual(duplicate.name, "Pricing copy")
+        self.assertEqual(duplicate.selectors, [".price"])
+        self.assertEqual(duplicate.tags, ["competitor"])
+        self.assertEqual(duplicate.project, "Research")
+        self.assertTrue(duplicate.ignore_numbers)
+        self.assertTrue(duplicate.notify_email)
+        enqueue_monitor.assert_called_once_with(duplicate.id)
+
+    def test_resets_baseline_without_deleting_history(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        MonitorSnapshot.objects.create(monitor=monitor, content_hash="baseline", data={"price": 10})
+
+        response = self.client.post(f"/api/monitors/{monitor.public_id}/reset-baseline/")
+
+        self.assertEqual(response.status_code, 200)
+        monitor.refresh_from_db()
+        self.assertTrue(monitor.baseline_reset_pending)
+        self.assertEqual(monitor.snapshots.count(), 1)
+
+    def test_serializes_card_status_and_latest_snapshot(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        MonitorSnapshot.objects.create(monitor=monitor, title="Pricing page", content_hash="baseline", data={"price": 10})
+
+        response = self.client.get("/api/monitors/")
+        payload = response.json()[0]
+
+        self.assertEqual(payload["status"], "active")
+        self.assertEqual(payload["latest_snapshot"]["title"], "Pricing page")
+        self.assertEqual(payload["consecutive_failures"], 0)
 
     @patch("app.views_monitoring.enqueue_monitor", return_value=False)
     def test_check_now_reports_when_monitor_is_already_running(self, enqueue_monitor):
@@ -1046,6 +1128,34 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
 
         self.assertEqual(MonitorChange.objects.filter(monitor=self.monitor).count(), 0)
         self.assertFalse(self.monitor.baseline_reset_pending)
+
+    @patch("app.monitoring.extract_main_content", side_effect=RuntimeError("Page unavailable"))
+    def test_failed_check_increments_consecutive_failures(self, _extract):
+        from .monitoring import run_monitor
+
+        run_monitor(self.monitor.id)
+        run_monitor(self.monitor.id)
+        self.monitor.refresh_from_db()
+
+        self.assertEqual(self.monitor.consecutive_failures, 2)
+        self.assertIsNone(self.monitor.last_success_at)
+
+    @patch("app.monitoring.extract_main_content")
+    def test_successful_check_clears_consecutive_failures(self, extract):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        self.monitor.consecutive_failures = 3
+        self.monitor.last_error = "Old failure"
+        self.monitor.save(update_fields=["consecutive_failures", "last_error"])
+        extract.return_value = ExtractedContent("Article", "<main>Available</main>")
+
+        run_monitor(self.monitor.id)
+        self.monitor.refresh_from_db()
+
+        self.assertEqual(self.monitor.consecutive_failures, 0)
+        self.assertEqual(self.monitor.last_error, "")
+        self.assertIsNotNone(self.monitor.last_success_at)
 
     @patch("app.monitoring.enqueue_monitor")
     def test_due_monitor_advances_and_queues(self, enqueue_monitor):

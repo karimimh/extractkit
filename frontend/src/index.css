@@ -634,9 +634,147 @@ h2.subtitle {
 	gap: 0.8rem;
 }
 
+.monitor-list-controls {
+	display: grid;
+	grid-template-columns: minmax(180px, 1fr) auto auto;
+	gap: 0.55rem;
+	margin-bottom: 0.8rem;
+}
+
+.monitor-list-controls select,
+.monitor-search {
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--page-bg);
+	color: var(--text-main);
+}
+
+.monitor-list-controls select {
+	padding: 0.55rem;
+}
+
+.monitor-search {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0 0.6rem;
+	color: var(--muted);
+}
+
+.monitor-search input {
+	min-width: 0;
+	width: 100%;
+	border: 0;
+	padding: 0.55rem 0;
+	background: transparent;
+	color: var(--text-main);
+	outline: 0;
+}
+
+.monitor-bulk-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin-bottom: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 0.55rem;
+	background: var(--surface-muted);
+}
+
+.monitor-bulk-actions strong {
+	margin-right: auto;
+	font-size: 0.78rem;
+}
+
+.monitor-bulk-actions button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.4rem 0.6rem;
+	background: var(--card);
+	color: var(--text-main);
+}
+
 .monitor-card,
 .monitor-empty-card {
 	padding: 0.9rem;
+}
+
+.monitor-card-header {
+	display: grid;
+	grid-template-columns: auto 24px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.55rem;
+}
+
+.monitor-card-header img {
+	width: 24px;
+	height: 24px;
+	border-radius: 5px;
+	object-fit: contain;
+}
+
+.monitor-card-header div {
+	display: grid;
+	min-width: 0;
+}
+
+.monitor-card-header strong,
+.monitor-card-header span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.monitor-card-header div span {
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.monitor-card-labels {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin-top: 0.6rem;
+}
+
+.monitor-card-labels span {
+	border-radius: 999px;
+	padding: 0.2rem 0.45rem;
+	background: var(--surface-muted);
+	color: var(--muted);
+	font-size: 0.68rem;
+}
+
+.monitor-card-preview {
+	max-height: 150px;
+	margin-top: 0.7rem;
+	overflow: hidden;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--page-bg);
+}
+
+.monitor-card-preview img {
+	display: block;
+	width: 100%;
+	max-height: 150px;
+	object-fit: cover;
+	object-position: top;
+}
+
+.monitor-card-preview pre {
+	margin: 0;
+	padding: 0.65rem;
+	color: var(--muted);
+	font-size: 0.68rem;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 
 .monitor-card small {
@@ -713,6 +851,50 @@ h2.subtitle {
 
 .monitor-details-dialog {
 	width: min(1120px, 96vw);
+}
+
+.monitor-edit-dialog {
+	width: min(920px, 96vw);
+}
+
+.monitor-edit-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+	margin: 1rem 0;
+}
+
+.monitor-edit-grid label {
+	display: grid;
+	gap: 0.35rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+}
+
+.monitor-edit-grid input,
+.monitor-edit-grid select,
+.monitor-edit-grid textarea {
+	width: 100%;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	padding: 0.6rem;
+	background: var(--page-bg);
+	color: var(--text-main);
+	font-family: inherit;
+}
+
+.monitor-edit-grid .monitor-edit-wide {
+	grid-column: 1 / -1;
+}
+
+.monitor-edit-grid .monitor-check {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+.monitor-edit-grid .monitor-check input {
+	width: auto;
 }
 
 .monitor-dialog-header {
@@ -1008,6 +1190,24 @@ h2.subtitle {
 
 	.monitor-details {
 		grid-template-columns: 1fr;
+	}
+
+	.monitor-list-controls,
+	.monitor-edit-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.monitor-edit-grid .monitor-edit-wide {
+		grid-column: auto;
+	}
+
+	.monitor-card-header {
+		grid-template-columns: auto 24px minmax(0, 1fr);
+	}
+
+	.monitor-card-header > .job-status {
+		grid-column: 3;
+		justify-self: start;
 	}
 
 	.monitor-history-layout,
@@ -1338,7 +1538,11 @@ h2.subtitle {
 }
 
 .job-status.completed { color: #047857; }
+.job-status.active { color: #047857; }
+.job-status.paused { color: var(--muted); }
 .job-status.failed { color: var(--error); }
+.job-status.baseline,
+.job-status.checking,
 .job-status.running,
 .job-status.pending { color: #b45309; }
 .export-history-empty { color: var(--muted) !important; }

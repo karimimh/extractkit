@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import close_old_connections, transaction
+from django.db.models import F
 from django.utils import timezone
 from PIL import Image, ImageChops
 
@@ -230,6 +231,8 @@ def run_monitor(monitor_id):
             content_hash=content_hash,
         )
         monitor.last_error = ""
+        monitor.consecutive_failures = 0
+        monitor.last_success_at = timezone.now()
         monitor.baseline_reset_pending = False
         if previous and previous.content_hash != snapshot.content_hash:
             if monitor.mode == WebpageMonitor.VISUAL:
@@ -250,10 +253,20 @@ def run_monitor(monitor_id):
                 _notify(change)
             elif diff_image:
                 (Path(settings.MEDIA_ROOT) / diff_image).unlink(missing_ok=True)
-        monitor.save(update_fields=["last_error", "last_changed_at", "baseline_reset_pending", "updated_at"])
+        monitor.save(update_fields=[
+            "last_error",
+            "last_success_at",
+            "last_changed_at",
+            "consecutive_failures",
+            "baseline_reset_pending",
+            "updated_at",
+        ])
     except Exception as exc:
         logger.exception("Webpage monitor %s failed", monitor_id)
-        WebpageMonitor.objects.filter(pk=monitor_id).update(last_error=str(exc)[:2000])
+        WebpageMonitor.objects.filter(pk=monitor_id).update(
+            last_error=str(exc)[:2000],
+            consecutive_failures=F("consecutive_failures") + 1,
+        )
     finally:
         WebpageMonitor.objects.filter(pk=monitor_id).update(
             is_running=False,

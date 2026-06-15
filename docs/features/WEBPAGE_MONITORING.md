@@ -70,6 +70,8 @@ Example:
 
 ## 3. Improve Monitor Cards
 
+**Implemented:** Monitor cards show the page title, URL, favicon, mode, configured selectors or fields, explicit run status, successful and scheduled check times, latest change percentage, snapshot preview, notification channels, and consecutive failure count. Manual checks are disabled and animated while running, and the list supports search, status filters, and sorting.
+
 Each monitor card should show:
 
 - Page title, URL, and favicon
@@ -84,14 +86,12 @@ Each monitor card should show:
 
 Also:
 
-- Spin the `Check now` icon while running
 - Disable duplicate manual checks
-- Replace the misleading section refresh icon
 - Add filters, sorting, and search
 
 ## 4. Edit And Duplicate Monitors
 
-Users currently cannot edit monitors through the UI.
+**Implemented:** Users can edit the complete monitor configuration, duplicate a monitor, reset its baseline, select monitors for bulk run/pause/resume/delete actions, and organize monitors with projects and tags.
 
 Add:
 

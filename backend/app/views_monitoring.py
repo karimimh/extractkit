@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from .models import MonitorChange, MonitorSnapshot, WebpageMonitor
 from .monitoring import enqueue_monitor, serialize_change, serialize_snapshot
+from .schedules import next_run_after
 
 COMPARISON_RULE_FIELDS = {
     "ignore_selectors",
@@ -22,10 +23,22 @@ COMPARISON_RULE_FIELDS = {
     "ignore_case",
     "ignore_numbers",
 }
+BASELINE_FIELDS = COMPARISON_RULE_FIELDS | {"url", "mode", "selectors", "fields", "ai_cleanup"}
 
 
 def serialize_monitor(monitor, reveal_secret=False):
     latest_change = monitor.changes.first()
+    latest_snapshot = monitor.snapshots.first()
+    if monitor.is_running:
+        monitor_status = "checking"
+    elif not monitor.is_active:
+        monitor_status = "paused"
+    elif monitor.last_error:
+        monitor_status = "failed"
+    elif not latest_snapshot or monitor.baseline_reset_pending:
+        monitor_status = "baseline"
+    else:
+        monitor_status = "active"
     data = {
         "id": str(monitor.public_id),
         "name": monitor.name,
@@ -33,6 +46,8 @@ def serialize_monitor(monitor, reveal_secret=False):
         "mode": monitor.mode,
         "selectors": monitor.selectors,
         "fields": monitor.fields,
+        "tags": monitor.tags,
+        "project": monitor.project,
         "ignore_selectors": monitor.ignore_selectors,
         "ignore_patterns": monitor.ignore_patterns,
         "ignore_whitespace": monitor.ignore_whitespace,
@@ -48,8 +63,12 @@ def serialize_monitor(monitor, reveal_secret=False):
         "is_running": monitor.is_running,
         "next_run_at": monitor.next_run_at,
         "last_run_at": monitor.last_run_at,
+        "last_success_at": monitor.last_success_at,
         "last_changed_at": monitor.last_changed_at,
         "last_error": monitor.last_error,
+        "consecutive_failures": monitor.consecutive_failures,
+        "status": monitor_status,
+        "latest_snapshot": serialize_snapshot(latest_snapshot) if latest_snapshot else None,
         "latest_change": serialize_change(latest_change) if latest_change else None,
         "created_at": monitor.created_at,
     }
@@ -85,7 +104,7 @@ def validated_monitor_data(data, partial=False):
         if timezone.is_naive(value):
             value = timezone.make_aware(value)
         result["next_run_at"] = value
-    for key in ("selectors", "fields", "ignore_selectors", "ignore_patterns"):
+    for key in ("selectors", "fields", "ignore_selectors", "ignore_patterns", "tags"):
         if key in data:
             values = data[key]
             if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
@@ -107,6 +126,8 @@ def validated_monitor_data(data, partial=False):
         result["minimum_change_percent"] = minimum_change_percent
     if "name" in data:
         result["name"] = str(data["name"])[:120]
+    if "project" in data:
+        result["project"] = str(data["project"]).strip()[:120]
     for key in ("ai_cleanup", "notify_email", "is_active", "ignore_whitespace", "ignore_case", "ignore_numbers"):
         if key in data:
             result[key] = bool(data[key])
@@ -134,7 +155,7 @@ class WebpageMonitorListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        monitors = WebpageMonitor.objects.filter(user=request.user).prefetch_related("changes")
+        monitors = WebpageMonitor.objects.filter(user=request.user).prefetch_related("changes", "snapshots")
         return Response([serialize_monitor(monitor) for monitor in monitors])
 
     def post(self, request):
@@ -170,7 +191,7 @@ class WebpageMonitorDetailView(APIView):
             values = validated_monitor_data(request.data, partial=True)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        if monitor.is_running and COMPARISON_RULE_FIELDS.intersection(values):
+        if monitor.is_running and BASELINE_FIELDS.intersection(values):
             return Response(
                 {"detail": "Wait for the current check to finish before changing comparison rules."},
                 status=status.HTTP_409_CONFLICT,
@@ -186,9 +207,11 @@ class WebpageMonitorDetailView(APIView):
             values["webhook_secret"] = secrets.token_urlsafe(32)
         if "webhook_url" in values and not values["webhook_url"]:
             values["webhook_secret"] = ""
+        if "frequency" in values and "next_run_at" not in values:
+            values["next_run_at"] = next_run_after(timezone.now(), values["frequency"])
         for key, value in values.items():
             setattr(monitor, key, value)
-        if COMPARISON_RULE_FIELDS.intersection(values):
+        if BASELINE_FIELDS.intersection(values):
             monitor.baseline_reset_pending = True
         monitor.save()
         return Response(serialize_monitor(monitor, reveal_secret="webhook_secret" in values))
@@ -211,6 +234,56 @@ class WebpageMonitorRunView(APIView):
         queued = enqueue_monitor(monitor.id)
         detail = "Monitor check queued." if queued else "Monitor check is already running."
         return Response({"detail": detail}, status=status.HTTP_202_ACCEPTED)
+
+
+class WebpageMonitorDuplicateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, public_id):
+        source = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
+        if not source:
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+        duplicate = WebpageMonitor.objects.create(
+            user=request.user,
+            name=f"{source.name or 'Monitor'} copy"[:120],
+            url=source.url,
+            mode=source.mode,
+            selectors=source.selectors,
+            fields=source.fields,
+            tags=source.tags,
+            project=source.project,
+            ignore_selectors=source.ignore_selectors,
+            ignore_patterns=source.ignore_patterns,
+            ignore_whitespace=source.ignore_whitespace,
+            ignore_case=source.ignore_case,
+            ignore_numbers=source.ignore_numbers,
+            minimum_change_percent=source.minimum_change_percent,
+            ai_cleanup=source.ai_cleanup,
+            frequency=source.frequency,
+            webhook_url=source.webhook_url,
+            webhook_secret=secrets.token_urlsafe(32) if source.webhook_url else "",
+            notify_email=source.notify_email,
+            next_run_at=next_run_after(timezone.now(), source.frequency),
+        )
+        enqueue_monitor(duplicate.id)
+        return Response(serialize_monitor(duplicate, reveal_secret=True), status=status.HTTP_201_CREATED)
+
+
+class WebpageMonitorResetBaselineView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, public_id):
+        monitor = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
+        if not monitor:
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+        if monitor.is_running:
+            return Response(
+                {"detail": "Wait for the current check to finish before resetting the baseline."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        monitor.baseline_reset_pending = True
+        monitor.save(update_fields=["baseline_reset_pending", "updated_at"])
+        return Response(serialize_monitor(monitor))
 
 
 class MonitorChangeListView(APIView):

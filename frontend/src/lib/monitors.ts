@@ -28,6 +28,8 @@ export type WebpageMonitor = {
   mode: "text" | "selected" | "structured" | "visual";
   selectors: string[];
   fields: string[];
+  tags: string[];
+  project: string;
   ignore_selectors: string[];
   ignore_patterns: string[];
   ignore_whitespace: boolean;
@@ -42,10 +44,14 @@ export type WebpageMonitor = {
   notify_email: boolean;
   is_active: boolean;
   is_running: boolean;
+  status: "active" | "paused" | "checking" | "failed" | "baseline";
   next_run_at: string;
   last_run_at: string | null;
+  last_success_at: string | null;
   last_changed_at: string | null;
   last_error: string;
+  consecutive_failures: number;
+  latest_snapshot: MonitorSnapshot | null;
   latest_change: MonitorChange | null;
   created_at: string;
 };
@@ -94,6 +100,24 @@ export async function runMonitor(id: string, token: string) {
     headers: headers(token),
   });
   if (!response.ok) throw new Error("Could not run monitor.");
+}
+
+export async function duplicateMonitor(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/duplicate/`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not duplicate monitor.");
+  return (await response.json()) as WebpageMonitor;
+}
+
+export async function resetMonitorBaseline(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/reset-baseline/`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not reset monitor baseline.");
+  return (await response.json()) as WebpageMonitor;
 }
 
 export async function listMonitorChanges(id: string, token: string) {

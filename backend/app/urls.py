@@ -46,7 +46,9 @@ from .views_monitoring import (
     MonitorSnapshotListView,
     MonitorSnapshotRestoreView,
     WebpageMonitorDetailView,
+    WebpageMonitorDuplicateView,
     WebpageMonitorListCreateView,
+    WebpageMonitorResetBaselineView,
     WebpageMonitorRunView,
 )
 from .views_mcp import MCPView
@@ -96,6 +98,8 @@ if settings.CHANGE_MONITORING_ENABLED:
         path("monitors/", WebpageMonitorListCreateView.as_view(), name="webpage-monitors"),
         path("monitors/<uuid:public_id>/", WebpageMonitorDetailView.as_view(), name="webpage-monitor-detail"),
         path("monitors/<uuid:public_id>/run/", WebpageMonitorRunView.as_view(), name="webpage-monitor-run"),
+        path("monitors/<uuid:public_id>/duplicate/", WebpageMonitorDuplicateView.as_view(), name="webpage-monitor-duplicate"),
+        path("monitors/<uuid:public_id>/reset-baseline/", WebpageMonitorResetBaselineView.as_view(), name="webpage-monitor-reset-baseline"),
         path("monitors/<uuid:public_id>/changes/", MonitorChangeListView.as_view(), name="monitor-changes"),
         path("monitors/<uuid:public_id>/snapshots/", MonitorSnapshotListView.as_view(), name="monitor-snapshots"),
         path("monitors/<uuid:public_id>/snapshots/<int:snapshot_id>/restore/", MonitorSnapshotRestoreView.as_view(), name="monitor-snapshot-restore"),
