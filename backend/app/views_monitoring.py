@@ -1,6 +1,7 @@
 import json
 import re
 import secrets
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator, validate_email
@@ -15,6 +16,7 @@ from rest_framework.views import APIView
 from .models import MonitorChange, MonitorNotificationDelivery, MonitorSnapshot, WebpageMonitor
 from .monitoring import deliver_notification, enqueue_monitor, notify_monitor, serialize_change, serialize_notification_delivery, serialize_snapshot
 from .schedules import next_run_after
+from .services.change_intelligence import analyze_change, weekly_intelligence_summary
 
 COMPARISON_RULE_FIELDS = {
     "ignore_selectors",
@@ -55,6 +57,8 @@ def serialize_monitor(monitor, reveal_secret=False):
         "ignore_numbers": monitor.ignore_numbers,
         "minimum_change_percent": monitor.minimum_change_percent,
         "ai_cleanup": monitor.ai_cleanup,
+        "ai_change_analysis": monitor.ai_change_analysis,
+        "auto_ignore_insignificant": monitor.auto_ignore_insignificant,
         "frequency": monitor.frequency,
         "webhook_url": monitor.webhook_url,
         "webhook_configured": bool(monitor.webhook_url),
@@ -153,7 +157,7 @@ def validated_monitor_data(data, partial=False):
     if "project" in data:
         result["project"] = str(data["project"]).strip()[:120]
     for key in (
-        "ai_cleanup", "notify_email", "is_active", "ignore_whitespace", "ignore_case", "ignore_numbers",
+        "ai_cleanup", "ai_change_analysis", "auto_ignore_insignificant", "notify_email", "is_active", "ignore_whitespace", "ignore_case", "ignore_numbers",
         "notify_on_changed", "notify_on_unavailable", "notify_on_recovered",
     ):
         if key in data:
@@ -292,6 +296,8 @@ class WebpageMonitorDuplicateView(APIView):
             ignore_numbers=source.ignore_numbers,
             minimum_change_percent=source.minimum_change_percent,
             ai_cleanup=source.ai_cleanup,
+            ai_change_analysis=source.ai_change_analysis,
+            auto_ignore_insignificant=source.auto_ignore_insignificant,
             frequency=source.frequency,
             webhook_url=source.webhook_url,
             webhook_secret=secrets.token_urlsafe(32) if source.webhook_url else "",
@@ -395,6 +401,30 @@ class MonitorChangeDetailView(APIView):
         change.status = change_status
         change.save(update_fields=["status"])
         return Response(serialize_change(change))
+
+
+class MonitorChangeAnalyzeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, public_id):
+        change = MonitorChange.objects.select_related("monitor", "before", "after").filter(
+            public_id=public_id, monitor__user=request.user
+        ).first()
+        if not change:
+            return Response({"detail": "Change not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_change(analyze_change(change)))
+
+
+class MonitorIntelligenceSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        since = timezone.now() - timedelta(days=7)
+        changes = MonitorChange.objects.select_related("monitor").filter(
+            monitor__user=request.user,
+            created_at__gte=since,
+        )
+        return Response(weekly_intelligence_summary(changes))
 
 
 class MonitorSnapshotListView(APIView):

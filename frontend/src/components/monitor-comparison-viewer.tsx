@@ -1,4 +1,4 @@
-import { Check, Columns2, EyeOff, Image as ImageIcon, Rows3 } from "lucide-react";
+import { Brain, Check, Columns2, EyeOff, Image as ImageIcon, RefreshCw, Rows3 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { monitorAssetUrl, type MonitorChange } from "../lib/monitors";
 
@@ -161,13 +161,30 @@ function VisualComparison({ change }: { change: MonitorChange }) {
   );
 }
 
-export function MonitorComparisonViewer({ change, savingStatus, onStatusChange }: {
+export function MonitorComparisonViewer({ change, savingStatus, analyzing, onStatusChange, onAnalyze }: {
   change: MonitorChange;
   savingStatus: boolean;
+  analyzing: boolean;
   onStatusChange: (status: MonitorChange["status"]) => void;
+  onAnalyze: () => void;
 }) {
   return (
     <div className="monitor-comparison-viewer">
+      <section className="monitor-ai-intelligence">
+        <div className="monitor-ai-heading">
+          <div><Brain size={16} /><strong>AI Change Intelligence</strong></div>
+          <button type="button" disabled={analyzing} onClick={onAnalyze}><RefreshCw size={14} /> {analyzing ? "Analyzing..." : change.ai_analyzed_at ? "Re-analyze" : "Analyze"}</button>
+        </div>
+        {change.ai_summary ? <>
+          <p>{change.ai_summary}</p>
+          <div className="monitor-ai-tags">
+            {change.ai_importance && <span className={`importance-${change.ai_importance}`}>{change.ai_importance} importance</span>}
+            {change.ai_categories.map((category) => <span key={category}>{category}</span>)}
+            {change.ai_insignificant && <span>insignificant</span>}
+          </div>
+          {change.ai_why_it_matters && <div className="monitor-ai-why"><strong>Why this matters</strong><span>{change.ai_why_it_matters}</span></div>}
+        </> : <p className="monitor-dialog-state">No intelligence analysis has been generated for this change.</p>}
+      </section>
       <div className="monitor-review-actions">
         <span className={`monitor-review-status ${change.status}`}>{change.status === "pending" ? "Pending review" : change.status}</span>
         <button type="button" disabled={savingStatus || change.status === "reviewed"} onClick={() => onStatusChange("reviewed")}><Check size={14} /> Mark reviewed</button>

@@ -42,11 +42,13 @@ from .views_developer import (
 )
 from .views_monitoring import (
     MonitorChangeDetailView,
+    MonitorChangeAnalyzeView,
     MonitorChangeDownloadView,
     MonitorChangeListView,
     MonitorNotificationListView,
     MonitorNotificationRetryView,
     MonitorNotificationTestView,
+    MonitorIntelligenceSummaryView,
     MonitorSnapshotListView,
     MonitorSnapshotRestoreView,
     WebpageMonitorDetailView,
@@ -109,6 +111,8 @@ if settings.CHANGE_MONITORING_ENABLED:
         path("monitors/<uuid:public_id>/notifications/test/", MonitorNotificationTestView.as_view(), name="monitor-notification-test"),
         path("monitor-notifications/<uuid:public_id>/retry/", MonitorNotificationRetryView.as_view(), name="monitor-notification-retry"),
         path("monitor-changes/<uuid:public_id>/", MonitorChangeDetailView.as_view(), name="monitor-change-detail"),
+        path("monitor-changes/<uuid:public_id>/analyze/", MonitorChangeAnalyzeView.as_view(), name="monitor-change-analyze"),
+        path("monitor-intelligence/summary/", MonitorIntelligenceSummaryView.as_view(), name="monitor-intelligence-summary"),
         path("monitors/<uuid:public_id>/snapshots/", MonitorSnapshotListView.as_view(), name="monitor-snapshots"),
         path("monitors/<uuid:public_id>/snapshots/<int:snapshot_id>/restore/", MonitorSnapshotRestoreView.as_view(), name="monitor-snapshot-restore"),
         path("monitor-changes/<uuid:public_id>/download/", MonitorChangeDownloadView.as_view(), name="monitor-change-download"),

@@ -22,6 +22,7 @@ from PIL import Image, ImageChops
 from .models import MonitorChange, MonitorNotificationDelivery, MonitorSnapshot, WebpageMonitor
 from .schedules import next_run_after
 from .services.cleaner import apply_ai_cleanup_to_soup
+from .services.change_intelligence import analyze_change
 from .services.extractor import extract_main_content
 from .services.screenshot_generator import generate_screenshot_from_url
 from .services.structured_json_generator import html_to_structured_json
@@ -161,6 +162,13 @@ def serialize_change(change):
         "summary": change.summary,
         "changed_percent": change.changed_percent,
         "status": change.status,
+        "ai_summary": change.ai_summary,
+        "ai_importance": change.ai_importance,
+        "ai_categories": change.ai_categories,
+        "ai_why_it_matters": change.ai_why_it_matters,
+        "ai_insignificant": change.ai_insignificant,
+        "ai_analysis_source": change.ai_analysis_source,
+        "ai_analyzed_at": change.ai_analyzed_at,
         "diff": change.diff,
         "before": change.before.data,
         "after": change.after.data,
@@ -184,7 +192,7 @@ def serialize_snapshot(snapshot):
 def _notification_message(monitor, event, change=None, error="", changes=None):
     name = monitor.name or monitor.url
     if event == MonitorNotificationDelivery.CHANGED and change:
-        return f"ExtractKit detected a change in {name}: {change.summary}"
+        return f"ExtractKit detected a change in {name}: {change.ai_summary or change.summary}"
     if event == MonitorNotificationDelivery.UNAVAILABLE:
         return f"ExtractKit could not check {name}: {error or monitor.last_error}"
     if event == MonitorNotificationDelivery.RECOVERED:
@@ -251,9 +259,11 @@ def deliver_notification(delivery):
     try:
         if delivery.channel == MonitorNotificationDelivery.EMAIL:
             diff = payload.get("change", {}).get("diff", "")
+            why = payload.get("change", {}).get("ai_why_it_matters", "")
             html = (
                 f"<h2>{escape(message)}</h2><p><a href=\"{escape(monitor.url)}\">Open monitored page</a></p>"
                 + (f"<h3>Difference</h3><pre>{escape(diff)}</pre>" if diff else "")
+                + (f"<h3>Why this matters</h3><p>{escape(why)}</p>" if why else "")
             )
             send_mail(
                 f"ExtractKit monitor {delivery.event}: {monitor.name or monitor.url}",
@@ -393,8 +403,11 @@ def run_monitor(monitor_id):
                     changed_percent=percent,
                     diff_image_path=diff_image,
                 )
+                if monitor.ai_change_analysis:
+                    analyze_change(change)
                 monitor.last_changed_at = timezone.now()
-                _notify(change)
+                if change.status != MonitorChange.IGNORED:
+                    _notify(change)
             elif diff_image:
                 (Path(settings.MEDIA_ROOT) / diff_image).unlink(missing_ok=True)
         monitor.save(update_fields=[

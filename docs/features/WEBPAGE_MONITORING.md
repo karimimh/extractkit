@@ -131,6 +131,8 @@ Create a dedicated comparison experience:
 
 ## 7. AI Change Intelligence
 
+**Implemented:** Every detected change can receive a persisted plain-language intelligence analysis with importance, price/availability/CTA/policy/SEO classification, a “why this matters” explanation, insignificant-change detection and optional auto-ignore. A deterministic local analyzer is always available; set `AI_CHANGE_USE_OPENAI=true` with `OPENAI_API_KEY` to use OpenAI. The monitoring page also shows a seven-day summary across all monitors.
+
 Instead of only reporting “Content changed by 12%,” provide:
 
 - Plain-language change summary

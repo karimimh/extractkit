@@ -1206,6 +1206,90 @@ h2.subtitle {
 	gap: 0.8rem;
 }
 
+.monitor-ai-intelligence,
+.monitor-weekly-intelligence {
+	display: grid;
+	gap: 0.65rem;
+	border: 1px solid var(--preview-border);
+	border-radius: 12px;
+	padding: 0.8rem;
+	background: var(--preview-bg);
+}
+
+.monitor-ai-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+}
+
+.monitor-ai-heading > div,
+.monitor-ai-heading button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.monitor-ai-heading button {
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.4rem 0.6rem;
+	background: var(--card);
+	color: var(--text-main);
+	font-size: 0.7rem;
+}
+
+.monitor-ai-intelligence p {
+	margin: 0;
+}
+
+.monitor-ai-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.monitor-ai-tags span {
+	border-radius: 999px;
+	padding: 0.25rem 0.45rem;
+	background: var(--surface-muted);
+	color: var(--muted);
+	font-size: 0.68rem;
+	text-transform: capitalize;
+}
+
+.monitor-ai-tags .importance-high { background: var(--danger-bg); color: var(--error); }
+.monitor-ai-tags .importance-medium { background: var(--warning-bg); color: var(--warning-text); }
+.monitor-ai-tags .importance-low { background: var(--success-bg); color: var(--success-text); }
+
+.monitor-ai-why {
+	display: grid;
+	gap: 0.2rem;
+	border-left: 3px solid var(--accent);
+	padding-left: 0.6rem;
+	font-size: 0.75rem;
+}
+
+.monitor-weekly-intelligence {
+	margin: 0.8rem 0;
+}
+
+.monitor-weekly-intelligence > div:first-child {
+	display: grid;
+	gap: 0.2rem;
+}
+
+.monitor-weekly-intelligence span,
+.monitor-weekly-intelligence li {
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.monitor-weekly-intelligence ul {
+	margin: 0;
+	padding-left: 1.2rem;
+}
+
 .monitor-review-actions,
 .monitor-comparison-toolbar,
 .monitor-comparison-filters,

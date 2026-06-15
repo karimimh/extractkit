@@ -1032,6 +1032,57 @@ class WebpageMonitorViewTests(DjangoTestCase):
         )
         self.assertEqual(invalid.status_code, 400)
 
+    def test_analyzes_change_and_returns_weekly_intelligence_summary(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            name="Competitor",
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        before = MonitorSnapshot.objects.create(monitor=monitor, content_hash="before", data={"price": "$20"})
+        after = MonitorSnapshot.objects.create(monitor=monitor, content_hash="after", data={"price": "$15"})
+        change = MonitorChange.objects.create(monitor=monitor, before=before, after=after, summary="Changed", changed_percent=20)
+
+        analyzed = self.client.post(f"/api/monitor-changes/{change.public_id}/analyze/")
+        summary = self.client.get("/api/monitor-intelligence/summary/")
+
+        self.assertEqual(analyzed.status_code, 200)
+        self.assertEqual(analyzed.json()["ai_importance"], "high")
+        self.assertIn("price", analyzed.json()["ai_categories"])
+        self.assertTrue(analyzed.json()["ai_summary"])
+        self.assertEqual(summary.status_code, 200)
+        self.assertEqual(summary.json()["change_count"], 1)
+        self.assertEqual(summary.json()["high_importance_count"], 1)
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key", "AI_CHANGE_USE_OPENAI": "true"}, clear=False)
+    @patch("openai.OpenAI")
+    def test_change_analysis_uses_configured_openai_provider(self, openai_class):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        before = MonitorSnapshot.objects.create(monitor=monitor, content_hash="before", data={"price": "$20"})
+        after = MonitorSnapshot.objects.create(monitor=monitor, content_hash="after", data={"price": "$15"})
+        change = MonitorChange.objects.create(monitor=monitor, before=before, after=after, summary="Changed", changed_percent=20)
+        response = MagicMock()
+        response.choices[0].message.content = json.dumps({
+            "summary": "The competitor reduced its price.",
+            "importance": "high",
+            "categories": ["price"],
+            "why_it_matters": "The lower price may affect competitiveness.",
+            "insignificant": False,
+        })
+        openai_class.return_value.chat.completions.create.return_value = response
+
+        analyzed = self.client.post(f"/api/monitor-changes/{change.public_id}/analyze/")
+
+        self.assertEqual(analyzed.status_code, 200)
+        self.assertEqual(analyzed.json()["ai_analysis_source"], "openai")
+        self.assertEqual(analyzed.json()["ai_summary"], "The competitor reduced its price.")
+
     @patch("app.monitoring.send_mail")
     def test_tests_notifications_lists_history_and_retries_failures(self, send_mail):
         monitor = WebpageMonitor.objects.create(
@@ -1166,6 +1217,8 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
 
         self.assertIn("changed by", change.summary)
         self.assertIn("Updated price", change.diff)
+        self.assertEqual(change.ai_importance, "high")
+        self.assertIn("price", change.ai_categories)
         self.assertTrue(post.call_args.kwargs["headers"]["X-ExtractKit-Signature"].startswith("sha256="))
         send_mail.assert_called_once()
         self.assertIn("html_message", send_mail.call_args.kwargs)
@@ -1174,6 +1227,30 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
         self.monitor.refresh_from_db()
         self.assertIsNotNone(self.monitor.last_run_at)
         self.assertFalse(self.monitor.is_running)
+
+    @patch("app.monitoring.send_mail")
+    @patch("app.monitoring.requests.post")
+    @patch("app.monitoring.extract_main_content")
+    def test_auto_ignores_insignificant_change_without_notifying(self, extract, post, send_mail):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        self.monitor.auto_ignore_insignificant = True
+        self.monitor.save(update_fields=["auto_ignore_insignificant"])
+        stable = "This is a long stable article body. " * 100
+        extract.side_effect = [
+            ExtractedContent("Article", f"<main>{stable}</main>"),
+            ExtractedContent("Article", f"<main>{stable}.</main>"),
+        ]
+
+        run_monitor(self.monitor.id)
+        run_monitor(self.monitor.id)
+
+        change = MonitorChange.objects.get(monitor=self.monitor)
+        self.assertTrue(change.ai_insignificant)
+        self.assertEqual(change.status, MonitorChange.IGNORED)
+        post.assert_not_called()
+        send_mail.assert_not_called()
 
     @patch("app.monitoring.extract_main_content")
     def test_ignored_text_noise_does_not_create_change(self, extract):

@@ -7,6 +7,7 @@ import {
   monitorAssetUrl,
   restoreMonitorSnapshot,
   retryMonitorNotification,
+  analyzeMonitorChange,
   testMonitorNotifications,
   updateMonitorChange,
   updateMonitor,
@@ -51,6 +52,7 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
   const [restoring, setRestoring] = useState(false);
   const [savingRules, setSavingRules] = useState(false);
   const [savingChangeStatus, setSavingChangeStatus] = useState(false);
+  const [analyzingChange, setAnalyzingChange] = useState(false);
   const [testingNotifications, setTestingNotifications] = useState(false);
   const [retryingNotificationId, setRetryingNotificationId] = useState<string | null>(null);
   const [minimumChangePercent, setMinimumChangePercent] = useState(monitor?.minimum_change_percent ?? 0);
@@ -138,6 +140,20 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
       setError(saveError instanceof Error ? saveError.message : "Could not update change status.");
     } finally {
       setSavingChangeStatus(false);
+    }
+  };
+
+  const analyzeChange = async () => {
+    if (!selectedChange) return;
+    setAnalyzingChange(true);
+    setError("");
+    try {
+      const analyzed = await analyzeMonitorChange(selectedChange.id, token);
+      setChanges((current) => current.map((change) => change.id === analyzed.id ? analyzed : change));
+    } catch (analysisError) {
+      setError(analysisError instanceof Error ? analysisError.message : "Could not analyze change.");
+    } finally {
+      setAnalyzingChange(false);
     }
   };
 
@@ -290,7 +306,13 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
                     </div>
                     <strong className="monitor-change-percent">{selectedChange.changed_percent.toFixed(2)}%</strong>
                   </div>
-                  <MonitorComparisonViewer change={selectedChange} savingStatus={savingChangeStatus} onStatusChange={(status) => void saveChangeStatus(status)} />
+                  <MonitorComparisonViewer
+                    change={selectedChange}
+                    savingStatus={savingChangeStatus}
+                    analyzing={analyzingChange}
+                    onStatusChange={(status) => void saveChangeStatus(status)}
+                    onAnalyze={() => void analyzeChange()}
+                  />
                 </section>
               )}
             </div>

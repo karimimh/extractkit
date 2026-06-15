@@ -6,6 +6,13 @@ export type MonitorChange = {
   summary: string;
   changed_percent: number;
   status: "pending" | "reviewed" | "ignored";
+  ai_summary: string;
+  ai_importance: "" | "low" | "medium" | "high";
+  ai_categories: string[];
+  ai_why_it_matters: string;
+  ai_insignificant: boolean;
+  ai_analysis_source: string;
+  ai_analyzed_at: string | null;
   diff: string;
   before: Record<string, unknown>;
   after: Record<string, unknown>;
@@ -52,6 +59,8 @@ export type WebpageMonitor = {
   ignore_numbers: boolean;
   minimum_change_percent: number;
   ai_cleanup: boolean;
+  ai_change_analysis: boolean;
+  auto_ignore_insignificant: boolean;
   frequency: "minutely" | "hourly" | "daily" | "weekly" | "monthly";
   webhook_url: string;
   webhook_configured: boolean;
@@ -160,6 +169,30 @@ export async function updateMonitorChange(id: string, status: MonitorChange["sta
   });
   if (!response.ok) throw new Error((await response.json()).detail || "Could not update change.");
   return (await response.json()) as MonitorChange;
+}
+
+export async function analyzeMonitorChange(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitor-changes/${id}/analyze/`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not analyze change.");
+  return (await response.json()) as MonitorChange;
+}
+
+export type MonitorIntelligenceSummary = {
+  summary: string;
+  change_count: number;
+  monitor_count: number;
+  high_importance_count: number;
+  categories: Record<string, number>;
+  highlights: { change_id: string; monitor: string; summary: string }[];
+};
+
+export async function getMonitorIntelligenceSummary(token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitor-intelligence/summary/`, { headers: headers(token) });
+  if (!response.ok) throw new Error("Could not load AI intelligence summary.");
+  return (await response.json()) as MonitorIntelligenceSummary;
 }
 
 export async function listMonitorSnapshots(id: string, token: string) {

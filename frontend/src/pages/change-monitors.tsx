@@ -10,12 +10,14 @@ import {
   createMonitor,
   deleteMonitor,
   duplicateMonitor,
+  getMonitorIntelligenceSummary,
   listMonitors,
   monitorAssetUrl,
   resetMonitorBaseline,
   runMonitor,
   updateMonitor,
   type WebpageMonitor,
+  type MonitorIntelligenceSummary,
 } from "../lib/monitors";
 
 export default function ChangeMonitors() {
@@ -45,6 +47,9 @@ export default function ChangeMonitors() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [aiCleanup, setAiCleanup] = useState(false);
+  const [aiChangeAnalysis, setAiChangeAnalysis] = useState(true);
+  const [autoIgnoreInsignificant, setAutoIgnoreInsignificant] = useState(false);
+  const [intelligenceSummary, setIntelligenceSummary] = useState<MonitorIntelligenceSummary | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [detailsMonitor, setDetailsMonitor] = useState<WebpageMonitor | null>(null);
   const [editMonitor, setEditMonitor] = useState<WebpageMonitor | null>(null);
@@ -55,9 +60,15 @@ export default function ChangeMonitors() {
   const [bulkWorking, setBulkWorking] = useState(false);
 
   const load = useCallback(async () => {
-    if (!token) return setMonitors([]);
+    if (!token) {
+      setMonitors([]);
+      setIntelligenceSummary(null);
+      return;
+    }
     try {
-      setMonitors(await listMonitors(token));
+      const [loadedMonitors, summary] = await Promise.all([listMonitors(token), getMonitorIntelligenceSummary(token)]);
+      setMonitors(loadedMonitors);
+      setIntelligenceSummary(summary);
     } catch {
       // Monitor errors remain visible on their individual cards.
     }
@@ -100,6 +111,8 @@ export default function ChangeMonitors() {
         webhook_url: webhookUrl,
         notify_email: notifyEmail,
         ai_cleanup: aiCleanup,
+        ai_change_analysis: aiChangeAnalysis,
+        auto_ignore_insignificant: autoIgnoreInsignificant,
       }, token);
       setMessage(monitor.webhook_secret
         ? `Monitor created. Webhook signing secret: ${monitor.webhook_secret}`
@@ -252,6 +265,8 @@ export default function ChangeMonitors() {
               </fieldset>
               <label>Webhook, Slack, or Discord URL<input type="url" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} /></label>
               <label className="monitor-check"><input type="checkbox" checked={aiCleanup} onChange={(event) => setAiCleanup(event.target.checked)} /> AI cleanup</label>
+              <label className="monitor-check"><input type="checkbox" checked={aiChangeAnalysis} onChange={(event) => setAiChangeAnalysis(event.target.checked)} /> AI change intelligence</label>
+              <label className="monitor-check"><input type="checkbox" checked={autoIgnoreInsignificant} disabled={!aiChangeAnalysis} onChange={(event) => setAutoIgnoreInsignificant(event.target.checked)} /> Auto-ignore insignificant changes</label>
               <label className="monitor-check"><input type="checkbox" checked={notifyEmail} onChange={(event) => setNotifyEmail(event.target.checked)} /> Email me when changed</label>
               <button type="button" className="monitor-primary-button" onClick={() => void submit()} disabled={!url || isCreating}>
                 {isCreating ? <RefreshCw className="monitor-spinning-icon" size={14} /> : <Plus size={14} />} {isCreating ? "Creating..." : "Create monitor"}
@@ -261,6 +276,13 @@ export default function ChangeMonitors() {
 
           <section className="monitor-list-section">
             <div className="monitor-section-heading"><ListChecks size={18} /><strong>Your monitors</strong></div>
+            {intelligenceSummary && intelligenceSummary.change_count > 0 && <section className="monitor-weekly-intelligence">
+              <div><strong>7-day AI intelligence</strong><span>{intelligenceSummary.summary}</span></div>
+              <div className="monitor-ai-tags">
+                {Object.entries(intelligenceSummary.categories).map(([category, count]) => <span key={category}>{category}: {count}</span>)}
+              </div>
+              {!!intelligenceSummary.highlights.length && <ul>{intelligenceSummary.highlights.slice(0, 3).map((highlight) => <li key={highlight.change_id}><strong>{highlight.monitor}</strong>: {highlight.summary}</li>)}</ul>}
+            </section>}
             {message && <p className="export-schedule-message">{message}</p>}
             {!user && <div className="monitor-empty-card"><p>Sign in to create monitors and view detected changes.</p><button type="button" className="monitor-primary-button" onClick={() => setShowAuthModal(true)}>Sign in</button></div>}
             {user && !monitors.length && <div className="monitor-empty-card"><p>No monitors yet. Create one to establish its first baseline.</p></div>}
@@ -324,7 +346,7 @@ export default function ChangeMonitors() {
                 {!!monitor.ignore_selectors.length && <small>Ignored selectors: {monitor.ignore_selectors.join(", ")}</small>}
                 {(monitor.ignore_whitespace || monitor.ignore_case || monitor.ignore_numbers || !!monitor.ignore_patterns.length) && <small>Noise rules enabled</small>}
                 {monitor.last_error && <p className="monitor-error"><strong>Last check failed:</strong> {monitor.last_error}</p>}
-                {monitor.latest_change && <p className="monitor-change-summary">{monitor.latest_change.summary}</p>}
+                {monitor.latest_change && <p className="monitor-change-summary">{monitor.latest_change.ai_summary || monitor.latest_change.summary}</p>}
                 <div className="export-history-actions">
                   <button type="button" onClick={() => setDetailsMonitor(monitor)}><History size={14} /> Details &amp; history</button>
                   <button type="button" onClick={() => setEditMonitor(monitor)}><Edit3 size={14} /> Edit</button>

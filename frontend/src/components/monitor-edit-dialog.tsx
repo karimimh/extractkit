@@ -34,6 +34,8 @@ export function MonitorEditDialog({ monitor, token, onClose, onSaved }: MonitorE
   const [telegramBotToken, setTelegramBotToken] = useState("");
   const [telegramChatId, setTelegramChatId] = useState(monitor?.telegram_chat_id ?? "");
   const [aiCleanup, setAiCleanup] = useState(monitor?.ai_cleanup ?? false);
+  const [aiChangeAnalysis, setAiChangeAnalysis] = useState(monitor?.ai_change_analysis ?? true);
+  const [autoIgnoreInsignificant, setAutoIgnoreInsignificant] = useState(monitor?.auto_ignore_insignificant ?? false);
   const [minimumChangePercent, setMinimumChangePercent] = useState(monitor?.minimum_change_percent ?? 0);
   const [ignoreSelectors, setIgnoreSelectors] = useState(monitor?.ignore_selectors.join(", ") ?? "");
   const [ignorePatterns, setIgnorePatterns] = useState(monitor?.ignore_patterns.join("\n") ?? "");
@@ -70,6 +72,8 @@ export function MonitorEditDialog({ monitor, token, onClose, onSaved }: MonitorE
         ...(telegramBotToken ? { telegram_bot_token: telegramBotToken } : {}),
         telegram_chat_id: telegramChatId,
         ai_cleanup: aiCleanup,
+        ai_change_analysis: aiChangeAnalysis,
+        auto_ignore_insignificant: autoIgnoreInsignificant,
         minimum_change_percent: minimumChangePercent,
         ignore_selectors: splitComma(ignoreSelectors),
         ignore_patterns: splitLines(ignorePatterns),
@@ -119,6 +123,8 @@ export function MonitorEditDialog({ monitor, token, onClose, onSaved }: MonitorE
             <label>Ignored selectors<input value={ignoreSelectors} onChange={(event) => setIgnoreSelectors(event.target.value)} /></label>
             <label className="monitor-edit-wide">Ignored text patterns<textarea rows={3} value={ignorePatterns} onChange={(event) => setIgnorePatterns(event.target.value)} /></label>
             <label className="monitor-check"><input type="checkbox" checked={aiCleanup} onChange={(event) => setAiCleanup(event.target.checked)} /> AI cleanup</label>
+            <label className="monitor-check"><input type="checkbox" checked={aiChangeAnalysis} onChange={(event) => setAiChangeAnalysis(event.target.checked)} /> AI change intelligence</label>
+            <label className="monitor-check"><input type="checkbox" checked={autoIgnoreInsignificant} disabled={!aiChangeAnalysis} onChange={(event) => setAutoIgnoreInsignificant(event.target.checked)} /> Automatically ignore insignificant changes</label>
             <label className="monitor-check"><input type="checkbox" checked={ignoreWhitespace} onChange={(event) => setIgnoreWhitespace(event.target.checked)} /> Ignore whitespace</label>
             <label className="monitor-check"><input type="checkbox" checked={ignoreCase} onChange={(event) => setIgnoreCase(event.target.checked)} /> Ignore capitalization</label>
             <label className="monitor-check"><input type="checkbox" checked={ignoreNumbers} onChange={(event) => setIgnoreNumbers(event.target.checked)} /> Ignore numbers</label>

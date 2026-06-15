@@ -250,6 +250,8 @@ class WebpageMonitor(models.Model):
     minimum_change_percent = models.FloatField(default=0)
     baseline_reset_pending = models.BooleanField(default=False)
     ai_cleanup = models.BooleanField(default=False)
+    ai_change_analysis = models.BooleanField(default=True)
+    auto_ignore_insignificant = models.BooleanField(default=False)
     frequency = models.CharField(max_length=12, choices=FREQUENCY_CHOICES)
     webhook_url = models.URLField(blank=True)
     webhook_secret = models.CharField(max_length=128, blank=True)
@@ -321,6 +323,17 @@ class MonitorChange(models.Model):
     webhook_status = models.PositiveSmallIntegerField(null=True, blank=True)
     notification_error = models.TextField(blank=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=PENDING)
+    ai_summary = models.TextField(blank=True)
+    ai_importance = models.CharField(
+        max_length=12,
+        choices=[("low", "Low"), ("medium", "Medium"), ("high", "High")],
+        blank=True,
+    )
+    ai_categories = models.JSONField(default=list, blank=True)
+    ai_why_it_matters = models.TextField(blank=True)
+    ai_insignificant = models.BooleanField(default=False)
+    ai_analysis_source = models.CharField(max_length=20, blank=True)
+    ai_analyzed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
