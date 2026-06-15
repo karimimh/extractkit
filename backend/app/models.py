@@ -278,6 +278,15 @@ class MonitorSnapshot(models.Model):
 
 
 class MonitorChange(models.Model):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+    IGNORED = "ignored"
+    STATUS_CHOICES = [
+        (PENDING, "Pending review"),
+        (REVIEWED, "Reviewed"),
+        (IGNORED, "Ignored"),
+    ]
+
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     monitor = models.ForeignKey(WebpageMonitor, on_delete=models.CASCADE, related_name="changes")
     before = models.ForeignKey(MonitorSnapshot, on_delete=models.CASCADE, related_name="+")
@@ -288,6 +297,7 @@ class MonitorChange(models.Model):
     diff_image_path = models.CharField(max_length=500, blank=True)
     webhook_status = models.PositiveSmallIntegerField(null=True, blank=True)
     notification_error = models.TextField(blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

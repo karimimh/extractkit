@@ -103,6 +103,8 @@ Add:
 
 ## 5. Better Comparison Viewer
 
+**Implemented:** Change history now opens a dedicated mode-aware comparison viewer with side-by-side and inline text diffs, added/removed/modified filters, an interactive before/after image slider, visual difference images, structured field comparison, and persistent reviewed or ignored statuses.
+
 Create a dedicated comparison experience:
 
 - Side-by-side text diff

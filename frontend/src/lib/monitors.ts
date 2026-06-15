@@ -2,8 +2,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000
 
 export type MonitorChange = {
   id: string;
+  mode: WebpageMonitor["mode"];
   summary: string;
   changed_percent: number;
+  status: "pending" | "reviewed" | "ignored";
   diff: string;
   before: Record<string, unknown>;
   after: Record<string, unknown>;
@@ -124,6 +126,16 @@ export async function listMonitorChanges(id: string, token: string) {
   const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/changes/`, { headers: headers(token) });
   if (!response.ok) throw new Error("Could not load monitor changes.");
   return (await response.json()) as MonitorChange[];
+}
+
+export async function updateMonitorChange(id: string, status: MonitorChange["status"], token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitor-changes/${id}/`, {
+    method: "PATCH",
+    headers: headers(token, true),
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not update change.");
+  return (await response.json()) as MonitorChange;
 }
 
 export async function listMonitorSnapshots(id: string, token: string) {

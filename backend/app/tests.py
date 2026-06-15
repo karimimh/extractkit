@@ -965,6 +965,37 @@ class WebpageMonitorViewTests(DjangoTestCase):
         self.assertEqual(snapshot_response.json()[0]["title"], "After")
         self.assertEqual(change_response.status_code, 200)
         self.assertEqual(len(change_response.json()), 51)
+        self.assertEqual(change_response.json()[0]["mode"], "text")
+        self.assertEqual(change_response.json()[0]["status"], "pending")
+
+    def test_marks_change_as_reviewed_or_ignored(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+        before = MonitorSnapshot.objects.create(monitor=monitor, content_hash="before", data={"price": 10})
+        after = MonitorSnapshot.objects.create(monitor=monitor, content_hash="after", data={"price": 12})
+        change = MonitorChange.objects.create(monitor=monitor, before=before, after=after, summary="Price changed")
+
+        response = self.client.patch(
+            f"/api/monitor-changes/{change.public_id}/",
+            {"status": "reviewed"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "reviewed")
+        change.refresh_from_db()
+        self.assertEqual(change.status, MonitorChange.REVIEWED)
+
+        invalid = self.client.patch(
+            f"/api/monitor-changes/{change.public_id}/",
+            {"status": "deleted"},
+            format="json",
+        )
+        self.assertEqual(invalid.status_code, 400)
 
     def test_monitor_history_is_private(self):
         from django.contrib.auth.models import User
@@ -979,6 +1010,13 @@ class WebpageMonitorViewTests(DjangoTestCase):
 
         self.assertEqual(self.client.get(f"/api/monitors/{monitor.public_id}/snapshots/").status_code, 404)
         self.assertEqual(self.client.get(f"/api/monitors/{monitor.public_id}/changes/").status_code, 404)
+        before = MonitorSnapshot.objects.create(monitor=monitor, content_hash="before", data={})
+        after = MonitorSnapshot.objects.create(monitor=monitor, content_hash="after", data={"changed": True})
+        change = MonitorChange.objects.create(monitor=monitor, before=before, after=after, summary="Private")
+        self.assertEqual(
+            self.client.patch(f"/api/monitor-changes/{change.public_id}/", {"status": "ignored"}, format="json").status_code,
+            404,
+        )
 
     def test_restores_historical_snapshot_as_latest_baseline(self):
         monitor = WebpageMonitor.objects.create(

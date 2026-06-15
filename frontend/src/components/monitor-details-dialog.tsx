@@ -1,16 +1,18 @@
-import { Download, FileClock, GitCompareArrows, Image as ImageIcon, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Download, FileClock, GitCompareArrows, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   listMonitorChanges,
   listMonitorSnapshots,
   monitorAssetUrl,
   restoreMonitorSnapshot,
+  updateMonitorChange,
   updateMonitor,
   type MonitorChange,
   type MonitorSnapshot,
   type WebpageMonitor,
 } from "../lib/monitors";
 import { Dialog } from "./shared/dialog";
+import { MonitorComparisonViewer } from "./monitor-comparison-viewer";
 
 type MonitorDetailsDialogProps = {
   monitor: WebpageMonitor | null;
@@ -43,6 +45,7 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
   const [error, setError] = useState("");
   const [restoring, setRestoring] = useState(false);
   const [savingRules, setSavingRules] = useState(false);
+  const [savingChangeStatus, setSavingChangeStatus] = useState(false);
   const [minimumChangePercent, setMinimumChangePercent] = useState(monitor?.minimum_change_percent ?? 0);
   const [ignoreSelectors, setIgnoreSelectors] = useState(monitor?.ignore_selectors.join(", ") ?? "");
   const [ignorePatterns, setIgnorePatterns] = useState(monitor?.ignore_patterns.join("\n") ?? "");
@@ -112,6 +115,20 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
       setError(saveError instanceof Error ? saveError.message : "Could not update noise rules.");
     } finally {
       setSavingRules(false);
+    }
+  };
+
+  const saveChangeStatus = async (status: MonitorChange["status"]) => {
+    if (!selectedChange) return;
+    setSavingChangeStatus(true);
+    setError("");
+    try {
+      const updated = await updateMonitorChange(selectedChange.id, status, token);
+      setChanges((current) => current.map((change) => change.id === updated.id ? updated : change));
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not update change status.");
+    } finally {
+      setSavingChangeStatus(false);
     }
   };
 
@@ -218,7 +235,7 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
                     onClick={() => setSelectedChangeId(change.id)}
                   >
                     <strong>{change.changed_percent.toFixed(2)}% changed</strong>
-                    <span>{new Date(change.created_at).toLocaleString()}</span>
+                    <span>{new Date(change.created_at).toLocaleString()} · {change.status === "pending" ? "Pending review" : change.status}</span>
                   </button>
                 ))}
                 {!changes.length && <p>No changes detected yet.</p>}
@@ -234,28 +251,7 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
                     </div>
                     <strong className="monitor-change-percent">{selectedChange.changed_percent.toFixed(2)}%</strong>
                   </div>
-                  {selectedChange.before_image_url || selectedChange.after_image_url ? (
-                    <div className="monitor-image-comparison">
-                      {[
-                        ["Before", selectedChange.before_image_url],
-                        ["After", selectedChange.after_image_url],
-                        ["Difference", selectedChange.diff_image_url],
-                      ].map(([label, image]) => image && (
-                        <figure key={label}>
-                          <figcaption><ImageIcon size={14} /> {label}</figcaption>
-                          <img src={monitorAssetUrl(image) ?? ""} alt={`${label} visual capture`} />
-                        </figure>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="monitor-data-comparison">
-                        <div><h4>Before</h4><pre className="monitor-data-preview">{formattedData(selectedChange.before)}</pre></div>
-                        <div><h4>After</h4><pre className="monitor-data-preview">{formattedData(selectedChange.after)}</pre></div>
-                      </div>
-                      {selectedChange.diff && <div className="monitor-diff-preview"><h4>Difference</h4><pre>{selectedChange.diff}</pre></div>}
-                    </>
-                  )}
+                  <MonitorComparisonViewer change={selectedChange} savingStatus={savingChangeStatus} onStatusChange={(status) => void saveChangeStatus(status)} />
                 </section>
               )}
             </div>

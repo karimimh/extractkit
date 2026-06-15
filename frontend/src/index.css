@@ -1112,6 +1112,256 @@ h2.subtitle {
 	background: var(--surface-muted);
 }
 
+.monitor-comparison-viewer {
+	display: grid;
+	gap: 0.8rem;
+}
+
+.monitor-review-actions,
+.monitor-comparison-toolbar,
+.monitor-comparison-filters,
+.monitor-layout-toggle {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.monitor-review-actions {
+	justify-content: flex-end;
+}
+
+.monitor-review-actions button,
+.monitor-comparison-toolbar button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 0.4rem 0.6rem;
+	background: var(--card);
+	color: var(--text-main);
+	font-size: 0.7rem;
+}
+
+.monitor-review-actions button:disabled {
+	opacity: 0.5;
+}
+
+.monitor-review-status {
+	margin-right: auto;
+	border-radius: 999px;
+	padding: 0.32rem 0.55rem;
+	background: var(--warning-bg);
+	color: var(--warning-text);
+	font-size: 0.68rem;
+	font-weight: 700;
+	text-transform: capitalize;
+}
+
+.monitor-review-status.reviewed {
+	background: var(--success-bg);
+	color: var(--success-text);
+}
+
+.monitor-review-status.ignored {
+	background: var(--surface-muted);
+	color: var(--muted);
+}
+
+.monitor-comparison-toolbar {
+	justify-content: space-between;
+}
+
+.monitor-comparison-toolbar button.active {
+	border-color: var(--text-main);
+	background: var(--surface-muted);
+	font-weight: 700;
+}
+
+.monitor-text-diff {
+	max-height: 58vh;
+	overflow: auto;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--card);
+}
+
+.monitor-text-diff-side {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.monitor-diff-column-title {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: 0.55rem 0.7rem;
+	border-bottom: 1px solid var(--border);
+	background: var(--surface-muted);
+	font-size: 0.72rem;
+	font-weight: 700;
+}
+
+.monitor-diff-row {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: subgrid;
+}
+
+.monitor-text-diff code {
+	display: block;
+	min-height: 1.7rem;
+	border-bottom: 1px solid var(--border);
+	padding: 0.3rem 0.55rem;
+	color: var(--text-main);
+	font-size: 0.7rem;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.monitor-text-diff-side code:first-child {
+	border-right: 1px solid var(--border);
+}
+
+.monitor-text-diff .added,
+.monitor-structured-table tr.added td {
+	background: var(--success-bg);
+	color: var(--success-text);
+}
+
+.monitor-text-diff .removed,
+.monitor-structured-table tr.removed td {
+	background: var(--danger-bg);
+	color: var(--error);
+}
+
+.monitor-text-diff-inline {
+	display: grid;
+}
+
+.monitor-structured-table-wrap {
+	max-height: 58vh;
+	overflow: auto;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+}
+
+.monitor-structured-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.72rem;
+}
+
+.monitor-structured-table th,
+.monitor-structured-table td {
+	padding: 0.55rem;
+	border-bottom: 1px solid var(--border);
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.monitor-structured-table thead th {
+	position: sticky;
+	top: 0;
+	background: var(--surface-muted);
+}
+
+.monitor-structured-table tr.modified td {
+	background: var(--warning-bg);
+	color: var(--warning-text);
+}
+
+.monitor-structured-table td span {
+	border-radius: 999px;
+	padding: 0.2rem 0.4rem;
+	background: var(--surface-muted);
+	text-transform: capitalize;
+}
+
+.monitor-visual-comparison {
+	display: grid;
+	gap: 1rem;
+}
+
+.monitor-image-slider {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: white;
+}
+
+.monitor-image-slider > img,
+.monitor-image-slider-before img {
+	display: block;
+	width: 100%;
+	max-height: 58vh;
+	object-fit: contain;
+}
+
+.monitor-image-slider-before {
+	position: absolute;
+	inset: 0;
+}
+
+.monitor-image-slider-line {
+	position: absolute;
+	inset-block: 0;
+	width: 2px;
+	background: white;
+	box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.5);
+}
+
+.monitor-image-slider input {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	cursor: col-resize;
+	opacity: 0;
+}
+
+.monitor-image-slider span {
+	position: absolute;
+	top: 0.5rem;
+	border-radius: 999px;
+	padding: 0.25rem 0.45rem;
+	background: rgba(15, 23, 42, 0.75);
+	color: white;
+	font-size: 0.68rem;
+}
+
+.monitor-image-slider .before-label { left: 0.5rem; }
+.monitor-image-slider .after-label { right: 0.5rem; }
+
+.monitor-difference-image {
+	margin: 0;
+}
+
+.monitor-difference-image figcaption {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	margin-bottom: 0.4rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+.monitor-difference-image img {
+	display: block;
+	width: 100%;
+	max-height: 58vh;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	object-fit: contain;
+	background: white;
+}
+
 .monitor-data-preview,
 .monitor-diff-preview pre {
 	max-height: 52vh;

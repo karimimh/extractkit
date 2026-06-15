@@ -41,6 +41,7 @@ from .views_developer import (
     DeveloperUsageView,
 )
 from .views_monitoring import (
+    MonitorChangeDetailView,
     MonitorChangeDownloadView,
     MonitorChangeListView,
     MonitorSnapshotListView,
@@ -101,6 +102,7 @@ if settings.CHANGE_MONITORING_ENABLED:
         path("monitors/<uuid:public_id>/duplicate/", WebpageMonitorDuplicateView.as_view(), name="webpage-monitor-duplicate"),
         path("monitors/<uuid:public_id>/reset-baseline/", WebpageMonitorResetBaselineView.as_view(), name="webpage-monitor-reset-baseline"),
         path("monitors/<uuid:public_id>/changes/", MonitorChangeListView.as_view(), name="monitor-changes"),
+        path("monitor-changes/<uuid:public_id>/", MonitorChangeDetailView.as_view(), name="monitor-change-detail"),
         path("monitors/<uuid:public_id>/snapshots/", MonitorSnapshotListView.as_view(), name="monitor-snapshots"),
         path("monitors/<uuid:public_id>/snapshots/<int:snapshot_id>/restore/", MonitorSnapshotRestoreView.as_view(), name="monitor-snapshot-restore"),
         path("monitor-changes/<uuid:public_id>/download/", MonitorChangeDownloadView.as_view(), name="monitor-change-download"),

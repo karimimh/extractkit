@@ -296,6 +296,27 @@ class MonitorChangeListView(APIView):
         return Response([serialize_change(change) for change in monitor.changes.select_related("before", "after")])
 
 
+class MonitorChangeDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, public_id):
+        change = MonitorChange.objects.select_related("monitor", "before", "after").filter(
+            public_id=public_id,
+            monitor__user=request.user,
+        ).first()
+        if not change:
+            return Response({"detail": "Change not found."}, status=status.HTTP_404_NOT_FOUND)
+        change_status = request.data.get("status")
+        if change_status not in dict(MonitorChange.STATUS_CHOICES):
+            return Response(
+                {"detail": "Status must be pending, reviewed, or ignored."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        change.status = change_status
+        change.save(update_fields=["status"])
+        return Response(serialize_change(change))
+
+
 class MonitorSnapshotListView(APIView):
     permission_classes = [IsAuthenticated]
 

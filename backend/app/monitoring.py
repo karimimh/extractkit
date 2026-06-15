@@ -139,12 +139,15 @@ def _visual_comparison(before, after):
     old.paste(before_image, (0, 0))
     new.paste(after_image, (0, 0))
     diff_image = ImageChops.difference(old, new)
-    changed_pixels = sum(1 for pixel in diff_image.convert("L").getdata() if pixel)
+    mask = diff_image.convert("L").point(lambda pixel: 255 if pixel else 0)
+    changed_pixels = sum(1 for pixel in mask.getdata() if pixel)
     percent = round(changed_pixels / (width * height) * 100, 2)
     relative_path = f"exports/monitor-diff-{uuid4().hex}.png"
     output = Path(settings.MEDIA_ROOT) / relative_path
     output.parent.mkdir(parents=True, exist_ok=True)
-    diff_image.save(output)
+    highlighted = Image.blend(new, Image.new("RGB", new.size, "white"), 0.35)
+    highlighted.paste(Image.new("RGB", new.size, "#ef4444"), mask=mask)
+    highlighted.save(output)
     return f"Visual capture changed by {percent:.2f}%.", "", percent, relative_path
 
 
@@ -152,8 +155,10 @@ def serialize_change(change):
     return {
         "id": str(change.public_id),
         "monitor_id": str(change.monitor.public_id),
+        "mode": change.monitor.mode,
         "summary": change.summary,
         "changed_percent": change.changed_percent,
+        "status": change.status,
         "diff": change.diff,
         "before": change.before.data,
         "after": change.after.data,
