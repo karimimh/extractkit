@@ -224,6 +224,14 @@ class WebpageMonitor(models.Model):
         (MINUTELY, "Every minute"),
         *ExportSchedule.FREQUENCY_CHOICES,
     ]
+    IMMEDIATE = "immediate"
+    DAILY_DIGEST = "daily"
+    WEEKLY_DIGEST = "weekly"
+    NOTIFICATION_FREQUENCY_CHOICES = [
+        (IMMEDIATE, "Immediately"),
+        (DAILY_DIGEST, "Daily digest"),
+        (WEEKLY_DIGEST, "Weekly digest"),
+    ]
 
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="webpage_monitors")
@@ -246,6 +254,21 @@ class WebpageMonitor(models.Model):
     webhook_url = models.URLField(blank=True)
     webhook_secret = models.CharField(max_length=128, blank=True)
     notify_email = models.BooleanField(default=False)
+    notification_emails = models.JSONField(default=list, blank=True)
+    notification_frequency = models.CharField(
+        max_length=12,
+        choices=NOTIFICATION_FREQUENCY_CHOICES,
+        default=IMMEDIATE,
+    )
+    notify_on_changed = models.BooleanField(default=True)
+    notify_on_unavailable = models.BooleanField(default=True)
+    notify_on_recovered = models.BooleanField(default=True)
+    slack_webhook_url = models.URLField(blank=True)
+    discord_webhook_url = models.URLField(blank=True)
+    teams_webhook_url = models.URLField(blank=True)
+    telegram_bot_token = models.CharField(max_length=200, blank=True)
+    telegram_chat_id = models.CharField(max_length=100, blank=True)
+    last_digest_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_running = models.BooleanField(default=False)
     next_run_at = models.DateTimeField()
@@ -299,6 +322,57 @@ class MonitorChange(models.Model):
     notification_error = models.TextField(blank=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class MonitorNotificationDelivery(models.Model):
+    PENDING = "pending"
+    DELIVERED = "delivered"
+    FAILED = "failed"
+    STATUS_CHOICES = [(PENDING, "Pending"), (DELIVERED, "Delivered"), (FAILED, "Failed")]
+    EMAIL = "email"
+    WEBHOOK = "webhook"
+    SLACK = "slack"
+    DISCORD = "discord"
+    TEAMS = "teams"
+    TELEGRAM = "telegram"
+    CHANNEL_CHOICES = [
+        (EMAIL, "Email"),
+        (WEBHOOK, "Webhook"),
+        (SLACK, "Slack"),
+        (DISCORD, "Discord"),
+        (TEAMS, "Microsoft Teams"),
+        (TELEGRAM, "Telegram"),
+    ]
+    CHANGED = "changed"
+    UNAVAILABLE = "unavailable"
+    RECOVERED = "recovered"
+    TEST = "test"
+    DIGEST = "digest"
+    EVENT_CHOICES = [
+        (CHANGED, "Changed"),
+        (UNAVAILABLE, "Unavailable"),
+        (RECOVERED, "Recovered"),
+        (TEST, "Test"),
+        (DIGEST, "Digest"),
+    ]
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    monitor = models.ForeignKey(WebpageMonitor, on_delete=models.CASCADE, related_name="notification_deliveries")
+    change = models.ForeignKey(MonitorChange, null=True, blank=True, on_delete=models.SET_NULL, related_name="notification_deliveries")
+    event = models.CharField(max_length=16, choices=EVENT_CHOICES)
+    channel = models.CharField(max_length=12, choices=CHANNEL_CHOICES)
+    destination = models.CharField(max_length=500)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    response_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]

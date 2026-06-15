@@ -3,7 +3,7 @@ import re
 import secrets
 
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
+from django.core.validators import URLValidator, validate_email
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -12,8 +12,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import MonitorChange, MonitorSnapshot, WebpageMonitor
-from .monitoring import enqueue_monitor, serialize_change, serialize_snapshot
+from .models import MonitorChange, MonitorNotificationDelivery, MonitorSnapshot, WebpageMonitor
+from .monitoring import deliver_notification, enqueue_monitor, notify_monitor, serialize_change, serialize_notification_delivery, serialize_snapshot
 from .schedules import next_run_after
 
 COMPARISON_RULE_FIELDS = {
@@ -59,6 +59,16 @@ def serialize_monitor(monitor, reveal_secret=False):
         "webhook_url": monitor.webhook_url,
         "webhook_configured": bool(monitor.webhook_url),
         "notify_email": monitor.notify_email,
+        "notification_emails": monitor.notification_emails,
+        "notification_frequency": monitor.notification_frequency,
+        "notify_on_changed": monitor.notify_on_changed,
+        "notify_on_unavailable": monitor.notify_on_unavailable,
+        "notify_on_recovered": monitor.notify_on_recovered,
+        "slack_webhook_url": monitor.slack_webhook_url,
+        "discord_webhook_url": monitor.discord_webhook_url,
+        "teams_webhook_url": monitor.teams_webhook_url,
+        "telegram_bot_configured": bool(monitor.telegram_bot_token),
+        "telegram_chat_id": monitor.telegram_chat_id,
         "is_active": monitor.is_active,
         "is_running": monitor.is_running,
         "next_run_at": monitor.next_run_at,
@@ -97,6 +107,10 @@ def validated_monitor_data(data, partial=False):
         if data["frequency"] not in dict(WebpageMonitor.FREQUENCY_CHOICES):
             raise ValueError("Invalid frequency.")
         result["frequency"] = data["frequency"]
+    if "notification_frequency" in data:
+        if data["notification_frequency"] not in dict(WebpageMonitor.NOTIFICATION_FREQUENCY_CHOICES):
+            raise ValueError("Invalid notification frequency.")
+        result["notification_frequency"] = data["notification_frequency"]
     if "next_run_at" in data:
         value = parse_datetime(data["next_run_at"]) if isinstance(data["next_run_at"], str) else data["next_run_at"]
         if not value:
@@ -110,6 +124,16 @@ def validated_monitor_data(data, partial=False):
             if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
                 raise ValueError(f"{key} must be a list of strings.")
             result[key] = [value.strip() for value in values if value.strip()][:50]
+    if "notification_emails" in data:
+        values = data["notification_emails"]
+        if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
+            raise ValueError("notification_emails must be a list of email addresses.")
+        try:
+            for value in values:
+                validate_email(value.strip())
+        except ValidationError as exc:
+            raise ValueError("Notification email addresses must be valid.") from exc
+        result["notification_emails"] = list(dict.fromkeys(value.strip() for value in values if value.strip()))[:20]
     if "ignore_patterns" in result:
         try:
             for pattern in result["ignore_patterns"]:
@@ -128,22 +152,31 @@ def validated_monitor_data(data, partial=False):
         result["name"] = str(data["name"])[:120]
     if "project" in data:
         result["project"] = str(data["project"]).strip()[:120]
-    for key in ("ai_cleanup", "notify_email", "is_active", "ignore_whitespace", "ignore_case", "ignore_numbers"):
+    for key in (
+        "ai_cleanup", "notify_email", "is_active", "ignore_whitespace", "ignore_case", "ignore_numbers",
+        "notify_on_changed", "notify_on_unavailable", "notify_on_recovered",
+    ):
         if key in data:
             result[key] = bool(data[key])
-    if "webhook_url" in data:
-        webhook_url = str(data["webhook_url"]).strip()
+    for key in ("webhook_url", "slack_webhook_url", "discord_webhook_url", "teams_webhook_url"):
+        if key not in data:
+            continue
+        webhook_url = str(data[key]).strip()
         if webhook_url:
             try:
                 URLValidator(schemes=["http", "https"])(webhook_url)
             except ValidationError as exc:
-                raise ValueError("Webhook URL must be a valid HTTP or HTTPS URL.") from exc
-        result["webhook_url"] = webhook_url
+                raise ValueError(f"{key} must be a valid HTTP or HTTPS URL.") from exc
+        result[key] = webhook_url
     if "webhook_secret" in data:
         secret = str(data["webhook_secret"]).strip()
         if len(secret) > 128:
             raise ValueError("Webhook secret must be 128 characters or fewer.")
         result["webhook_secret"] = secret
+    if "telegram_bot_token" in data:
+        result["telegram_bot_token"] = str(data["telegram_bot_token"]).strip()[:200]
+    if "telegram_chat_id" in data:
+        result["telegram_chat_id"] = str(data["telegram_chat_id"]).strip()[:100]
     mode = result.get("mode", data.get("mode"))
     selectors = result.get("selectors", data.get("selectors", []))
     if mode == WebpageMonitor.SELECTED and not selectors:
@@ -263,6 +296,16 @@ class WebpageMonitorDuplicateView(APIView):
             webhook_url=source.webhook_url,
             webhook_secret=secrets.token_urlsafe(32) if source.webhook_url else "",
             notify_email=source.notify_email,
+            notification_emails=source.notification_emails,
+            notification_frequency=source.notification_frequency,
+            notify_on_changed=source.notify_on_changed,
+            notify_on_unavailable=source.notify_on_unavailable,
+            notify_on_recovered=source.notify_on_recovered,
+            slack_webhook_url=source.slack_webhook_url,
+            discord_webhook_url=source.discord_webhook_url,
+            teams_webhook_url=source.teams_webhook_url,
+            telegram_bot_token=source.telegram_bot_token,
+            telegram_chat_id=source.telegram_chat_id,
             next_run_at=next_run_after(timezone.now(), source.frequency),
         )
         enqueue_monitor(duplicate.id)
@@ -294,6 +337,43 @@ class MonitorChangeListView(APIView):
         if not monitor:
             return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response([serialize_change(change) for change in monitor.changes.select_related("before", "after")])
+
+
+class MonitorNotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, public_id):
+        monitor = WebpageMonitor.objects.filter(public_id=public_id, user=request.user).first()
+        if not monitor:
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response([serialize_notification_delivery(delivery) for delivery in monitor.notification_deliveries.all()[:100]])
+
+
+class MonitorNotificationTestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, public_id):
+        monitor = WebpageMonitor.objects.select_related("user").filter(public_id=public_id, user=request.user).first()
+        if not monitor:
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+        deliveries = notify_monitor(monitor, MonitorNotificationDelivery.TEST, force=True)
+        if not deliveries:
+            return Response({"detail": "Configure at least one notification destination."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response([serialize_notification_delivery(delivery) for delivery in deliveries], status=status.HTTP_201_CREATED)
+
+
+class MonitorNotificationRetryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, public_id):
+        delivery = MonitorNotificationDelivery.objects.select_related("monitor").filter(
+            public_id=public_id, monitor__user=request.user
+        ).first()
+        if not delivery:
+            return Response({"detail": "Notification delivery not found."}, status=status.HTTP_404_NOT_FOUND)
+        if delivery.status != MonitorNotificationDelivery.FAILED:
+            return Response({"detail": "Only failed deliveries can be retried."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serialize_notification_delivery(deliver_notification(delivery)))
 
 
 class MonitorChangeDetailView(APIView):

@@ -4,6 +4,8 @@ import hmac
 import json
 import logging
 import re
+from datetime import timedelta
+from html import escape
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
@@ -17,7 +19,7 @@ from django.db.models import F
 from django.utils import timezone
 from PIL import Image, ImageChops
 
-from .models import MonitorChange, MonitorSnapshot, WebpageMonitor
+from .models import MonitorChange, MonitorNotificationDelivery, MonitorSnapshot, WebpageMonitor
 from .schedules import next_run_after
 from .services.cleaner import apply_ai_cleanup_to_soup
 from .services.extractor import extract_main_content
@@ -179,51 +181,186 @@ def serialize_snapshot(snapshot):
     }
 
 
-def _notify(change):
-    monitor = change.monitor
-    message = f"ExtractKit detected a change in {monitor.name or monitor.url}: {change.summary}"
+def _notification_message(monitor, event, change=None, error="", changes=None):
+    name = monitor.name or monitor.url
+    if event == MonitorNotificationDelivery.CHANGED and change:
+        return f"ExtractKit detected a change in {name}: {change.summary}"
+    if event == MonitorNotificationDelivery.UNAVAILABLE:
+        return f"ExtractKit could not check {name}: {error or monitor.last_error}"
+    if event == MonitorNotificationDelivery.RECOVERED:
+        return f"ExtractKit can reach {name} again after previous failed checks."
+    if event == MonitorNotificationDelivery.DIGEST:
+        return f"ExtractKit digest for {name}: {len(changes or [])} change(s) detected."
+    return f"ExtractKit test notification for {name}. Notification delivery is configured correctly."
+
+
+def _notification_payload(monitor, event, message, change=None, changes=None):
+    event_name = f"monitor.{event}"
     payload = {
-        "event": "monitor.changed",
+        "event": event_name,
         "monitor": str(monitor.public_id),
-        "change": serialize_change(change),
         "text": message,
         "content": message,
     }
-    body = json.dumps(payload, default=str, separators=(",", ":")).encode()
-    errors = []
-    if monitor.webhook_url:
-        headers = {
-            "Content-Type": "application/json",
-            "X-ExtractKit-Event": "monitor.changed",
-        }
-        if monitor.webhook_secret:
-            headers["X-ExtractKit-Signature"] = "sha256=" + hmac.new(
-                monitor.webhook_secret.encode(), body, hashlib.sha256
-            ).hexdigest()
-        try:
-            response = requests.post(monitor.webhook_url, data=body, headers=headers, timeout=10)
-            change.webhook_status = response.status_code
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            errors.append(str(exc))
-    if monitor.notify_email and monitor.user.email:
-        try:
-            send_mail(
-                f"ExtractKit change detected: {monitor.name or monitor.url}",
-                f"{change.summary}\n\n{monitor.url}",
-                None,
-                [monitor.user.email],
+    if change:
+        payload["change"] = serialize_change(change)
+    if changes:
+        payload["changes"] = [serialize_change(item) for item in changes]
+    return payload
+
+
+def _notification_destinations(monitor):
+    destinations = []
+    email_addresses = monitor.notification_emails or ([monitor.user.email] if monitor.notify_email and monitor.user.email else [])
+    destinations.extend((MonitorNotificationDelivery.EMAIL, address) for address in email_addresses)
+    for channel, destination in (
+        (MonitorNotificationDelivery.WEBHOOK, monitor.webhook_url),
+        (MonitorNotificationDelivery.SLACK, monitor.slack_webhook_url),
+        (MonitorNotificationDelivery.DISCORD, monitor.discord_webhook_url),
+        (MonitorNotificationDelivery.TEAMS, monitor.teams_webhook_url),
+    ):
+        if destination:
+            destinations.append((channel, destination))
+    if monitor.telegram_bot_token and monitor.telegram_chat_id:
+        destinations.append((MonitorNotificationDelivery.TELEGRAM, monitor.telegram_chat_id))
+    return destinations
+
+
+def serialize_notification_delivery(delivery):
+    return {
+        "id": str(delivery.public_id),
+        "event": delivery.event,
+        "channel": delivery.channel,
+        "destination": delivery.destination,
+        "status": delivery.status,
+        "attempts": delivery.attempts,
+        "response_status": delivery.response_status,
+        "error": delivery.error,
+        "delivered_at": delivery.delivered_at,
+        "created_at": delivery.created_at,
+    }
+
+
+def deliver_notification(delivery):
+    monitor = delivery.monitor
+    payload = delivery.payload
+    message = payload.get("text", "")
+    delivery.attempts += 1
+    delivery.response_status = None
+    delivery.error = ""
+    try:
+        if delivery.channel == MonitorNotificationDelivery.EMAIL:
+            diff = payload.get("change", {}).get("diff", "")
+            html = (
+                f"<h2>{escape(message)}</h2><p><a href=\"{escape(monitor.url)}\">Open monitored page</a></p>"
+                + (f"<h3>Difference</h3><pre>{escape(diff)}</pre>" if diff else "")
             )
-        except Exception as exc:
-            errors.append(str(exc))
-    change.notification_error = "\n".join(errors)[:2000]
-    change.save(update_fields=["webhook_status", "notification_error"])
+            send_mail(
+                f"ExtractKit monitor {delivery.event}: {monitor.name or monitor.url}",
+                f"{message}\n\n{monitor.url}\n\n{diff}",
+                None,
+                [delivery.destination],
+                html_message=html,
+            )
+        else:
+            url = delivery.destination
+            body_payload = payload
+            if delivery.channel == MonitorNotificationDelivery.TELEGRAM:
+                url = f"https://api.telegram.org/bot{monitor.telegram_bot_token}/sendMessage"
+                body_payload = {"chat_id": monitor.telegram_chat_id, "text": message}
+            elif delivery.channel == MonitorNotificationDelivery.SLACK:
+                body_payload = {"text": message, "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": message}}]}
+            elif delivery.channel == MonitorNotificationDelivery.DISCORD:
+                body_payload = {"content": message, "embeds": [{"title": monitor.name or monitor.url, "description": message, "url": monitor.url}]}
+            elif delivery.channel == MonitorNotificationDelivery.TEAMS:
+                body_payload = {"type": "message", "attachments": [{"contentType": "application/vnd.microsoft.card.adaptive", "content": {"type": "AdaptiveCard", "version": "1.4", "body": [{"type": "TextBlock", "weight": "Bolder", "text": monitor.name or monitor.url}, {"type": "TextBlock", "wrap": True, "text": message}]}}]}
+            body = json.dumps(body_payload, default=str, separators=(",", ":")).encode()
+            headers = {"Content-Type": "application/json", "X-ExtractKit-Event": payload.get("event", "")}
+            if delivery.channel == MonitorNotificationDelivery.WEBHOOK and monitor.webhook_secret:
+                headers["X-ExtractKit-Signature"] = "sha256=" + hmac.new(
+                    monitor.webhook_secret.encode(), body, hashlib.sha256
+                ).hexdigest()
+            response = requests.post(url, data=body, headers=headers, timeout=10)
+            delivery.response_status = response.status_code
+            response.raise_for_status()
+        delivery.status = MonitorNotificationDelivery.DELIVERED
+        delivery.delivered_at = timezone.now()
+    except Exception as exc:
+        delivery.status = MonitorNotificationDelivery.FAILED
+        delivery.error = str(exc)[:2000]
+    delivery.save(update_fields=["attempts", "response_status", "error", "status", "delivered_at", "updated_at"])
+    return delivery
+
+
+def notify_monitor(monitor, event, change=None, error="", changes=None, force=False):
+    enabled = {
+        MonitorNotificationDelivery.CHANGED: monitor.notify_on_changed,
+        MonitorNotificationDelivery.UNAVAILABLE: monitor.notify_on_unavailable,
+        MonitorNotificationDelivery.RECOVERED: monitor.notify_on_recovered,
+    }.get(event, True)
+    if not force and not enabled:
+        return []
+    if not force and event == MonitorNotificationDelivery.CHANGED and monitor.notification_frequency != WebpageMonitor.IMMEDIATE:
+        return []
+    message = _notification_message(monitor, event, change=change, error=error, changes=changes)
+    payload = json.loads(json.dumps(
+        _notification_payload(monitor, event, message, change=change, changes=changes),
+        default=str,
+    ))
+    deliveries = []
+    for channel, destination in _notification_destinations(monitor):
+        delivery = MonitorNotificationDelivery.objects.create(
+            monitor=monitor,
+            change=change,
+            event=event,
+            channel=channel,
+            destination=destination,
+            payload=payload,
+        )
+        deliveries.append(deliver_notification(delivery))
+    if change:
+        failed = [delivery.error for delivery in deliveries if delivery.status == MonitorNotificationDelivery.FAILED]
+        webhook = next((delivery for delivery in deliveries if delivery.channel == MonitorNotificationDelivery.WEBHOOK), None)
+        change.webhook_status = webhook.response_status if webhook else None
+        change.notification_error = "\n".join(failed)[:2000]
+        change.save(update_fields=["webhook_status", "notification_error"])
+    return deliveries
+
+
+def _notify(change):
+    return _safe_notify_monitor(change.monitor, MonitorNotificationDelivery.CHANGED, change=change)
+
+
+def _safe_notify_monitor(monitor, event, **kwargs):
+    try:
+        return notify_monitor(monitor, event, **kwargs)
+    except Exception:
+        logger.exception("Notification delivery setup failed for monitor %s", monitor.id)
+        return []
+
+
+def run_due_monitor_digests(now=None):
+    now = now or timezone.now()
+    delivered = 0
+    monitors = WebpageMonitor.objects.select_related("user").exclude(notification_frequency=WebpageMonitor.IMMEDIATE)
+    for monitor in monitors:
+        interval = timedelta(days=1 if monitor.notification_frequency == WebpageMonitor.DAILY_DIGEST else 7)
+        since = monitor.last_digest_at or monitor.created_at
+        if since + interval > now:
+            continue
+        changes = list(monitor.changes.filter(created_at__gt=since).select_related("before", "after"))
+        if changes and monitor.notify_on_changed:
+            delivered += len(_safe_notify_monitor(monitor, MonitorNotificationDelivery.DIGEST, changes=changes, force=True))
+        monitor.last_digest_at = now
+        monitor.save(update_fields=["last_digest_at", "updated_at"])
+    return delivered
 
 
 def run_monitor(monitor_id):
     close_old_connections()
     try:
         monitor = WebpageMonitor.objects.select_related("user").get(pk=monitor_id)
+        previous_failures = monitor.consecutive_failures
         monitor.is_running = True
         monitor.save(update_fields=["is_running", "updated_at"])
         title, data, image_path, content_hash = _capture(monitor)
@@ -239,6 +376,8 @@ def run_monitor(monitor_id):
         monitor.consecutive_failures = 0
         monitor.last_success_at = timezone.now()
         monitor.baseline_reset_pending = False
+        if previous_failures:
+            _safe_notify_monitor(monitor, MonitorNotificationDelivery.RECOVERED)
         if previous and previous.content_hash != snapshot.content_hash:
             if monitor.mode == WebpageMonitor.VISUAL:
                 summary, diff, percent, diff_image = _visual_comparison(previous, snapshot)
@@ -268,6 +407,9 @@ def run_monitor(monitor_id):
         ])
     except Exception as exc:
         logger.exception("Webpage monitor %s failed", monitor_id)
+        monitor = WebpageMonitor.objects.select_related("user").filter(pk=monitor_id).first()
+        if monitor and monitor.consecutive_failures == 0:
+            _safe_notify_monitor(monitor, MonitorNotificationDelivery.UNAVAILABLE, error=str(exc))
         WebpageMonitor.objects.filter(pk=monitor_id).update(
             last_error=str(exc)[:2000],
             consecutive_failures=F("consecutive_failures") + 1,

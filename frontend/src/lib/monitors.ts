@@ -23,6 +23,19 @@ export type MonitorSnapshot = {
   created_at: string;
 };
 
+export type MonitorNotificationDelivery = {
+  id: string;
+  event: "changed" | "unavailable" | "recovered" | "test" | "digest";
+  channel: "email" | "webhook" | "slack" | "discord" | "teams" | "telegram";
+  destination: string;
+  status: "pending" | "delivered" | "failed";
+  attempts: number;
+  response_status: number | null;
+  error: string;
+  delivered_at: string | null;
+  created_at: string;
+};
+
 export type WebpageMonitor = {
   id: string;
   name: string;
@@ -44,6 +57,17 @@ export type WebpageMonitor = {
   webhook_configured: boolean;
   webhook_secret?: string;
   notify_email: boolean;
+  notification_emails: string[];
+  notification_frequency: "immediate" | "daily" | "weekly";
+  notify_on_changed: boolean;
+  notify_on_unavailable: boolean;
+  notify_on_recovered: boolean;
+  slack_webhook_url: string;
+  discord_webhook_url: string;
+  teams_webhook_url: string;
+  telegram_bot_configured: boolean;
+  telegram_bot_token?: string;
+  telegram_chat_id: string;
   is_active: boolean;
   is_running: boolean;
   status: "active" | "paused" | "checking" | "failed" | "baseline";
@@ -142,6 +166,30 @@ export async function listMonitorSnapshots(id: string, token: string) {
   const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/snapshots/`, { headers: headers(token) });
   if (!response.ok) throw new Error("Could not load monitor snapshots.");
   return (await response.json()) as MonitorSnapshot[];
+}
+
+export async function listMonitorNotifications(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/notifications/`, { headers: headers(token) });
+  if (!response.ok) throw new Error("Could not load notification history.");
+  return (await response.json()) as MonitorNotificationDelivery[];
+}
+
+export async function testMonitorNotifications(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitors/${id}/notifications/test/`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not test notifications.");
+  return (await response.json()) as MonitorNotificationDelivery[];
+}
+
+export async function retryMonitorNotification(id: string, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/monitor-notifications/${id}/retry/`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!response.ok) throw new Error((await response.json()).detail || "Could not retry notification.");
+  return (await response.json()) as MonitorNotificationDelivery;
 }
 
 export async function restoreMonitorSnapshot(monitorId: string, snapshotId: number, token: string) {

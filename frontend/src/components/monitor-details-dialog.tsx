@@ -1,13 +1,17 @@
-import { Download, FileClock, GitCompareArrows, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Bell, Download, FileClock, GitCompareArrows, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   listMonitorChanges,
+  listMonitorNotifications,
   listMonitorSnapshots,
   monitorAssetUrl,
   restoreMonitorSnapshot,
+  retryMonitorNotification,
+  testMonitorNotifications,
   updateMonitorChange,
   updateMonitor,
   type MonitorChange,
+  type MonitorNotificationDelivery,
   type MonitorSnapshot,
   type WebpageMonitor,
 } from "../lib/monitors";
@@ -38,7 +42,8 @@ function downloadSnapshot(snapshot: MonitorSnapshot) {
 export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated }: MonitorDetailsDialogProps) {
   const [snapshots, setSnapshots] = useState<MonitorSnapshot[]>([]);
   const [changes, setChanges] = useState<MonitorChange[]>([]);
-  const [view, setView] = useState<"snapshots" | "changes">("snapshots");
+  const [notifications, setNotifications] = useState<MonitorNotificationDelivery[]>([]);
+  const [view, setView] = useState<"snapshots" | "changes" | "notifications">("snapshots");
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<number | null>(null);
   const [selectedChangeId, setSelectedChangeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,6 +51,8 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
   const [restoring, setRestoring] = useState(false);
   const [savingRules, setSavingRules] = useState(false);
   const [savingChangeStatus, setSavingChangeStatus] = useState(false);
+  const [testingNotifications, setTestingNotifications] = useState(false);
+  const [retryingNotificationId, setRetryingNotificationId] = useState<string | null>(null);
   const [minimumChangePercent, setMinimumChangePercent] = useState(monitor?.minimum_change_percent ?? 0);
   const [ignoreSelectors, setIgnoreSelectors] = useState(monitor?.ignore_selectors.join(", ") ?? "");
   const [ignorePatterns, setIgnorePatterns] = useState(monitor?.ignore_patterns.join("\n") ?? "");
@@ -58,12 +65,14 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
     setLoading(true);
     setError("");
     try {
-      const [snapshotHistory, changeHistory] = await Promise.all([
+      const [snapshotHistory, changeHistory, notificationHistory] = await Promise.all([
         listMonitorSnapshots(monitor.id, token),
         listMonitorChanges(monitor.id, token),
+        listMonitorNotifications(monitor.id, token),
       ]);
       setSnapshots(snapshotHistory);
       setChanges(changeHistory);
+      setNotifications(notificationHistory);
       setSelectedSnapshotId(snapshotHistory[0]?.id ?? null);
       setSelectedChangeId(changeHistory[0]?.id ?? null);
     } catch (loadError) {
@@ -132,6 +141,33 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
     }
   };
 
+  const testNotifications = async () => {
+    if (!monitor) return;
+    setTestingNotifications(true);
+    setError("");
+    try {
+      const tested = await testMonitorNotifications(monitor.id, token);
+      setNotifications((current) => [...tested, ...current]);
+    } catch (testError) {
+      setError(testError instanceof Error ? testError.message : "Could not test notifications.");
+    } finally {
+      setTestingNotifications(false);
+    }
+  };
+
+  const retryNotification = async (delivery: MonitorNotificationDelivery) => {
+    setRetryingNotificationId(delivery.id);
+    setError("");
+    try {
+      const retried = await retryMonitorNotification(delivery.id, token);
+      setNotifications((current) => current.map((item) => item.id === retried.id ? retried : item));
+    } catch (retryError) {
+      setError(retryError instanceof Error ? retryError.message : "Could not retry notification.");
+    } finally {
+      setRetryingNotificationId(null);
+    }
+  };
+
   return (
     <Dialog
       open={Boolean(monitor)}
@@ -177,6 +213,9 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
             </button>
             <button type="button" className={view === "changes" ? "active" : ""} onClick={() => setView("changes")}>
               <GitCompareArrows size={16} /> Changes <span>{changes.length}</span>
+            </button>
+            <button type="button" className={view === "notifications" ? "active" : ""} onClick={() => setView("notifications")}>
+              <Bell size={16} /> Notifications <span>{notifications.length}</span>
             </button>
           </div>
 
@@ -255,6 +294,30 @@ export function MonitorDetailsDialog({ monitor, token, onClose, onMonitorUpdated
                 </section>
               )}
             </div>
+          )}
+
+          {!loading && view === "notifications" && (
+            <section className="monitor-notification-history">
+              <div className="monitor-history-heading">
+                <div><p className="eyebrow">Delivery history</p><h3>Notification activity</h3><span>Test configured channels and retry failed deliveries.</span></div>
+                <button type="button" disabled={testingNotifications} onClick={() => void testNotifications()}><Bell size={15} /> {testingNotifications ? "Sending..." : "Send test"}</button>
+              </div>
+              <div className="monitor-notification-summary">
+                <span>Schedule: {monitor.notification_frequency === "immediate" ? "Immediately" : `${monitor.notification_frequency} digest`}</span>
+                <span>Events: {[monitor.notify_on_changed && "changed", monitor.notify_on_unavailable && "unavailable", monitor.notify_on_recovered && "recovered"].filter(Boolean).join(", ") || "none"}</span>
+              </div>
+              <div className="monitor-delivery-list">
+                {notifications.map((delivery) => (
+                  <article key={delivery.id}>
+                    <div><strong>{delivery.channel} · {delivery.event}</strong><span>{delivery.destination}</span></div>
+                    <div><span className={`job-status ${delivery.status}`}>{delivery.status}</span><small>{new Date(delivery.created_at).toLocaleString()} · {delivery.attempts} attempt(s)</small></div>
+                    {delivery.error && <p className="monitor-error">{delivery.error}</p>}
+                    {delivery.status === "failed" && <button type="button" disabled={retryingNotificationId === delivery.id} onClick={() => void retryNotification(delivery)}><RefreshCw size={14} /> {retryingNotificationId === delivery.id ? "Retrying..." : "Retry"}</button>}
+                  </article>
+                ))}
+                {!notifications.length && <p className="monitor-dialog-state">No notification deliveries yet.</p>}
+              </div>
+            </section>
           )}
         </>
       )}

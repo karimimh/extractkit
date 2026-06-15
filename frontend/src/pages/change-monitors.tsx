@@ -308,7 +308,14 @@ export default function ChangeMonitors() {
                   <div><dt>Next check</dt><dd>{monitor.is_active ? new Date(monitor.next_run_at).toLocaleString() : "Paused"}</dd></div>
                   <div><dt>Last successful check</dt><dd>{monitor.last_success_at ? new Date(monitor.last_success_at).toLocaleString() : "No successful check yet"}</dd></div>
                   <div><dt>Latest change</dt><dd>{monitor.latest_change ? `${monitor.latest_change.changed_percent.toFixed(2)}% · ${new Date(monitor.latest_change.created_at).toLocaleString()}` : "None detected"}</dd></div>
-                  <div><dt>Notifications</dt><dd>{[monitor.notify_email && "Email", monitor.webhook_configured && "Webhook"].filter(Boolean).join(" + ") || "None"}</dd></div>
+                  <div><dt>Notifications</dt><dd>{[
+                    (monitor.notification_emails.length || monitor.notify_email) && "Email",
+                    monitor.webhook_configured && "Webhook",
+                    monitor.slack_webhook_url && "Slack",
+                    monitor.discord_webhook_url && "Discord",
+                    monitor.teams_webhook_url && "Teams",
+                    monitor.telegram_bot_configured && monitor.telegram_chat_id && "Telegram",
+                  ].filter(Boolean).join(" + ") || "None"} · {monitor.notification_frequency === "immediate" ? "immediate" : `${monitor.notification_frequency} digest`}</dd></div>
                   <div><dt>Failures</dt><dd>{monitor.consecutive_failures ? `${monitor.consecutive_failures} consecutive` : "None"}</dd></div>
                   <div><dt>Alert threshold</dt><dd>{monitor.minimum_change_percent ? `${monitor.minimum_change_percent}% or more` : "Any detected change"}</dd></div>
                 </dl>

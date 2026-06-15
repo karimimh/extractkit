@@ -117,6 +117,8 @@ Create a dedicated comparison experience:
 
 ## 6. Notification Improvements
 
+**Implemented:** Monitors support custom email recipients, rich HTML diff emails, test notifications, failed-delivery retries, complete delivery history, immediate/daily/weekly delivery, separate changed/unavailable/recovered alerts, and native Slack, Discord, Microsoft Teams, and Telegram payloads.
+
 - Custom notification email addresses
 - Rich HTML email containing the actual diff
 - Notification test button

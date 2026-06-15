@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import CreditTransaction, CryptoPayment, DeveloperAPIKey, ExportJob, ExportSchedule, MonitorChange, MonitorSnapshot, UserProfile, WebpageMonitor
+from .models import CreditTransaction, CryptoPayment, DeveloperAPIKey, ExportJob, ExportSchedule, MonitorChange, MonitorNotificationDelivery, MonitorSnapshot, UserProfile, WebpageMonitor
 from .serializers import ExportStructuredJsonSerializer
 from .services.cleaner import (
     AiCleanupError,
@@ -806,6 +806,41 @@ class WebpageMonitorViewTests(DjangoTestCase):
         self.assertEqual(invalid_percent.status_code, 400)
         self.assertEqual(invalid_pattern.status_code, 400)
 
+    def test_validates_and_serializes_notification_configuration(self):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+        )
+
+        response = self.client.patch(
+            f"/api/monitors/{monitor.public_id}/",
+            {
+                "notification_emails": ["alerts@example.com", "team@example.com"],
+                "notification_frequency": "daily",
+                "notify_on_unavailable": False,
+                "slack_webhook_url": "https://hooks.slack.com/services/test",
+                "telegram_bot_token": "secret-token",
+                "telegram_chat_id": "12345",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["notification_emails"], ["alerts@example.com", "team@example.com"])
+        self.assertEqual(response.json()["notification_frequency"], "daily")
+        self.assertFalse(response.json()["notify_on_unavailable"])
+        self.assertTrue(response.json()["telegram_bot_configured"])
+        self.assertNotIn("telegram_bot_token", response.json())
+
+        invalid = self.client.patch(
+            f"/api/monitors/{monitor.public_id}/",
+            {"notification_emails": ["not-an-email"]},
+            format="json",
+        )
+        self.assertEqual(invalid.status_code, 400)
+
     def test_updating_comparison_rules_resets_baseline_on_next_check(self):
         monitor = WebpageMonitor.objects.create(
             user=self.user,
@@ -997,6 +1032,53 @@ class WebpageMonitorViewTests(DjangoTestCase):
         )
         self.assertEqual(invalid.status_code, 400)
 
+    @patch("app.monitoring.send_mail")
+    def test_tests_notifications_lists_history_and_retries_failures(self, send_mail):
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+            notification_emails=["alerts@example.com"],
+        )
+        send_mail.side_effect = RuntimeError("Mail server unavailable")
+
+        tested = self.client.post(f"/api/monitors/{monitor.public_id}/notifications/test/")
+
+        self.assertEqual(tested.status_code, 201)
+        delivery = MonitorNotificationDelivery.objects.get(monitor=monitor)
+        self.assertEqual(delivery.status, MonitorNotificationDelivery.FAILED)
+        self.assertEqual(delivery.attempts, 1)
+        history = self.client.get(f"/api/monitors/{monitor.public_id}/notifications/")
+        self.assertEqual(history.status_code, 200)
+        self.assertIn("Mail server unavailable", history.json()[0]["error"])
+
+        send_mail.side_effect = None
+        retried = self.client.post(f"/api/monitor-notifications/{delivery.public_id}/retry/")
+
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(retried.json()["status"], "delivered")
+        self.assertEqual(retried.json()["attempts"], 2)
+
+    @patch("app.monitoring.requests.post")
+    def test_sends_native_slack_test_payload(self, post):
+        post.return_value.status_code = 200
+        post.return_value.raise_for_status.return_value = None
+        monitor = WebpageMonitor.objects.create(
+            user=self.user,
+            url="https://example.com/pricing",
+            frequency=WebpageMonitor.MINUTELY,
+            next_run_at=timezone.now(),
+            slack_webhook_url="https://hooks.slack.com/services/test",
+        )
+
+        response = self.client.post(f"/api/monitors/{monitor.public_id}/notifications/test/")
+
+        self.assertEqual(response.status_code, 201)
+        payload = json.loads(post.call_args.kwargs["data"])
+        self.assertIn("blocks", payload)
+        self.assertEqual(response.json()[0]["channel"], "slack")
+
     def test_monitor_history_is_private(self):
         from django.contrib.auth.models import User
 
@@ -1086,6 +1168,8 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
         self.assertIn("Updated price", change.diff)
         self.assertTrue(post.call_args.kwargs["headers"]["X-ExtractKit-Signature"].startswith("sha256="))
         send_mail.assert_called_once()
+        self.assertIn("html_message", send_mail.call_args.kwargs)
+        self.assertEqual(MonitorNotificationDelivery.objects.filter(monitor=self.monitor).count(), 2)
 
         self.monitor.refresh_from_db()
         self.assertIsNotNone(self.monitor.last_run_at)
@@ -1194,6 +1278,46 @@ class WebpageMonitorRunnerTests(TransactionTestCase):
         self.assertEqual(self.monitor.consecutive_failures, 0)
         self.assertEqual(self.monitor.last_error, "")
         self.assertIsNotNone(self.monitor.last_success_at)
+
+    @patch("app.monitoring.send_mail")
+    @patch("app.monitoring.extract_main_content")
+    def test_sends_unavailable_then_recovered_events(self, extract, send_mail):
+        from .monitoring import run_monitor
+        from .services.extractor import ExtractedContent
+
+        self.monitor.webhook_url = ""
+        self.monitor.notify_email = True
+        self.monitor.save(update_fields=["webhook_url", "notify_email"])
+        extract.side_effect = [RuntimeError("Page unavailable"), ExtractedContent("Article", "<main>Recovered</main>")]
+
+        run_monitor(self.monitor.id)
+        run_monitor(self.monitor.id)
+
+        events = list(MonitorNotificationDelivery.objects.filter(monitor=self.monitor).order_by("created_at").values_list("event", flat=True))
+        self.assertEqual(events, [MonitorNotificationDelivery.UNAVAILABLE, MonitorNotificationDelivery.RECOVERED])
+        self.assertEqual(send_mail.call_count, 2)
+
+    @patch("app.monitoring.send_mail")
+    def test_delivers_daily_digest_with_change_summary(self, send_mail):
+        from .monitoring import run_due_monitor_digests
+
+        self.monitor.webhook_url = ""
+        self.monitor.notify_email = False
+        self.monitor.notification_emails = ["digest@example.com"]
+        self.monitor.notification_frequency = WebpageMonitor.DAILY_DIGEST
+        self.monitor.last_digest_at = timezone.now() - timedelta(days=2)
+        self.monitor.save(update_fields=["webhook_url", "notify_email", "notification_emails", "notification_frequency", "last_digest_at"])
+        before = MonitorSnapshot.objects.create(monitor=self.monitor, content_hash="before", data={"price": 10})
+        after = MonitorSnapshot.objects.create(monitor=self.monitor, content_hash="after", data={"price": 12})
+        MonitorChange.objects.create(monitor=self.monitor, before=before, after=after, summary="Price changed")
+
+        delivered = run_due_monitor_digests()
+
+        self.assertEqual(delivered, 1)
+        delivery = MonitorNotificationDelivery.objects.get(monitor=self.monitor)
+        self.assertEqual(delivery.event, MonitorNotificationDelivery.DIGEST)
+        self.assertEqual(delivery.status, MonitorNotificationDelivery.DELIVERED)
+        self.assertIn("1 change(s)", send_mail.call_args.args[1])
 
     @patch("app.monitoring.enqueue_monitor")
     def test_due_monitor_advances_and_queues(self, enqueue_monitor):
