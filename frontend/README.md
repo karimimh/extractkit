@@ -23,6 +23,9 @@ npm install
 VITE_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 ```
 
+For local Vite development, put `VITE_` variables in `frontend/.env`.
+For Docker Compose builds, define the same `VITE_` variables in the repository root `.env` so Compose can pass them as build args.
+
 ## Build
 
 ```bash

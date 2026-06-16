@@ -164,6 +164,18 @@ The account must have an email address, and the monitor's **Email me when change
 
 ---
 
+## Docker
+
+For a containerized production-style setup, use the Docker Compose stack:
+
+```bash
+cp .env.example .env
+# For Docker, set POSTGRES_HOST=db in .env.
+docker compose --env-file .env up -d --build
+```
+
+The Docker stack runs PostgreSQL, Django/Gunicorn, the scheduler, and an Nginx-served frontend on `http://localhost:8080`. See [DEPLOY.md](DEPLOY.md) for Docker deployment, reverse proxy, and backup notes.
+
 ## Local development
 
 **Backend:**

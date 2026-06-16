@@ -82,7 +82,17 @@ sudo chown -R $USER:$USER /srv/extractkit
 cd /srv/extractkit
 ```
 
-Create `/srv/extractkit/.env`:
+Create `/srv/extractkit/.env` from the template:
+
+```bash
+cp .env.example .env
+python3 - <<'PY'
+import secrets
+print(secrets.token_urlsafe(50))
+PY
+```
+
+Edit `/srv/extractkit/.env` for non-Docker production:
 
 ```ini
 SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(50))">
@@ -95,6 +105,9 @@ POSTGRES_USER=extractkit
 POSTGRES_PASSWORD=changeme
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
+VITE_API_BASE_URL=
+VITE_ENABLE_CHANGE_MONITORING=false
+VITE_GOOGLE_CLIENT_ID=<your-google-client-id>
 
 # Auth
 GOOGLE_CLIENT_ID=<your-google-client-id>
@@ -219,122 +232,20 @@ VITE_API_BASE_URL='' VITE_ENABLE_CHANGE_MONITORING=false npm run build
 
 ---
 
-## 8. Nginx
+## 8. Nginx and HTTPS
 
-Create `/etc/nginx/sites-available/extractkit` (HTTP only at this stage — Certbot will add HTTPS in step 9).
+DNS for both `extractkit.io` and `www.extractkit.io` must point at the server before this step.
 
-> **Important:** Use two separate server blocks so `www` is a pure redirect and never serves content. This prevents Google Search Console from flagging `www` pages as "Alternate page with proper canonical tag".
-
-```nginx
-# Redirect www → non-www (Certbot will upgrade this to HTTPS in step 9)
-server {
-    listen 80;
-    server_name www.extractkit.io;
-    return 301 http://extractkit.io$request_uri;
-}
-
-# Main site
-server {
-    listen 80;
-    server_name extractkit.io;
-
-    # Frontend static files
-    root /srv/extractkit/frontend/dist;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Django API
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Django admin & static/media
-    location /admin/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /static/ {
-        alias /srv/extractkit/backend/staticfiles/;
-    }
-
-    location /media/ {
-        alias /srv/extractkit/backend/media/;
-    }
-}
-```
+Install Nginx and Certbot, then issue the certificate before writing the final Nginx config:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/extractkit /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+sudo apt install -y nginx certbot
+sudo systemctl stop nginx || true
+sudo certbot certonly --standalone -d extractkit.io -d www.extractkit.io
+sudo systemctl start nginx
 ```
 
----
-
-## 9. HTTPS with Let's Encrypt (Certbot)
-
-> DNS must be propagated before running this step.
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d extractkit.io -d www.extractkit.io
-```
-
-Certbot will:
-- Obtain a free TLS certificate from Let's Encrypt
-- Edit `/etc/nginx/sites-available/extractkit` to add SSL and HTTP→HTTPS redirects
-- Install a systemd timer for automatic renewal (verify with `sudo systemctl status certbot.timer`)
-
-After Certbot runs, verify the www block still redirects to the non-www URL (not to `https://www.`). The www server block should look like this:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name www.extractkit.io;
-    ssl_certificate /etc/letsencrypt/live/extractkit.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/extractkit.io/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    return 301 https://extractkit.io$request_uri;
-}
-```
-
-If Certbot changed the redirect target to `https://$host$request_uri` inside the www block, fix it manually:
-
-```bash
-sudo nano /etc/nginx/sites-available/extractkit
-# Change:  return 301 https://$host$request_uri;
-# To:      return 301 https://extractkit.io$request_uri;
-# (only inside the www.extractkit.io server blocks)
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-Test renewal without actually renewing:
-
-```bash
-sudo certbot renew --dry-run
-```
-
----
-
-## 9a. Fix www redirect on an already-deployed server
-
-If the site is already live and Google Search Console reports **"Alternate page with proper canonical tag"** or **"Page with redirect"** for www URLs, the deployed Nginx config needs to be patched.
-
-```bash
-# View the current config to understand what Certbot generated
-sudo cat /etc/nginx/sites-available/extractkit
-```
-
-Replace any `server_name www.extractkit.io` block (both port 80 and port 443) so they only redirect:
+Create `/etc/nginx/sites-available/extractkit` with this complete config:
 
 ```nginx
 # HTTP www → HTTPS non-www
@@ -350,16 +261,67 @@ server {
     server_name www.extractkit.io;
     ssl_certificate /etc/letsencrypt/live/extractkit.io/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/extractkit.io/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
     return 301 https://extractkit.io$request_uri;
+}
+
+# HTTPS main site
+server {
+    listen 443 ssl;
+    server_name extractkit.io;
+
+    ssl_certificate /etc/letsencrypt/live/extractkit.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/extractkit.io/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    root /srv/extractkit/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /admin/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static/ {
+        alias /srv/extractkit/backend/staticfiles/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+
+    location /media/ {
+        alias /srv/extractkit/backend/media/;
+        add_header Cache-Control "private, no-store";
+    }
 }
 ```
 
-Apply and verify:
+Enable the site, reload Nginx, and test renewal:
 
 ```bash
+sudo ln -sf /etc/nginx/sites-available/extractkit /etc/nginx/sites-enabled/extractkit
 sudo nginx -t && sudo systemctl reload nginx
+sudo certbot renew --dry-run
 
 # Confirm: www redirects to non-www (expect: Location: https://extractkit.io/)
 curl -I https://www.extractkit.io/
@@ -367,11 +329,11 @@ curl -I https://www.extractkit.io/
 curl -I http://extractkit.io/
 ```
 
-After applying, go to Google Search Console → **Sitemaps** → resubmit the sitemap, then use **URL Inspection** on `https://extractkit.io/` and request reindexing.
+This config keeps `www` as a pure redirect and never serves content from it. That prevents Google Search Console from flagging `www` pages as "Alternate page with proper canonical tag".
 
 ---
 
-## 10. Firewall
+## 9. Firewall
 
 ```bash
 sudo ufw allow 'Nginx Full'   # opens ports 80 (HTTP) and 443 (HTTPS)
@@ -381,7 +343,7 @@ sudo ufw enable
 
 ---
 
-## 11. Verify
+## 10. Verify
 
 ```bash
 curl https://extractkit.io/api/docs/      # Swagger UI
@@ -393,7 +355,7 @@ sudo journalctl -u extractkit -f                  # Live logs
 
 ---
 
-## 12. Create a superuser
+## 11. Create a superuser
 
 ```bash
 cd /srv/extractkit/backend
@@ -405,7 +367,7 @@ Follow the prompts to set a username, email, and password. The Django admin pane
 
 ---
 
-## 13. Updating the project
+## 12. Updating the project
 
 An `update.sh` script is included in the repo root. After the first deploy, just run:
 
@@ -419,6 +381,114 @@ This pulls the latest commits, installs any new dependencies, runs migrations, r
 > ```bash
 > sudo systemctl restart extractkit
 > ```
+
+---
+
+## Dockerized deployment
+
+This path runs ExtractKit as four Docker Compose services:
+
+- `frontend`: Nginx serving the Vite build and proxying API/admin requests
+- `backend`: Django/Gunicorn
+- `scheduler`: Django scheduled exports and webpage monitors
+- `db`: PostgreSQL
+
+### 1. Configure `.env`
+
+```bash
+cd /srv
+sudo git clone https://github.com/karimimh/extractkit.git extractkit
+sudo chown -R $USER:$USER /srv/extractkit
+cd /srv/extractkit
+cp .env.example .env
+```
+
+Edit `.env` for Docker production:
+
+```ini
+SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(50))">
+DEBUG=False
+ALLOWED_HOSTS=extractkit.io,www.extractkit.io
+CHANGE_MONITORING_ENABLED=false
+
+POSTGRES_DB=extractkit
+POSTGRES_USER=extractkit
+POSTGRES_PASSWORD=<strong-password>
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+VITE_API_BASE_URL=
+VITE_ENABLE_CHANGE_MONITORING=false
+
+NOWPAYMENTS_SANDBOX=false
+NOWPAYMENTS_IPN_CALLBACK_URL=https://extractkit.io/api/payments/webhook/
+NOWPAYMENTS_SUCCESS_URL=https://extractkit.io?payment=success
+NOWPAYMENTS_CANCEL_URL=https://extractkit.io?payment=cancelled
+```
+
+Set the remaining Google OAuth, email, NOWPayments, and OpenAI values in the same `.env` file as needed.
+
+### 2. Build and start
+
+```bash
+docker compose --env-file .env up -d --build
+```
+
+The Docker stack exposes the frontend on `http://localhost:8080` by default. The backend container runs migrations and `collectstatic` before starting Gunicorn. Static files, media files, logs, and Postgres data are stored in named Docker volumes.
+
+### 3. Create an admin user
+
+```bash
+docker compose --env-file .env exec backend python manage.py createsuperuser
+```
+
+### 4. Logs and updates
+
+```bash
+docker compose --env-file .env logs -f backend
+docker compose --env-file .env logs -f scheduler
+docker compose --env-file .env restart backend scheduler
+```
+
+Apply updates with:
+
+```bash
+git pull
+docker compose --env-file .env up -d --build
+```
+
+### 5. Reverse proxy for one or more websites
+
+For one website on a server, you can change the frontend port mapping in `docker-compose.yml` to:
+
+```yaml
+ports:
+  - "80:80"
+```
+
+For multiple websites on the same server, keep each Compose project on a different local port:
+
+```yaml
+ports:
+  - "127.0.0.1:8080:80"
+```
+
+Then put Nginx, Caddy, or Traefik in front of the apps and route by domain:
+
+- `extractkit.io` -> `127.0.0.1:8080`
+- `second-site.com` -> `127.0.0.1:8081`
+
+Terminate HTTPS at the front reverse proxy.
+
+### 6. Backups
+
+Back up the database and media volume regularly:
+
+```bash
+docker compose --env-file .env exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > extractkit.sql
+```
+
+Media files are in the `media_data` Docker volume. Include that volume in your server backup plan.
 
 ---
 

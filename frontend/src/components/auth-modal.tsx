@@ -4,6 +4,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/auth-context";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
 
 type Tab = "login" | "register";
 
@@ -107,12 +108,22 @@ export function AuthModal({ onClose }: Props) {
         </div>
 
         <div className="modal-google">
-          <GoogleLogin
-            onSuccess={(cr) => handleGoogleSuccess(cr.credential!)}
-            onError={() => setError("Google sign-in failed.")}
-            width="100%"
-            text={tab === "login" ? "signin_with" : "signup_with"}
-          />
+          {GOOGLE_CLIENT_ID ? (
+            <GoogleLogin
+              onSuccess={(cr) => handleGoogleSuccess(cr.credential!)}
+              onError={() => setError("Google sign-in failed.")}
+              width="100%"
+              text={tab === "login" ? "signin_with" : "signup_with"}
+            />
+          ) : (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setError("Google sign-in is not configured. Set VITE_GOOGLE_CLIENT_ID and rebuild the frontend.")}
+            >
+              Continue with Google
+            </button>
+          )}
         </div>
 
         <div className="modal-divider"><span>or</span></div>
