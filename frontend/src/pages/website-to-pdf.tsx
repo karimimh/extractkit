@@ -7,7 +7,7 @@ import { PaymentModal } from "../components/payment-modal";
 import { BulkUrlInput } from "../components/bulk-url-input";
 import { DomainPageDiscovery } from "../components/domain-page-discovery";
 import { ExportActivity } from "../components/export-activity";
-import { Switch } from "../components/shared/switch";
+import { SegmentedControl } from "../components/shared/segmented-control";
 import { usePageSeo } from "../hooks/use-page-seo";
 import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
 import { runExportJob } from "../lib/export-jobs";
@@ -589,11 +589,11 @@ function WebsiteToPdf() {
           <div className="control-stack">
 
             {/* Mode toggle */}
-            <Switch
+            <SegmentedControl
               label="Export mode"
               value={toolMode}
               options={[
-                { value: "single", label: "Single page" },
+                { value: "single", label: "Single URL" },
                 { value: "bulk", label: "Bulk URLs" },
                 { value: "domain", label: "Domain pages" },
               ]}

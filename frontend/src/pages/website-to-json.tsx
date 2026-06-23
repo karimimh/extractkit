@@ -6,7 +6,7 @@ import { BulkUrlInput } from "../components/bulk-url-input";
 import { DomainPageDiscovery } from "../components/domain-page-discovery";
 import { ExportActivity } from "../components/export-activity";
 import { PaymentModal } from "../components/payment-modal";
-import { Switch } from "../components/shared/switch";
+import { SegmentedControl } from "../components/shared/segmented-control";
 import { useAuth } from "../context/auth-context";
 import { usePageSeo } from "../hooks/use-page-seo";
 import { formatUsd, PRICE_PER_ACTION_CENTS } from "../lib/billing";
@@ -557,11 +557,11 @@ function WebsiteToJson() {
 
         <div className="card-grid" style={{ marginTop: "1.9rem" }}>
           <div className="control-stack">
-            <Switch
+            <SegmentedControl
               label="Export mode"
               value={toolMode}
               options={[
-                { value: "single", label: "Single page" },
+                { value: "single", label: "Single URL" },
                 { value: "bulk", label: "Bulk URLs" },
                 { value: "domain", label: "Domain pages" },
               ]}

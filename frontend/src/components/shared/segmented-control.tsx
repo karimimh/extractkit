@@ -1,22 +1,22 @@
 import type { ReactNode } from "react";
 
-export type SwitchOption<T extends string> = {
+export type SegmentedControlOption<T extends string> = {
   label: ReactNode;
   value: T;
 };
 
-type SwitchProps<T extends string> = {
+type SegmentedControlProps<T extends string> = {
   label?: ReactNode;
   onChange: (value: T) => void;
-  options: readonly SwitchOption<T>[];
+  options: readonly SegmentedControlOption<T>[];
   value: T;
 };
 
-export function Switch<T extends string>({ label, onChange, options, value }: SwitchProps<T>) {
+export function SegmentedControl<T extends string>({ label, onChange, options, value }: SegmentedControlProps<T>) {
   return (
-    <div className="toggle-group">
+    <div className="segmented-control">
       {label && <span>{label}</span>}
-      <div className="toggle-buttons">
+      <div className="segmented-control-options">
         {options.map((option) => (
           <button
             key={option.value}

@@ -1,5 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap");
-@import "./components/shared/switch.css";
+@import "./components/shared/segmented-control.css";
 @import "tailwindcss";
 
 :root {
