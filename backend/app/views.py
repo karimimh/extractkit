@@ -18,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import AnonymousDownload, CryptoPayment, UserProfile
 from .serializers import (
+    AiCleanupPreviewSerializer,
     BulkExportMarkdownSerializer,
     BulkExportPdfSerializer,
     BulkExportScreenshotSerializer,
@@ -34,7 +35,7 @@ from .serializers import (
     RegisterSerializer,
     WebsiteCrawlSerializer,
 )
-from .services.cleaner import clean_html
+from .services.cleaner import AiCleanupError, clean_html, get_ai_cleanup_selectors
 from .services.custom_structured_extractor import (
     CustomStructuredExtractionError,
     extract_custom_structured_data,
@@ -407,6 +408,33 @@ class PreviewPageView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class AiCleanupPreviewView(APIView):
+    @extend_schema(
+        tags=["Preview"],
+        request=AiCleanupPreviewSerializer,
+        responses={
+            200: OpenApiResponse(description="AI cleanup selectors generated successfully"),
+            400: OpenApiResponse(description="Validation or AI cleanup error"),
+            500: OpenApiResponse(description="AI cleanup error"),
+        },
+    )
+    def post(self, request):
+        serializer = AiCleanupPreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            selectors = get_ai_cleanup_selectors(serializer.validated_data["html"])
+        except AiCleanupError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response(
+                {"detail": "Failed to analyze preview for cleanup."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response({"selectors": selectors}, status=status.HTTP_200_OK)
 
 
 class WebsiteCrawlView(APIView):

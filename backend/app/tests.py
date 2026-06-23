@@ -191,6 +191,34 @@ class WebsiteCrawlerViewTests(DjangoTestCase):
         crawl.assert_called_once()
 
 
+class AiCleanupPreviewViewTests(DjangoTestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch("app.views.get_ai_cleanup_selectors", return_value=["#cookie-banner", "nav"])
+    def test_returns_ai_cleanup_selectors_for_preview_html(self, cleanup_selectors):
+        response = self.client.post(
+            "/api/preview/ai-cleanup/",
+            {"html": "<html><body><nav>Nav</nav><main>Article</main></body></html>"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["selectors"], ["#cookie-banner", "nav"])
+        cleanup_selectors.assert_called_once()
+
+    @patch("app.views.get_ai_cleanup_selectors", side_effect=AiCleanupError("AI Cleanup requires OPENAI_API_KEY"))
+    def test_returns_cleanup_errors_as_bad_request(self, _cleanup_selectors):
+        response = self.client.post(
+            "/api/preview/ai-cleanup/",
+            {"html": "<html><body><nav>Nav</nav></body></html>"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("OPENAI_API_KEY", response.json()["detail"])
+
+
 class GoogleAuthTests(DjangoTestCase):
     def setUp(self):
         self.client = APIClient()

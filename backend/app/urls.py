@@ -20,6 +20,7 @@ from .views import (
     PaymentDebugView,
     PaymentForceConfirmView,
     PaymentWebhookView,
+    AiCleanupPreviewView,
     PreviewPageView,
     RegisterView,
     ResetPasswordView,
@@ -81,6 +82,7 @@ urlpatterns = [
     path("export/bulk-json/", BulkExportStructuredJsonView.as_view(), name="bulk-export-structured-json"),
     path("export/bulk-screenshot/", BulkExportScreenshotView.as_view(), name="bulk-export-screenshot"),
     path("preview/", PreviewPageView.as_view(), name="preview-page"),
+    path("preview/ai-cleanup/", AiCleanupPreviewView.as_view(), name="preview-ai-cleanup"),
     path("crawl/", WebsiteCrawlView.as_view(), name="website-crawl"),
     # Auth
     path("auth/register/", RegisterView.as_view(), name="auth-register"),

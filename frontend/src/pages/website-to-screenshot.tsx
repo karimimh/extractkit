@@ -1,4 +1,4 @@
-import { Minus, MousePointer } from "lucide-react";
+import { Minus, MousePointer, Sparkles } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/auth-context";
@@ -47,6 +47,10 @@ type PreviewResponse = {
   base_url: string;
 };
 
+type AiCleanupResponse = {
+  selectors: string[];
+};
+
 type ErrorPayload = {
   detail?: string;
 };
@@ -54,12 +58,14 @@ type ErrorPayload = {
 type InteractionMode = "cursor" | "select";
 type ViewportWidth = 375 | 768 | 1280 | 1440;
 type ToolMode = "single" | "bulk" | "domain";
-type CleanupMode = "full" | "ai" | "manual";
+type CleanupMode = "full" | "manual";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const SELECT_MESSAGE = "ss-picker-select";
 const CLEAR_MESSAGE = "ss-picker-clear";
 const MODE_MESSAGE = "ss-picker-set-mode";
+const APPLY_SELECTIONS_MESSAGE = "ss-picker-apply-selections";
+const REMOVE_SELECTIONS_MESSAGE = "ss-picker-remove-selections";
 
 const VIEWPORT_OPTIONS: { label: string; value: ViewportWidth }[] = [
   { label: "Mobile (375px)", value: 375 },
@@ -203,6 +209,32 @@ function buildPreviewDocument(rawHtml: string, baseUrl: string, interactionMode:
             document.querySelectorAll("." + HOVER).forEach((el) => el.classList.remove(HOVER));
           }
         }
+        if (event.data.type === "${APPLY_SELECTIONS_MESSAGE}" && Array.isArray(event.data.selectors)) {
+          event.data.selectors.forEach((selector) => {
+            try {
+              document.querySelectorAll(selector).forEach((element) => {
+                element.classList.add(SELECTED);
+                element.dataset.ssSelector = selector;
+              });
+            } catch (e) {
+              console.warn("Ignored invalid cleanup selector", selector, e);
+            }
+          });
+        }
+        if (event.data.type === "${REMOVE_SELECTIONS_MESSAGE}" && Array.isArray(event.data.selectors)) {
+          event.data.selectors.forEach((selector) => {
+            try {
+              document.querySelectorAll(selector).forEach((element) => {
+                element.classList.remove(SELECTED);
+                if (element.dataset.ssSelector === selector) {
+                  delete element.dataset.ssSelector;
+                }
+              });
+            } catch (e) {
+              console.warn("Ignored invalid cleanup selector", selector, e);
+            }
+          });
+        }
       });
     })();
   `;
@@ -232,6 +264,7 @@ function WebsiteToScreenshot() {
   const [previewTitle, setPreviewTitle] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isAiCleanupLoading, setIsAiCleanupLoading] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
   const [cleanupMode, setCleanupMode] = useState<CleanupMode>("manual");
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("select");
@@ -350,6 +383,62 @@ function WebsiteToScreenshot() {
     iframeRef.current?.contentWindow?.postMessage({ type: CLEAR_MESSAGE }, "*");
   };
 
+  const removeSelection = (selector: string) => {
+    setSelections((current) => current.filter((item) => item !== selector));
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: REMOVE_SELECTIONS_MESSAGE, selectors: [selector] },
+      "*",
+    );
+  };
+
+  const getCurrentPreviewSnapshot = () => {
+    if (!previewSnapshot) return null;
+    if (!iframeRef.current?.contentDocument) return previewSnapshot;
+
+    const docCopy = iframeRef.current.contentDocument.cloneNode(true) as Document;
+    docCopy.getElementById("ss-picker-style")?.remove();
+    docCopy.getElementById("ss-picker-script")?.remove();
+    Array.from(docCopy.getElementsByTagName("script")).forEach((script) => script.remove());
+    return docCopy.documentElement.outerHTML;
+  };
+
+  const runAiCleanup = async () => {
+    const html = getCurrentPreviewSnapshot();
+    if (!html) {
+      setPreviewError("Load a preview before using AI cleanup.");
+      return;
+    }
+
+    setPreviewError(null);
+    setIsAiCleanupLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/preview/ai-cleanup/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html }),
+      });
+
+      const payload = (await response.json()) as AiCleanupResponse | ErrorPayload;
+
+      if (!response.ok) {
+        setPreviewError((payload as ErrorPayload).detail ?? "AI cleanup could not analyze this preview.");
+        return;
+      }
+
+      const aiSelectors = (payload as AiCleanupResponse).selectors;
+      setSelections((current) => [...current, ...aiSelectors.filter((selector) => !current.includes(selector))]);
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: APPLY_SELECTIONS_MESSAGE, selectors: aiSelectors },
+        "*",
+      );
+    } catch {
+      setPreviewError("Unable to reach backend. Ensure Django server is running.");
+    } finally {
+      setIsAiCleanupLoading(false);
+    }
+  };
+
   const handleUrlChange = (value: string) => {
     setUrl(value);
     setPreviewError(null);
@@ -393,7 +482,7 @@ function WebsiteToScreenshot() {
         url: url.trim(),
         selectors: cleanupMode === "manual" ? selections : [],
         width: viewportWidth,
-        ai_cleanup: cleanupMode === "ai",
+        ai_cleanup: false,
       };
 
       if (previewSnapshot && previewBaseUrl) {
@@ -561,14 +650,8 @@ function WebsiteToScreenshot() {
                 <button type="button" className={cleanupMode === "full" ? "active" : ""} onClick={() => setCleanupMode("full")}>
                   Full Page export
                 </button>
-                <button type="button" className={cleanupMode === "ai" ? "active" : ""} onClick={() => {
-                  setCleanupMode("ai");
-                  handleInteractionModeChange("cursor");
-                }}>
-                  AI Cleanup
-                </button>
                 <button type="button" className={cleanupMode === "manual" ? "active" : ""} onClick={() => setCleanupMode("manual")}>
-                  Manual Interaction
+                  Remove unwanted elements
                 </button>
               </div>
             </div>
@@ -581,23 +664,34 @@ function WebsiteToScreenshot() {
                       <h2>{previewTitle ?? "Preview"}</h2>
                       <p>Browse the page or click elements to remove them.</p>
                     </div>
-                    {cleanupMode === "manual" && <div className="toggle-buttons">
+                    {cleanupMode === "manual" && <div className="preview-head-actions">
                       <button
                         type="button"
-                        className={interactionMode === "select" ? "active flex-button" : "flex-button"}
-                        onClick={() => handleInteractionModeChange("select")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                        className={isAiCleanupLoading ? "preview-ai-button export-loading" : "preview-ai-button"}
+                        onClick={() => void runAiCleanup()}
+                        disabled={isAiCleanupLoading}
                       >
-                        <Minus size={16} /> Remove elements
+                        <Sparkles size={16} />
+                        {isAiCleanupLoading ? "AI cleanup..." : "AI cleanup"}
                       </button>
-                      <button
-                        type="button"
-                        className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
-                        onClick={() => handleInteractionModeChange("cursor")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                      >
-                        <MousePointer size={16} /> Browse page
-                      </button>
+                      <div className="toggle-buttons">
+                        <button
+                          type="button"
+                          className={interactionMode === "select" ? "active flex-button" : "flex-button"}
+                          onClick={() => handleInteractionModeChange("select")}
+                          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                        >
+                          <Minus size={16} /> Remove elements
+                        </button>
+                        <button
+                          type="button"
+                          className={interactionMode === "cursor" ? "active flex-button" : "flex-button"}
+                          onClick={() => handleInteractionModeChange("cursor")}
+                          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                        >
+                          <MousePointer size={16} /> Browse page
+                        </button>
+                      </div>
                     </div>}
                   </div>
                   <iframe
@@ -638,7 +732,16 @@ function WebsiteToScreenshot() {
               {selections.length ? (
                 <div className="chips">
                   {selections.map((selector) => (
-                    <span className="chip" key={selector}>{selector}</span>
+                    <span className="chip" key={selector}>
+                      <span>{selector}</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${selector}`}
+                        onClick={() => removeSelection(selector)}
+                      >
+                        x
+                      </button>
+                    </span>
                   ))}
                 </div>
               ) : (

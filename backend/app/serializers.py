@@ -14,6 +14,10 @@ class PreviewRequestSerializer(serializers.Serializer):
     use_print_css = serializers.BooleanField(required=False, default=False)
 
 
+class AiCleanupPreviewSerializer(serializers.Serializer):
+    html = serializers.CharField(required=True, allow_blank=False)
+
+
 class WebsiteCrawlSerializer(serializers.Serializer):
     url = serializers.URLField(required=True)
     max_pages = serializers.IntegerField(required=False, default=50, min_value=1, max_value=50)
