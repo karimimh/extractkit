@@ -40,7 +40,9 @@ npx tsc -b
 
 ## Env vars
 
-| Variable                | Default                  | Description                          |
-| ----------------------- | ------------------------ | ------------------------------------ |
-| `VITE_API_BASE_URL`     | `window.location.origin` | Base URL for the extractkit backend |
-| `VITE_GOOGLE_CLIENT_ID` | —                        | Google OAuth client ID               |
+| Variable                        | Default                          | Description                                              |
+| ------------------------------- | -------------------------------- | -------------------------------------------------------- |
+| `VITE_API_BASE_URL`             | `http://127.0.0.1:8000` if unset | Backend base URL; set it to an empty string for same-origin `/api` calls behind Nginx |
+| `VITE_GOOGLE_CLIENT_ID`         | —                                | Google OAuth client ID                                   |
+| `VITE_ENABLE_CHANGE_MONITORING` | on in `npm run dev`, off in builds | Shows the change-monitoring tool (`"true"` / `"false"`) |
+| `VITE_API_URL`                  | —                                | Optional origin for relative Markdown image URLs in production builds |
