@@ -4,36 +4,6 @@
 
 ---
 
-## Remove the previous short-lived deployment
-
-Because the previous site has no users or data to preserve, remove its services,
-Nginx configuration, project directory, and database before starting the clean
-installation below:
-
-```bash
-sudo systemctl disable --now distillpage distillpage-scheduler || true
-sudo rm -f /etc/systemd/system/distillpage.service
-sudo rm -f /etc/systemd/system/distillpage-scheduler.service
-sudo rm -f /etc/nginx/sites-enabled/distillpage
-sudo rm -f /etc/nginx/sites-available/distillpage
-sudo rm -rf /srv/distillpage
-
-sudo -u postgres dropdb --if-exists distillpage
-sudo -u postgres dropuser --if-exists distillpage
-
-sudo systemctl daemon-reload
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-You can also remove the old domain's DNS records and certificate if they are no
-longer needed:
-
-```bash
-sudo certbot delete --cert-name distillpage.com
-```
-
----
-
 ## 1. Namecheap DNS
 
 In the **Namecheap Advanced DNS** panel for `extractkit.io`, add (or update) these records:
@@ -346,7 +316,7 @@ sudo ufw enable
 ## 10. Verify
 
 ```bash
-curl https://extractkit.io/api/docs/      # Swagger UI
+curl https://extractkit.io/api/developer/docs/   # Swagger UI
 curl https://extractkit.io/               # Frontend
 curl -I http://extractkit.io/             # Should return 301 redirect to HTTPS
 sudo systemctl status extractkit                  # Gunicorn logs

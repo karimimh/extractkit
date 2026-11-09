@@ -1,6 +1,9 @@
-# Improve Monitor Webpage tool
+# Change Monitoring: Design Notes
 
-The current tool already supports:
+Planning document for the webpage change-monitoring tool. Items marked
+**Implemented** have shipped in this repository; the rest are open ideas.
+
+The baseline tool supports:
 
 - Cleaned text, CSS selector, structured JSON, and visual monitoring
 - Hourly/daily/weekly/monthly schedules
@@ -184,9 +187,9 @@ Templates make configuration easier and give the tool clearer business value.
 - Branded agency reports
 - Monitor API and outbound integrations
 
-## Recommended Build Order
+## Build Order
 
-I would implement these first:
+Recommended build order at planning time:
 
 1. **Monitor details dialog with snapshot and complete change history**
 2. **Improved cards with check progress and latest snapshot preview**
@@ -194,5 +197,3 @@ I would implement these first:
 4. **Change percentage threshold and ignored selectors**
 5. **Rich before/after comparison viewer**
 6. **AI summaries and rich email notifications**
-
-These additions improve the existing tool directly before expanding it into the larger Competitor & Price Intelligence product.

@@ -1,2 +1,0 @@
-- the blog pages should contain images and be more nice.
-- implement `Competitor & Price Intelligence Monitor`
