@@ -1,7 +1,22 @@
 # OS / editor
 .DS_Store
+Thumbs.db
+Desktop.ini
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# Local AI/agent tooling
+.claude/
+.codex/
+.agents/
+
+# Environment files (keep the committed template)
+.env
+.env.*
+!.env.example
 
 # Python virtual environments
 venv/
@@ -17,25 +32,26 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+*.egg-info/
 
 # Django / backend runtime artifacts
-backend/db.sqlite3
+*.sqlite3
 backend/media/
 backend/staticfiles/
-backend/.env
-backend/.env.*
+backend/logs/
 
 # Frontend artifacts
-frontend/node_modules/
+node_modules/
 frontend/dist/
-frontend/.env
-frontend/.env.*
+frontend/dist-ssr/
 frontend/*.local
+
+# Playwright
+.playwright/
+playwright-report/
+test-results/
 
 # Logs
 *.log
 
-.env
-
-.playwright/
 .github/
