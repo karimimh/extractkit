@@ -278,3 +278,7 @@ npm run build      # outputs to frontend/dist/
 ExtractKit was built and operated as a solo side project. The public deployment is currently offline; the code is kept here as a reference implementation. Webpage change monitoring is implemented but was switched off for the public deployment (`CHANGE_MONITORING_ENABLED=false` in `.env.example`).
 
 Built by [Mohammad Hossein Karimi](https://github.com/karimimh).
+
+## License
+
+Released under the [GNU Affero General Public License v3.0](LICENSE). If you run a modified version as a network service, you must make its source code available to its users.
